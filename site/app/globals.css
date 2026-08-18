@@ -1,1 +1,119 @@
 @import "tailwindcss";
+
+/* ─── Drydock design tokens ──────────────────────────────────────────────────
+   Naval engineering blueprint: deep harbor blue ground, blueprint linework,
+   hull-primer orange as the ONLY accent, draft-mark typography.
+   The nine tokens below are a contract — later tasks build against these names.
+   ────────────────────────────────────────────────────────────────────────── */
+@theme {
+  /* Ground and structure */
+  --color-dock: #061320;
+  --color-panel: #0b2032;
+  --color-line: #1e405b;
+
+  /* Ink */
+  --color-ink: #e6eef5;
+  --color-ink-dim: #8ba5bb;
+
+  /* The one accent: hull primer */
+  --color-primer: #ff6a1f;
+
+  /* Typefaces (sources registered in lib/fonts.ts as --font-src-*) */
+  --font-display: var(--font-src-display), "Arial Narrow", sans-serif;
+  --font-mono: var(--font-src-mono), ui-monospace, monospace;
+  --font-body: var(--font-src-body), system-ui, sans-serif;
+
+  /* Draft-mark type scale */
+  --text-mark: 0.6875rem; /* stencilled labels, sheet numbers */
+  --text-mark--line-height: 1.1;
+  --text-mark--letter-spacing: 0.18em;
+  --text-note: 0.8125rem; /* annotations */
+  --text-note--line-height: 1.5;
+  --text-body: 1rem;
+  --text-body--line-height: 1.65;
+  --text-lead: 1.25rem;
+  --text-lead--line-height: 1.5;
+  --text-title: clamp(1.75rem, 4vw, 2.75rem);
+  --text-title--line-height: 1.05;
+  --text-sheet: clamp(2.75rem, 9vw, 6.5rem);
+  --text-sheet--line-height: 0.92;
+}
+
+/* Blueprint grid ground: 8px minor rules inside a 96px major module. */
+:root {
+  --grid-minor: 8px;
+  --grid-major: 96px;
+  --blueprint-grid:
+    repeating-linear-gradient(
+      to right,
+      color-mix(in srgb, var(--color-line) 55%, transparent) 0 1px,
+      transparent 1px var(--grid-major)
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--color-line) 55%, transparent) 0 1px,
+      transparent 1px var(--grid-major)
+    ),
+    repeating-linear-gradient(
+      to right,
+      color-mix(in srgb, var(--color-line) 18%, transparent) 0 1px,
+      transparent 1px var(--grid-minor)
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--color-line) 18%, transparent) 0 1px,
+      transparent 1px var(--grid-minor)
+    );
+}
+
+@utility blueprint-grid {
+  background-image: var(--blueprint-grid);
+}
+
+@layer base {
+  body {
+    background-color: var(--color-dock);
+    background-image: var(--blueprint-grid);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background-color: var(--color-primer);
+    color: var(--color-dock);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-primer);
+    outline-offset: 2px;
+  }
+}
+
+/* Reduced motion. Framer Motion writes the initial state as an INLINE style
+   (e.g. style="opacity:0"), which CSS cannot override without !important — so
+   every animated element carries [data-reveal] and gets force-restored here.
+   Without this a reduced-motion visitor sees invisible text until hydration. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+    clip-path: none !important;
+    width: auto !important;
+  }
+}
