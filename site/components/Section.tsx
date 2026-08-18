@@ -12,6 +12,10 @@ import type { SectionShellProps } from "@/lib/section";
  *
  * `data-reveal` is required on the animated element so the reduced-motion rule
  * in app/globals.css can force-restore Framer's inline `opacity: 0`.
+ *
+ * Spacing contract: the shell owns the gap between the `<h2>` and `children`
+ * (`mt-8` on the wrapper below). Sections pass their body content with no
+ * leading margin of their own.
  */
 export default function Section({ meta, children }: SectionShellProps) {
   const variants = useMotionSafe() ? sectionReveal : NO_MOTION;
@@ -30,7 +34,9 @@ export default function Section({ meta, children }: SectionShellProps) {
         {meta.draftMark}
       </p>
       <h2 className="mt-4 font-display text-title">{meta.heading}</h2>
-      {children}
+      {/* The heading-to-body gap is pinned HERE, once, as `mt-8`. Section
+          components must not add their own top margin to their first child. */}
+      <div className="mt-8">{children}</div>
     </motion.section>
   );
 }
