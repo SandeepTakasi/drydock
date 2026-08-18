@@ -9,7 +9,7 @@
   /* Ground and structure */
   --color-dock: #061320;
   --color-panel: #0b2032;
-  --color-line: #1e405b;
+  --color-line: #35688c;
 
   /* Ink */
   --color-ink: #e6eef5;
@@ -39,29 +39,29 @@
   --text-sheet--line-height: 0.92;
 }
 
-/* Blueprint grid ground: 8px minor rules inside a 96px major module. */
+/* Blueprint grid ground: 24px minor rules inside a 96px major module. */
 :root {
-  --grid-minor: 8px;
+  --grid-minor: 24px;
   --grid-major: 96px;
   --blueprint-grid:
     repeating-linear-gradient(
       to right,
-      color-mix(in srgb, var(--color-line) 55%, transparent) 0 1px,
+      color-mix(in srgb, var(--color-line) 85%, transparent) 0 1px,
       transparent 1px var(--grid-major)
     ),
     repeating-linear-gradient(
       to bottom,
-      color-mix(in srgb, var(--color-line) 55%, transparent) 0 1px,
+      color-mix(in srgb, var(--color-line) 85%, transparent) 0 1px,
       transparent 1px var(--grid-major)
     ),
     repeating-linear-gradient(
       to right,
-      color-mix(in srgb, var(--color-line) 18%, transparent) 0 1px,
+      color-mix(in srgb, var(--color-line) 35%, transparent) 0 1px,
       transparent 1px var(--grid-minor)
     ),
     repeating-linear-gradient(
       to bottom,
-      color-mix(in srgb, var(--color-line) 18%, transparent) 0 1px,
+      color-mix(in srgb, var(--color-line) 35%, transparent) 0 1px,
       transparent 1px var(--grid-minor)
     );
 }
@@ -115,5 +115,7 @@
     transform: none !important;
     clip-path: none !important;
     width: auto !important;
+    stroke-dasharray: none !important;
+    stroke-dashoffset: 0 !important;
   }
 }
