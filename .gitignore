@@ -1,1 +1,4 @@
 .DS_Store
+
+# Agent worktrees created by isolation: "worktree" spawns (A2 finding, 2026-08-18)
+.claude/

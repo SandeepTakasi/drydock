@@ -163,3 +163,113 @@ Reported usage: 21,846 subagent tokens, 0 tool uses, 9,096 ms.
    the executor contract would produce cleaner reports.
 
 **Verdict:** PASSED — replicated; spawn param takes precedence over frontmatter.
+
+---
+
+## A2 — `isolation: "worktree"` agent spawning
+
+**Date:** 2026-08-18
+**Host version:** `claude --version` → `2.1.234 (Claude Code)`
+**Git version:** 2.51.0
+
+**Scope note:** this run tests the **spawning half** of A2 only. The merge
+procedure was deliberately not exercised — see "Not tested" below.
+
+### Setup
+
+`drydock-repo` was not a git repository before this test; A2 is untestable
+without one, so it was initialized as part of the run:
+
+```
+git init -b main
+# .gitignore added containing: .DS_Store
+git add -A && git commit -m "Initial commit: drydock plugin + docs"   → ba944d6 (17 files)
+# scratch/test.txt created containing one line: worktree smoke test
+git add scratch/test.txt && git commit -m "test: A2 worktree smoke fixture" → aa38357
+```
+
+Baseline immediately before spawning: one worktree (`main` at `aa38357`), one
+branch, no `.claude/` directory.
+
+### Spawn
+
+```
+subagent_type: "drydock:executor-isolated"
+model:         (not overridden — frontmatter default: sonnet)
+isolation:     (NOT passed as a param — relying on the agent's own
+                frontmatter `isolation: "worktree"`, which is the path
+                Drydock actually uses)
+```
+
+Task block supplied: task id `TEST.1`, task name `worktree smoke test`,
+`owns: [scratch/test.txt]`, instruction to add a second line reading exactly
+`edited in isolation`, forbidding changes outside `owns` and preserving line 1.
+
+### Completion report, verbatim
+
+```
+task_id: TEST.1
+status: DONE
+owns_touched: [scratch/test.txt]
+acceptance:
+  - "scratch/test.txt contains a second line reading 'edited in isolation'" — VERIFIED
+    (git diff shows first line unchanged, second line added exactly as specified)
+forbidden_check: no other files modified; first line "worktree smoke test" preserved
+    — VERIFIED via git diff
+observations: none
+worktree_commit: 6b8ba31612e03029601d268e60035319f516fad4
+```
+
+Harness-reported worktree metadata:
+`path: .claude/worktrees/agent-<id>`, `branch: worktree-agent-<id>`.
+
+Reported usage: 30,652 subagent tokens, 7 tool uses, 43,033 ms.
+
+### Independent verification
+
+All three checks were run by the orchestrator against git directly, not taken
+from the agent's self-report.
+
+**(a) A worktree was actually created.** `git worktree list` shows a second
+entry at `.claude/worktrees/agent-<id>` on branch
+`worktree-agent-<id>` at `6b8ba31`, and the directory exists on disk.
+Frontmatter-declared isolation was honoured without an explicit param.
+
+**(b) The mandated commit exists with the correct message.**
+`git log -1 6b8ba31` → subject exactly `drydock(TEST.1): worktree smoke test`,
+matching the contract's `drydock(<task-id>): <task name>` format.
+`git show --stat` confirms `1 file changed, 1 insertion(+)` touching only
+`scratch/test.txt` — the `owns` set was respected.
+
+**(c) The file has both lines at the worktree commit.**
+`git show 6b8ba31:scratch/test.txt` → `worktree smoke test` / `edited in
+isolation`. The main working tree still holds one line and `main` is still at
+`aa38357`, which is **correct** unmerged-isolation behaviour, not a failure.
+
+### Observations
+
+1. **Isolation held.** Main-tree HEAD and file content were untouched by the
+   agent. The commit lives only on the worktree branch.
+2. **The worktree persists after completion.** It was not auto-removed, because
+   it contained changes. Cleanup and merge are therefore orchestrator
+   responsibilities, not automatic.
+3. **`.claude/` pollutes `git status`.** Post-run `git status` showed `?? .claude/`
+   in the main repo. Left unignored, every worktree plan adds untracked noise and
+   risks the worktree dir being accidentally committed — and it would surface in
+   wavecheck as an unexplained change outside every task's `owns` set.
+   `.claude/` was added to `.gitignore` as a result of this finding.
+4. **Commit authorship is the human's git identity** (`sandeep
+   <venkatas@geekyants.com>`), not a distinct agent identity. Attribution of
+   agent-authored commits relies entirely on the `drydock(...)` subject prefix.
+
+### Not tested
+
+The **merge procedure** half of the A2 row was not exercised: no merge of
+`worktree-agent-<id>` into `main` was attempted, so the contract's
+"post-wavecheck merge is clean and attributable" claim and its BLOCKED-on-conflict
+path remain unverified. This needs its own test, ideally including a deliberate
+conflict outside the `owns` set.
+
+**Verdict:** PASSED (spawning) — frontmatter isolation honoured, worktree created,
+contract-format commit present, file correct on the worktree branch, main tree
+untouched. Merge procedure still unverified.
