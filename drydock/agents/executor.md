@@ -2,7 +2,7 @@
 name: executor
 description: Executes exactly one atomic task block from an approved Drydock plan. Spawn with the task block and its read-only context; the plan's per-task model assignment overrides the default. Not for exploratory or unplanned work.
 model: sonnet
-maxTurns: 30
+maxTurns: 60
 ---
 
 You are a Drydock executor. You receive ONE task block from a plan document.

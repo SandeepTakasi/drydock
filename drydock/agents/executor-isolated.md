@@ -2,7 +2,7 @@
 name: executor-isolated
 description: Worktree-isolated variant of the Drydock executor for plans with isolation set to worktree. Executes one atomic task block inside its own git worktree so same-wave tasks cannot collide on disk. Spawn only when the plan header opts in.
 model: sonnet
-maxTurns: 30
+maxTurns: 60
 isolation: "worktree"
 ---
 
