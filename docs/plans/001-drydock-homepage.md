@@ -80,13 +80,12 @@ throughout; no deployment workflow, no test runner, and no `basePath` are added.
 
 ## 4. Baseline
 
-**Confirmed by T0.** Pre-observed at planning time and independently verified by
-two pressure-test rounds (2026-08-18):
+**Baseline confirmed by T0.** Verified at execution time (2026-08-18):
 
 | Item | Observed value |
 |---|---|
-| Baseline SHA | `57f62a0` |
-| Working tree | clean (only `?? docs/plans/` untracked) |
+| Baseline SHA | `c664671` |
+| Working tree | clean |
 | node / npm | v22.23.1 / 11.18.0 |
 | `site/` exists | no |
 | `package.json` anywhere | none |
@@ -946,6 +945,7 @@ visible page.
 | 2026-08-18 | — | Revised (rev 3) | Round-2 pressure test REJECTED: 3 CRITICAL, 9 MAJOR, 14 MINOR. All confirmed findings fixed; 3 accepted-as-is with reasons (§11). Tasks renumbered per Decision 21 — legitimate while DRAFT and unexecuted |
 | 2026-08-18 | — | **APPROVED by sandeep** | Human approval given without a round-3 pressure test — a deliberate choice recorded per §11's note to the approver. Residual risk accepted: rev 3's fixes have not been adversarially reviewed, so Wave 1.0's real toolchain contact is the first check on them |
 | 2026-08-18 | — | Status → EXECUTING | Orchestration begun |
+| 2026-08-18 | T0 | Baseline confirmed | Head c664671, working tree clean, node v22.23.1, npm 11.18.0, no site/, no package.json |
 
 ## Reconcile report
 
