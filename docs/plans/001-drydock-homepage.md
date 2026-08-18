@@ -211,11 +211,31 @@ every T2.x task.
 
 **F12 — Nothing typechecks in a parallel wave unless it is hermetic.** Project
 `tsc --noEmit` reads every sibling, so it cannot run in waves 1.1/2.1/2.2.
-Per-file `npx tsc --noEmit --strict --jsx react-jsx --module esnext
---moduleResolution bundler --esModuleInterop --skipLibCheck --target es2022
-<file>` compiles only that file's own import graph and is safe. Without this,
-a `.ts` file using `React.FC` with no React import passes ESLint, passes
-wavecheck, and blocks a later task that does not own it.
+Without a per-file check, a `.ts` file using `React.FC` with no React import
+passes ESLint, passes wavecheck, and blocks a later task that does not own it.
+
+**F12a — CORRECTED (deviation 27). The original per-file invocation is broken for
+any file using the `@/*` alias.** `tsc` given explicit file arguments ignores
+`tsconfig.json` entirely, so the `paths` map never loads and `@/lib/section`
+fails with TS2307. This passed three times in Wave 1.1 only by accident: those
+files import solely from node_modules (`react`, `motion/react`,
+`next/font/google`). Every Phase-2 section imports `@/lib/section`,
+`@/lib/motion`, and `@/content/copy`, so all seven criteria would have failed.
+
+The canonical hermetic typecheck, verified to resolve aliases, exclude siblings,
+and still catch a real injected type error:
+
+```sh
+printf '{"extends":"'"$PWD"'/tsconfig.json","include":[],"files":["'"$PWD"'/<file>"]}' \
+  > /tmp/dd-tc-<unique>.json && npx tsc --noEmit --project /tmp/dd-tc-<unique>.json
+```
+
+`"include": []` is load-bearing: `include` is **inherited through `extends`**, so
+without clearing it the config pulls every sibling section file back into the
+graph and hermeticity is lost. Measured: with it, the graph for
+`content/copy.ts` is exactly `lib/section.ts` + `content/copy.ts` and zero
+`components/sections/*` files; without it, seven sibling files enter the graph.
+`<unique>` must differ per task — parallel executors write these concurrently.
 
 **F13 — `.claude/` is gitignored**, so agent worktrees cannot pollute wavecheck
 diffs.
@@ -880,7 +900,7 @@ visible page.
   - `hero.waterlineLabel` renders as a real `<text>` node (F5); animation touches
     only opacity. `data-reveal` on every animated element (F5a).
 - **Acceptance criterion:**
-  `cd site && npx eslint components/sections/Hero.tsx && npx tsc --noEmit --strict --jsx react-jsx --module esnext --moduleResolution bundler --esModuleInterop --skipLibCheck --target es2022 components/sections/Hero.tsx && grep -q "hero" components/sections/Hero.tsx && grep -q "heroSequence" components/sections/Hero.tsx && grep -q "data-reveal" components/sections/Hero.tsx && ! grep -qE "(duration|delay):|duration-[0-9]" components/sections/Hero.tsx`
+  `cd site && npx eslint components/sections/Hero.tsx && printf '{"extends":"'"$PWD"'/tsconfig.json","include":[],"files":["'"$PWD"'/components/sections/Hero.tsx"]}' > /tmp/dd-tc-Hero.json && npx tsc --noEmit --project /tmp/dd-tc-Hero.json && grep -q "hero" components/sections/Hero.tsx && grep -q "heroSequence" components/sections/Hero.tsx && grep -q "data-reveal" components/sections/Hero.tsx && ! grep -qE "(duration|delay):|duration-[0-9]" components/sections/Hero.tsx`
 
 #### T2.1.2 — Evidence: verified vs not-yet-verified board
 - **Status:** TODO
@@ -895,7 +915,7 @@ visible page.
 - **Forbidden:** Reading root `index.html`. Hardcoding any copy. Inventing
   metrics. Any timing literal. Touching other sections.
 - **Acceptance criterion:**
-  `cd site && npx eslint components/sections/Evidence.tsx && npx tsc --noEmit --strict --jsx react-jsx --module esnext --moduleResolution bundler --esModuleInterop --skipLibCheck --target es2022 components/sections/Evidence.tsx && grep -q "notVerified" components/sections/Evidence.tsx && grep -q "selfAuditHref" components/sections/Evidence.tsx && ! grep -qE "(duration|delay):|duration-[0-9]" components/sections/Evidence.tsx`
+  `cd site && npx eslint components/sections/Evidence.tsx && printf '{"extends":"'"$PWD"'/tsconfig.json","include":[],"files":["'"$PWD"'/components/sections/Evidence.tsx"]}' > /tmp/dd-tc-Evidence.json && npx tsc --noEmit --project /tmp/dd-tc-Evidence.json && grep -q "notVerified" components/sections/Evidence.tsx && grep -q "selfAuditHref" components/sections/Evidence.tsx && ! grep -qE "(duration|delay):|duration-[0-9]" components/sections/Evidence.tsx`
 
 #### T2.1.3 — Lifecycle: the six pieces as an interactive ladder
 - **Status:** TODO
@@ -918,7 +938,7 @@ visible page.
   - Reduced motion: instant state change, no height animation. `data-reveal` on
     animated elements.
 - **Acceptance criterion:**
-  `cd site && npx eslint components/sections/Lifecycle.tsx && npx tsc --noEmit --strict --jsx react-jsx --module esnext --moduleResolution bundler --esModuleInterop --skipLibCheck --target es2022 components/sections/Lifecycle.tsx && grep -q "lifecycle" components/sections/Lifecycle.tsx && grep -q "aria-expanded" components/sections/Lifecycle.tsx && ! grep -qE "(duration|delay):|duration-[0-9]" components/sections/Lifecycle.tsx`
+  `cd site && npx eslint components/sections/Lifecycle.tsx && printf '{"extends":"'"$PWD"'/tsconfig.json","include":[],"files":["'"$PWD"'/components/sections/Lifecycle.tsx"]}' > /tmp/dd-tc-Lifecycle.json && npx tsc --noEmit --project /tmp/dd-tc-Lifecycle.json && grep -q "lifecycle" components/sections/Lifecycle.tsx && grep -q "aria-expanded" components/sections/Lifecycle.tsx && ! grep -qE "(duration|delay):|duration-[0-9]" components/sections/Lifecycle.tsx`
 
 #### T2.1.4 — Problem: the two failure modes
 - **Status:** TODO
@@ -934,7 +954,7 @@ visible page.
   (F11). Reimplementing scroll reveal. Any timing literal. Touching other
   sections.
 - **Acceptance criterion:**
-  `cd site && npx eslint components/sections/Problem.tsx && npx tsc --noEmit --strict --jsx react-jsx --module esnext --moduleResolution bundler --esModuleInterop --skipLibCheck --target es2022 components/sections/Problem.tsx && grep -q "problem" components/sections/Problem.tsx && ! grep -qE "(duration|delay):|duration-[0-9]" components/sections/Problem.tsx`
+  `cd site && npx eslint components/sections/Problem.tsx && printf '{"extends":"'"$PWD"'/tsconfig.json","include":[],"files":["'"$PWD"'/components/sections/Problem.tsx"]}' > /tmp/dd-tc-Problem.json && npx tsc --noEmit --project /tmp/dd-tc-Problem.json && grep -q "problem" components/sections/Problem.tsx && ! grep -qE "(duration|delay):|duration-[0-9]" components/sections/Problem.tsx`
 
 ### Wave 2.2 — Terminal, install, and questions
 > Three parallel tasks, same scoping rules as Wave 2.1.
@@ -965,7 +985,7 @@ visible page.
     via `revealClipStagger(i)` on scroll into view. `data-reveal` on each.
   - Reduced motion: all lines fully visible immediately.
 - **Acceptance criterion:**
-  `cd site && npx eslint components/sections/Terminal.tsx && npx tsc --noEmit --strict --jsx react-jsx --module esnext --moduleResolution bundler --esModuleInterop --skipLibCheck --target es2022 components/sections/Terminal.tsx && grep -q "revealClipStagger" components/sections/Terminal.tsx && grep -q "terminal" components/sections/Terminal.tsx && grep -q "data-reveal" components/sections/Terminal.tsx && ! grep -qE "(duration|delay):|duration-[0-9]" components/sections/Terminal.tsx`
+  `cd site && npx eslint components/sections/Terminal.tsx && printf '{"extends":"'"$PWD"'/tsconfig.json","include":[],"files":["'"$PWD"'/components/sections/Terminal.tsx"]}' > /tmp/dd-tc-Terminal.json && npx tsc --noEmit --project /tmp/dd-tc-Terminal.json && grep -q "revealClipStagger" components/sections/Terminal.tsx && grep -q "terminal" components/sections/Terminal.tsx && grep -q "data-reveal" components/sections/Terminal.tsx && ! grep -qE "(duration|delay):|duration-[0-9]" components/sections/Terminal.tsx`
 
 #### T2.2.2 — Install: two commands with copy buttons
 - **Status:** TODO
@@ -987,7 +1007,7 @@ visible page.
     not colour alone.
   - Commands render as real text so they are selectable and greppable without JS.
 - **Acceptance criterion:**
-  `cd site && npx eslint components/sections/Install.tsx && npx tsc --noEmit --strict --jsx react-jsx --module esnext --moduleResolution bundler --esModuleInterop --skipLibCheck --target es2022 components/sections/Install.tsx && grep -q "install" components/sections/Install.tsx && grep -q "aria-live" components/sections/Install.tsx && ! grep -qE "(duration|delay):|duration-[0-9]" components/sections/Install.tsx`
+  `cd site && npx eslint components/sections/Install.tsx && printf '{"extends":"'"$PWD"'/tsconfig.json","include":[],"files":["'"$PWD"'/components/sections/Install.tsx"]}' > /tmp/dd-tc-Install.json && npx tsc --noEmit --project /tmp/dd-tc-Install.json && grep -q "install" components/sections/Install.tsx && grep -q "aria-live" components/sections/Install.tsx && ! grep -qE "(duration|delay):|duration-[0-9]" components/sections/Install.tsx`
 
 #### T2.2.3 — FAQ: asked and answered
 - **Status:** TODO
@@ -1002,7 +1022,7 @@ visible page.
   JS-only disclosure that removes answers from the export (F5). Splitting a gated
   literal with markup (F11). Any timing literal. Touching other sections.
 - **Acceptance criterion:**
-  `cd site && npx eslint components/sections/Faq.tsx && npx tsc --noEmit --strict --jsx react-jsx --module esnext --moduleResolution bundler --esModuleInterop --skipLibCheck --target es2022 components/sections/Faq.tsx && grep -q "faq" components/sections/Faq.tsx && grep -qE "<dl|<dt|<dd" components/sections/Faq.tsx && ! grep -qE "(duration|delay):|duration-[0-9]" components/sections/Faq.tsx`
+  `cd site && npx eslint components/sections/Faq.tsx && printf '{"extends":"'"$PWD"'/tsconfig.json","include":[],"files":["'"$PWD"'/components/sections/Faq.tsx"]}' > /tmp/dd-tc-Faq.json && npx tsc --noEmit --project /tmp/dd-tc-Faq.json && grep -q "faq" components/sections/Faq.tsx && grep -qE "<dl|<dt|<dd" components/sections/Faq.tsx && ! grep -qE "(duration|delay):|duration-[0-9]" components/sections/Faq.tsx`
 
 ### Wave 2.3 — Integration
 > Single task. First point at which a full build is safe, because nothing is
@@ -1069,6 +1089,7 @@ visible page.
 | 24 | T1.R.1 | **Reviewer killed by API 529 after authoring its verdict but before checkpointing; resumed twice, failed instantly both times.** The orchestrator committed the verdict on its behalf | Server-side API overload, not a task fault. The full verdict was already written to the Progress log and left uncommitted; leaving it there would dirty the tree and flag on the next wave's ownership audit | **Attribution compromised, and stated rather than hidden:** commit `drydock(T1.R.1)` was made by the orchestrator, not the executor named in it. Acceptable here on grounds that do not generalise — T1.R.1 owns only prose in the Progress log, so there is no code to mis-attribute, unlike T1.0.1 where the orchestrator deliberately refused to commit for the executor. **Second instance of the same contract gap as deviation 1:** an executor that dies after doing the work but before committing looks, from the outside, indistinguishable from one that did nothing. Deviation 1 was turn exhaustion; this is an API error. Reconcile should make the checkpoint commit happen as soon as owned files are correct, which fixes both | orchestrator |
 | 25 | — (human-authorised plan amendment) | **Waves 1.4 and 1.5 added to Phase 1, and the Phase 1 exit state and gate amended**, in response to T1.R.1's REJECTED verdict | Four blocking findings all require edits to files owned by closed waves (`content/copy.ts`, `app/globals.css`, `app/layout.tsx`, `components/Section.tsx`). `/drydock:replan` normally owns plan patches but is `disable-model-invocation` (human-only), so the orchestrator amended the plan under explicit human direction instead | Scope confirmed by the human: repair the four blockers AND close the design ceiling (verdict D) in the same reopening, rather than reopening the shell twice. Completed waves stay immutable, the Decision Log stays append-only, and no task id is reused — B1's fix is `T1.4.1`, not a re-run of `T1.2.1`. **Ordering deliberately avoids the sideways-dependency defect that has now appeared twice** (round-1 C4, round-2 C-1): the shell task needs title-block strings from `copy.ts`, so it sits in Wave 1.5 behind Wave 1.4, not beside it | orchestrator, on human instruction |
 | 26 | T1.R.1 | **Two commits now carry the identical subject `drydock(T1.R.1): fresh-context quality review of Phase 1`** — `751a6fe` (orchestrator, on the agent's behalf after three API 529s) and `2f33e00` (the agent itself, once the API recovered, amending its N10 row in place and escaping two `\|` characters that would have truncated the N2 cell) | The orchestrator judged the agent unrecoverable after three consecutive 529s and committed for it; a queued resume message then landed successfully much later and the agent, unaware a commit already existed, completed its own contract step | **Ambiguous attribution — exactly what per-task commits exist to prevent.** A wavecheck ownership audit reading `git log` for T1.R.1 finds two commits and cannot tell which is authoritative from the log alone. Net content is correct and non-contradictory: both commits touch only the plan file, `2f33e00` is a 2-line amendment on top, and the N10 retraction now appears twice — once as the reviewer's own in-place strikethrough (canonical, since the author retracting is stronger) and once as the orchestrator annotation at row 25's sibling entry. Nothing is lost; the redundancy is left in place because the Progress log is append-only. **Also correcting the agent's own report, which states the orchestrator "resumed this agent to commit rather than committing on its behalf" — the opposite is true.** Reconcile item: the contract has no rule for who owns the checkpoint when an executor is presumed dead and later revives | orchestrator |
+| 27 | T1.4.1 | **F12's hermetic typecheck was broken for every file using the `@/*` alias, and would have failed all seven Phase-2 criteria.** `tsc` with explicit file arguments ignores `tsconfig.json`, so the `paths` map never loads and `@/lib/section` fails TS2307. T1.4.1 reported its own criterion UNVERIFIED, proved the failure predates its edit by reproducing it against the frozen file from `fcf11c1`, and **refused to improvise a `declare module` shim** — citing the forbidden list and contract rule 5 | The planner introduced F12 in rev 3 to answer round 2's C-3, and validated it against three Wave 1.1 files that happen to import only from node_modules. The alias case was never tested | **Plan-wide, caught one wave before it would have fired seven times.** Independently confirmed by wavecheck: project-wide `tsc --noEmit` exits 0 (the code is fine), while the per-file form fails only on the alias. Fixed as F12a — a temp tsconfig that `extends` the project config with `"include": []` and `"files": [target]`. `"include": []` is essential because `include` is inherited through `extends`; measured, its absence pulls 7 sibling files into the graph. The corrected form was verified to resolve aliases, keep the graph to the target's own imports, and still catch an injected type error. All seven Phase-2 criteria rewritten; T1.4.1 re-verified as PASSING under the corrected command, so its work stands. Closed waves 1.1's criteria left as executed — they passed validly for non-alias files, and rewriting what was already verified would falsify the record | executor report, fixed by orchestrator |
 | 8 | T1.0.1 | **Turbopack resolves its workspace root outside the repository.** Every `next build` emits `⚠ Next.js ignored yarn.lock in /Users/takasivenkatasandeep because it is outside the current Git repository`. A stray `~/yarn.lock` (83 KB, dated 2026-01-09) exists in the home directory; `turbopack.root` is unset in `next.config.ts`. Confirmed to recur on a clean `rm -rf .next out && npm run build` | Next 16 infers the workspace root by walking up for a lockfile and finds one above the repo | Currently a warning, not a failure — the criterion exits 0 and the export is correct. But root inference reaching outside the repo is a latent hazard for a reproducible build, and the executor did not report a warning that appeared in its own build output. `turbopack.root` should be pinned to `site/`; that is a change to `next.config.ts`, owned by T1.0.1 in a closed wave, so it belongs to a follow-up task or `/drydock:replan`, not to this wave | `discovered-by-wavecheck` |
 
 ## Wavecheck reports
