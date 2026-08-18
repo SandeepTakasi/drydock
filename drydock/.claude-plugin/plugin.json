@@ -1,0 +1,27 @@
+{
+  "name": "drydock",
+  "displayName": "Drydock",
+  "version": "0.3.1",
+  "description": "Plan-first parallel execution: rigorous plan documents, wave-based subagent execution with disjoint file ownership, plan-conformance verification gates, and a reconcile loop that feeds execution learnings back into your docs. Nothing sails until it leaves the dock.",
+  "author": {
+    "name": "Sandeep / GeekyAnts"
+  },
+  "license": "UNLICENSED",
+  "keywords": ["planning", "subagents", "parallel-execution", "verification", "spec-driven"],
+  "userConfig": {
+    "plans_dir": {
+      "type": "string",
+      "title": "Plans directory",
+      "description": "Repo-relative directory where plan documents are written and read",
+      "default": "docs/plans",
+      "required": false
+    },
+    "docs_targets": {
+      "type": "string",
+      "title": "Reconcile doc targets",
+      "description": "Comma-separated repo-relative paths reconcile may propose updates for (never auto-edited)",
+      "default": "CLAUDE.md,docs/decisions,docs/architecture.md",
+      "required": false
+    }
+  }
+}
