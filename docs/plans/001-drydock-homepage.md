@@ -930,11 +930,40 @@ visible page.
 
 | # | Task | What deviated | Why | Impact | Recorded |
 |---|------|---------------|-----|--------|----------|
-| — | — | — | — | — | — |
+| 1 | T1.0.1 | Executor exhausted its turn budget (`maxTurns: 30`, set in `drydock/agents/executor.md`) before making its checkpoint commit. Work was complete and green but left uncommitted; the orchestrator resumed the same agent to commit rather than committing on its behalf | A scaffold task runs `npm install`, a build, a lint pass, and config iteration — 30 turns is not enough for the plan's very first task | None on output. **Two contract findings for reconcile:** (a) `maxTurns: 30` is too low for install/build-shaped tasks; (b) a turn-exhausted executor is indistinguishable from a successful one — the notification reported `completed` with a truncated fragment, no report and no deviation. Only a git check caught it. The orchestrator did NOT commit for the executor, because per-task commit authorship is wavecheck's attribution mechanism (the v0.3.0 self-audit fix) | executor report + orchestrator |
+| 2 | T1.0.1 | `create-next-app` emitted `site/AGENTS.md` and `site/CLAUDE.md`, neither on the owns list | Scaffold tool default | None — both deleted before commit, never staged. Confirms M1's concern was real but that the pre-owned list plus deletion handled it | executor report |
+| 3 | T1.0.1 | `site/tsconfig.tsbuildinfo` is generated on disk by `tsc`'s incremental mode and is not on the owns list | `tsconfig.json` inherits `"incremental": true` from the scaffold | None — untracked, excluded via `*.tsbuildinfo` added to the owned `site/.gitignore`; verified absent from the commit | executor report |
+| 4 | T1.0.1 | `site/.gitignore` has a fourth line (`*.tsbuildinfo`) beyond the sketch's three | Prevents deviation 3 leaking into git | None — hygiene addition inside an owned file | executor report |
+| 5 | T1.0.1 | `dev` and `start` scripts were removed, leaving only `build` and `lint` | The orchestrator's task brief said "exactly `build` and `lint`. Nothing else" — an over-constraint by the planner, followed correctly | **Real:** the static export uses absolute `/_next/...` asset paths, so opening `out/index.html` over `file://` 404s every asset. The Phase 2 human browser gate must therefore be performed against a served build — `cd site && npx serve out` — not a double-clicked file. No plan patch made: the gate is satisfiable with a one-off command, and `/drydock:replan` is human-only. Restoring `dev`/`start` is a reconcile follow-up | orchestrator |
+| 6 | T1.0.1 | Default `public/*.svg` assets removed; `site/public/` left empty and untracked | `page.tsx` was stripped to a plain heading and no longer referenced them | None — `site/public/**` is owned, so emptying it is in scope | executor report |
+| 7 | — (plan defect) | **The plan assigns no owner to the Deviation Log or the Wavecheck reports sections**, yet both are written during execution — the Deviation Log by the orchestrator, the Wavecheck reports by wavecheck itself. Wave 1.0's audit found `docs/plans/001-drydock-homepage.md` modified-uncommitted, which check 2 reads literally as an unattributed change | The format contract mandates both sections be maintained during execution but never puts them in any task's `owns` set | Not a BLOCK: the plan file is the audit's instrument, not its subject, and a literal reading would make it impossible for wavecheck to ever PASS — it must write its own report before emitting a verdict. **Required action:** the orchestrator commits the plan file before Wave 1.1 opens, so the next wave's audit starts from a clean tree. Reconcile should add explicit ownership for these two sections to the format contract | `discovered-by-wavecheck` |
+| 8 | T1.0.1 | **Turbopack resolves its workspace root outside the repository.** Every `next build` emits `⚠ Next.js ignored yarn.lock in /Users/takasivenkatasandeep because it is outside the current Git repository`. A stray `~/yarn.lock` (83 KB, dated 2026-01-09) exists in the home directory; `turbopack.root` is unset in `next.config.ts`. Confirmed to recur on a clean `rm -rf .next out && npm run build` | Next 16 infers the workspace root by walking up for a lockfile and finds one above the repo | Currently a warning, not a failure — the criterion exits 0 and the export is correct. But root inference reaching outside the repo is a latent hazard for a reproducible build, and the executor did not report a warning that appeared in its own build output. `turbopack.root` should be pinned to `site/`; that is a change to `next.config.ts`, owned by T1.0.1 in a closed wave, so it belongs to a follow-up task or `/drydock:replan`, not to this wave | `discovered-by-wavecheck` |
 
 ## Wavecheck reports
 
 *Appended by `drydock:wavecheck`, one section per wave.*
+
+### Wavecheck 1.0 — PASS — 2026-08-18
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `format_version: 2` (supported), `status: EXECUTING`, `approved_by: sandeep`. Wave 1.0 exists with exactly one task, T1.0.1. No prior wavecheck report expected: §10 declares Phase 0 takes no wavecheck (T0 is read-and-record with no code diff), so the absence is declared, not a skipped gate. |
+| 2. Ownership | PASS | Per-task commit present: `3ef082d drydock(T1.0.1): Scaffold the Next.js static-export app`. `git show --name-only` lists 13 files, all ⊆ T1.0.1's `owns`: `.gitignore`, `README.md`, `app/favicon.ico`, `app/globals.css`, `app/layout.tsx`, `app/page.tsx`, `eslint.config.mjs`, `next-env.d.ts`, `next.config.ts`, `package-lock.json`, `package.json`, `postcss.config.mjs`, `tsconfig.json`. No files outside `site/`. No build artifacts committed — `git ls-files site` matches nothing for `node_modules`, `.next/`, `out/`, or `tsbuildinfo`. No untracked files under `site/`. One uncommitted change existed outside the wave's owned set (`docs/plans/001-…md`, the orchestrator's Deviation Log append) — adjudicated as instrument-not-subject and logged as deviation 7 with a required action. |
+| 3. Forbidden | PASS | *No design work:* `globals.css` is exactly `@import "tailwindcss";`; `page.tsx` is a bare `<h1>Drydock</h1>`; `layout.tsx` has no fonts, colours, or metadata. *No basePath/assetPrefix:* 0 matches in `next.config.ts`. *No test runner:* dependency tree contains no vitest/jest/testing-library. *No `verify`/`typecheck` script:* scripts are exactly `build,lint`. *No type-aware ESLint:* config contains neither `projectService` nor `parserOptions`; `globalIgnores(["out/**",".next/**","node_modules/**"])` pinned as specified. *Root `index.html` untouched:* `git diff c664671..3ef082d -- index.html` is empty. |
+| 4. Acceptance | PASS | Criterion executed verbatim by the auditor, not taken from the report: `cd site && npm install && npm run build && npx tsc --noEmit && npm run lint && test -f out/index.html && node -e "…projectService\|\|parserOptions…"` → **exit 0**. Build reports `▲ Next.js 16.3.1 (Turbopack)`, `✓ Compiled successfully`, routes `○ /` and `○ /_not-found` prerendered as static content. |
+| 5. Deviation reconciliation | PASS | All 5 deviations plus 1 observation in T1.0.1's completion report appear in the Deviation Log as rows 1–6. Two further findings discovered during this audit and logged by wavecheck: row 7 (unowned plan sections) and row 8 (Turbopack root inference reaching outside the repo, warning on every build, unreported by the executor). |
+
+Deviations logged: 8 (2 discovered by wavecheck)
+
+**Verdict: PASS.** Wave 1.1 may start once the required action in deviation 7 is
+done — commit the plan file so the next wave's ownership audit begins from a
+clean tree.
+
+**Auditor's note on the plugin, not the plan:** the wavecheck skill instructs
+"Append to the plan under §8". In a v2 plan §8 is *Open questions*; the format
+contract lists Wavecheck reports at position 14. This report was appended to the
+`## Wavecheck reports` section, which is plainly the intent. The stale section
+reference in `drydock/skills/wavecheck/SKILL.md` should be corrected at reconcile.
 
 ## Progress log
 
