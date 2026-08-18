@@ -727,7 +727,10 @@ APPROVED** (its first run REJECTED — see the Progress log); human approval.
     sheet number, revision, scale, date. Naval-drawing register, `--` not
     em-dashes.
 - **Acceptance criterion:**
-  `cd site && npx eslint content/copy.ts && npx tsc --noEmit --strict --jsx react-jsx --module esnext --moduleResolution bundler --esModuleInterop --skipLibCheck --target es2022 content/copy.ts && for s in verifiedHeading notVerifiedHeading selfAuditLinkText svgAriaLabel draftMarks keelLabels copyLabel copyAriaLabel copiedLabel skipLinkText sheet; do grep -q "$s" content/copy.ts || exit 1; done && grep -qF "internal pilot" content/copy.ts && [ "$(grep -c "'" content/copy.ts)" -eq 0 ]`
+  *(typecheck clause corrected to F12a per deviation 27 — the original per-file
+  form cannot resolve this file's `@/lib/section` import. The task passes under
+  the corrected form; nothing about the work changed.)*
+  `cd site && npx eslint content/copy.ts && printf '{"extends":"'"$PWD"'/tsconfig.json","include":[],"files":["'"$PWD"'/content/copy.ts"]}' > /tmp/dd-tc-copy.json && npx tsc --noEmit --project /tmp/dd-tc-copy.json && for s in verifiedHeading notVerifiedHeading selfAuditLinkText svgAriaLabel draftMarks keelLabels copyLabel copyAriaLabel copiedLabel skipLinkText sheet; do grep -q "$s" content/copy.ts || exit 1; done && grep -qF "internal pilot" content/copy.ts && [ "$(grep -c "'" content/copy.ts)" -eq 0 ]`
 
 #### T1.4.2 — SVG reduced-motion restore and grid legibility
 - **Status:** TODO
@@ -1167,6 +1170,22 @@ counting assertion passes off the hydration payload), and row 23's four facts go
 into all seven section briefs. Row 22 (skip link) is an accessibility basic that
 §1 calls non-negotiable and is currently blocked by a frozen file — it needs a
 human decision, not a wave.
+
+### Wavecheck 1.4 — PASS — 2026-08-19
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `format_version: 2`, `status: EXECUTING`. Wave 1.4 exists with two tasks. Waves 1.0–1.3 all carry PASS reports; wave 1.R takes none by design (§10). |
+| 2. Ownership | PASS | Two per-task commits, disjoint: `e29686f drydock(T1.4.1)` → `site/content/copy.ts`; `62b8a6f drydock(T1.4.2)` → `site/app/globals.css`. No file in both. Nothing outside `site/`. Tree clean. No `.git/index.lock` collision despite concurrent commits. |
+| 3. Forbidden | PASS, with two changes adjudicated as authorised | *T1.4.1 additive-only:* the diff against frozen `fcf11c1` shows exactly one removed line — `export const install: { commands: string[] } = {` — replaced by a multi-line annotation adding `copyLabel`/`copyAriaLabel`/`copiedLabel`. The brief explicitly permitted "widen that export's type annotation rather than casting", so this is authorised, not a violation. **All nine pre-existing exports intact, and the two install command literals verified byte-identical** to the frozen version by diffing extracted literals. Zero apostrophes in the file. Root `index.html` not opened. *T1.4.2:* `--color-line` changed **value** `#1e405b` → `#35688c`, which the brief expressly allowed ("You MAY change their values"); no token **renamed** — all nine names still declared. No second accent: the only new hex in the diff is that blue. Touched nothing outside `globals.css`. |
+| 4. Acceptance | PASS | T1.4.2's criterion run verbatim → exit 0; `stroke-dasharray: none !important` and `stroke-dashoffset: 0 !important` confirmed **inside the existing** `[data-reveal]` block in the same media query, no duplicate query. T1.4.1: eslint exit 0, all 11 new exports present, zero apostrophes; the typecheck clause **fails as literally written and passes under F12a** — the criterion was defective, not the work (deviation 27). Criterion text corrected in place with the correction noted. Contrast arithmetic re-computed independently from the WCAG luminance formula rather than accepted: `--color-line` vs ground 1.73:1 → **3.13:1** (claimed 3.13), major rule composited **2.59:1** (claimed 2.60), minor rule **1.39:1** (claimed 1.39), minor pitch 8px → 24px. |
+| 5. Deviation reconciliation | PASS | T1.4.1's single deviation logged as row 27 — and it is the most valuable finding of the wave: it caught a plan-wide verification defect that would have failed all seven Phase-2 criteria, reported its own criterion UNVERIFIED rather than DONE, proved the failure predated its edit against `fcf11c1`, and refused to improvise a `declare module` shim, citing its forbidden list and contract rule 5. T1.4.2 reported no deviations; its observations are measurements, verified above. No unlogged deviations found in either diff. |
+
+Deviations logged: 27 (8 discovered by wavecheck)
+
+**Verdict: PASS.** Wave 1.5 may start. Note for T1.5.1: N1's spacing contract is
+still open and belongs to it, and it must use the **F12a** typecheck form if it
+runs one — its criterion uses the project-wide build, so it is unaffected.
 
 **Auditor's note on the plugin, not the plan:** the wavecheck skill instructs
 "Append to the plan under §8". In a v2 plan §8 is *Open questions*; the format
