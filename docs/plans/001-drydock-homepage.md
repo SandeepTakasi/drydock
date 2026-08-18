@@ -251,6 +251,9 @@ diffs.
 | 21 | Content (`T1.2.1`) needs `SectionMeta`, authored by `lib/section.ts` — a wave-mate in revision 2 | Content moved to its own **Wave 1.2**, depending on T1.1.2; the shell moved to **Wave 1.3**. Task IDs renumbered accordingly (legitimate: this plan is DRAFT and has never executed) | planner | Round 2 caught this as a re-run of the same sideways-dependency defect round 1 found. Eslint and grep do not resolve imports, so it would have passed its wave and detonated in the shell task |
 | 22 | The `duration:` ban had loopholes (`delay:`, Tailwind `duration-700`) and squeezed out the Terminal's and Hero's legitimate cadence needs | Ban widened to `(duration\|delay):\|duration-[0-9]` over `components/sections/*.tsx` only; `lib/motion.ts` gains `revealClipStagger(i)` and `heroSequence` so the cadence lives in the contract | planner | A gate that forbids what the requirement needs forces the executor to either break the gate or break the feature |
 
+| 23 | **B2** — §1 requires the waterline to "draw in as a dashed orange line", but `pathLength` in `motion-dom` implements drawing by overwriting `stroke-dasharray` with one dash and one gap, so dashed and drawing-on are mutually exclusive on a single element and the finished state is solid | **The waterline is built as TWO elements: a dashed overlay `<path>` with an author `stroke-dasharray`, revealed left-to-right by `revealClip` (a clip/width animation), NOT by `drawLine`/`pathLength`.** `drawLine` remains correct for the hull outline, which is solid | planner, on human instruction | Satisfies §1's dashed requirement with no change to the frozen `lib/motion.ts` and no timing literal in a section file. The alternative — adding a `pathSpacing`-aware variant — would reopen a contract that seven tasks already build against. Traced to the installed source, not assumed |
+| 24 | **B4** — the export has no `<h1>`; Decision 18 removed Hero's `<h2>` but nothing ever assigned the page a top-level heading | **Hero renders `hero.headline` as the page's single `<h1>`.** Pinned in T2.1.1's brief and asserted by T2.0.1's harness | planner, on human instruction | Restores heading order and gives the page an accessible name. Fixed by contract rather than by code, so Phase 1 will still show zero `<h1>` while Hero is a stub — the re-review must treat B4 as addressed-by-decision, not look for it in Phase 1's diff |
+
 ## 8. Open questions
 
 | # | Question | Blocks | Recommended answer |
@@ -400,10 +403,15 @@ and the old IDs are what round 1 actually reported.
 
 **Exit state:** `site/` builds to a static export rendering a laid-out page of a
 Hero plus six placeholder sections; tokens, the section interface, animation
-variants, and all copy are frozen and imported by the shell.
+variants, and all copy are frozen and imported by the shell. **Amended after
+T1.R.1's REJECTED verdict (deviation 25):** the copy inventory covers every
+string the seven Phase-2 sections must render, the reduced-motion restore covers
+SVG stroke channels, the blueprint grid is perceptible, and the shell carries
+drawing furniture rather than reading as a dark landing page.
 
 **Phase gate:** `cd site && npm run build && npx tsc --noEmit && npm run lint`
-exits 0; wavecheck PASS on 1.0, 1.1, 1.2, 1.3; T1.R.1 APPROVED; human approval.
+exits 0; wavecheck PASS on 1.0, 1.1, 1.2, 1.3, **1.4, 1.5**; **T1.R.1 re-run and
+APPROVED** (its first run REJECTED — see the Progress log); human approval.
 
 ### Wave 1.0 — Scaffold
 > Single task by necessity: nothing builds, typechecks, or lints until a
@@ -663,6 +671,112 @@ exits 0; wavecheck PASS on 1.0, 1.1, 1.2, 1.3; T1.R.1 APPROVED; human approval.
     placeholder with no `Section` wrapper and no meta.
 - **Acceptance criterion:**
   `cd site && npm run build && npx tsc --noEmit && npm run lint && grep -qF "internal pilot" out/index.html && grep -q "data-reveal" components/Section.tsx && ! grep -q "Section" components/sections/Hero.tsx`
+
+### Wave 1.4 — Repair: copy inventory and CSS defects
+> Added by human-authorised amendment (deviation 25) after T1.R.1 REJECTED.
+> Two parallel tasks, disjoint files, neither depending on the other. Criteria are
+> scoped per Decision 16 — no project build inside the wave.
+
+#### T1.4.1 — Complete the copy inventory
+- **Status:** TODO
+- **Description:** Add the strings B1 found missing — the ones three Phase-2 tasks
+  must render and are forbidden to author — plus the skip-link string from
+  deviation 22 and the title-block strings Wave 1.5 needs. Additive only; no
+  existing literal changes.
+- **Files owned:** `site/content/copy.ts`
+- **Depends on:** T1.R.1
+- **Model / thinking:** Standard / default (Sonnet)  **Executor:** drydock:executor
+- **Context brief:** T1.R.1's B1 finding and deviation 22 in the Progress log;
+  §6 F1a, F11; Decisions 19, 20, 23, 24. Read the existing `site/content/copy.ts`.
+- **Forbidden:** Reading root `index.html`. **Changing or removing any existing
+  export or literal** — this is purely additive, and downstream tasks already
+  build against the current shapes. Apostrophes, em-dashes, markup, or angle
+  brackets inside any new literal (F11). Inventing metrics. Writing JSX.
+- **Implementation sketch:** add, without disturbing what exists —
+  - `evidence.verifiedHeading` / `evidence.notVerifiedHeading` — the two column
+    labels §1's "two-column board" requires (`verified`/`notVerified` are keys,
+    not labels).
+  - `site.selfAuditLinkText` — visible text for the `selfAuditHref` link.
+  - `hero.svgAriaLabel` — describes a hull in a cradle with an approved
+    waterline; `hero.draftMarks: string[]` — the bow draft-mark labels;
+    `hero.keelLabels: string[]` — the wave labels under the keel.
+  - `install.copyLabel`, `install.copyAriaLabel`, `install.copiedLabel` — the
+    button, its accessible name, and the `aria-live` confirmation.
+  - `site.skipLinkText` — e.g. `Skip to content` (deviation 22).
+  - `sheet` — the title-block fields Wave 1.5 renders: project name, sheet title,
+    sheet number, revision, scale, date. Naval-drawing register, `--` not
+    em-dashes.
+- **Acceptance criterion:**
+  `cd site && npx eslint content/copy.ts && npx tsc --noEmit --strict --jsx react-jsx --module esnext --moduleResolution bundler --esModuleInterop --skipLibCheck --target es2022 content/copy.ts && for s in verifiedHeading notVerifiedHeading selfAuditLinkText svgAriaLabel draftMarks keelLabels copyLabel copyAriaLabel copiedLabel skipLinkText sheet; do grep -q "$s" content/copy.ts || exit 1; done && grep -qF "internal pilot" content/copy.ts && [ "$(grep -c "'" content/copy.ts)" -eq 0 ]`
+
+#### T1.4.2 — SVG reduced-motion restore and grid legibility
+- **Status:** TODO
+- **Description:** Close B3 — the `[data-reveal]` restore omits the SVG stroke
+  channels, so any `pathLength` element is an invisible zero-length dash under
+  reduced motion. Also raise the blueprint grid above the threshold of perception
+  and widen its pitch (verdict D).
+- **Files owned:** `site/app/globals.css`
+- **Depends on:** T1.R.1
+- **Model / thinking:** Complex / extended (Sonnet)  **Executor:** drydock:executor
+- **Context brief:** T1.R.1's B3 finding and verdict D in the Progress log;
+  §6 F5a, F6; deviations 12, 14, 21.
+- **Forbidden:** Reading root `index.html`. Renaming or removing any of the nine
+  contract tokens — five tasks build against those names. Introducing a second
+  accent colour. Touching `layout.tsx`, `Section.tsx`, or `lib/`.
+- **Implementation sketch:**
+  - Extend the existing `[data-reveal]` block inside
+    `@media (prefers-reduced-motion: reduce)` with
+    `stroke-dasharray: none !important; stroke-dashoffset: 0 !important;`.
+    Rationale, measured not assumed: Framer's `pathLength:0` emits
+    `stroke-dasharray="0 1"`, which computes to `0px, 1px` — the hull and the
+    `APPROVED (HUMAN-ONLY)` waterline would be invisible, permanently so for a
+    no-JS visitor since `useMotionSafe` only reaches `NO_MOTION` after hydration.
+  - Grid: `--color-line` is 1.73:1 against `--color-dock`, and the grid draws it
+    through `color-mix` at 55% and 18%, giving 1.30:1 and 1.07:1. Raise both
+    alphas so the major rule is clearly visible and the minor rule is perceptible
+    but quiet, and widen the 8px minor pitch so it reads as a drafting grid rather
+    than moiré. Judge it as an engineering drawing; state the final ratios in
+    your report.
+- **Acceptance criterion:**
+  `cd site && grep -q "stroke-dasharray" app/globals.css && grep -q "stroke-dashoffset" app/globals.css && awk '/prefers-reduced-motion/,/^}/' app/globals.css | grep -q "stroke-dasharray" && for t in --color-dock --color-panel --color-line --color-ink --color-ink-dim --color-primer --font-display --font-mono --font-body; do grep -q -- "$t:" app/globals.css || exit 1; done`
+
+### Wave 1.5 — Repair: drawing furniture and skip link
+> Sits behind Wave 1.4 rather than beside it, because it renders title-block
+> strings that T1.4.1 creates. Putting it in the same wave would repeat the
+> sideways-dependency defect the pressure tests caught twice (C4, C-1).
+
+#### T1.5.1 — Sheet frame, title block, and skip link
+- **Status:** TODO
+- **Description:** Give the shell the furniture that makes a drawing read as a
+  drawing — sheet frame, title block, revision/scale block, sheet numbering,
+  footer — and wire the skip link. Closes verdict D's shell finding and
+  deviation 22.
+- **Files owned:** `site/app/layout.tsx`, `site/components/Section.tsx`
+- **Depends on:** T1.4.1, T1.4.2
+- **Model / thinking:** Judgment / extended (Opus)  **Executor:** drydock:executor
+- **Context brief:** T1.R.1's verdict D and N1 in the Progress log; §1; Decisions
+  8, 18, 19, 23, 24; deviations 22, 23. Read `site/content/copy.ts`,
+  `site/lib/section.ts`, `site/lib/motion.ts`, `site/app/globals.css`.
+- **Forbidden:** Reading root `index.html`. Authoring any user-visible copy — all
+  strings come from `content/copy.ts`. Changing the composition contract in
+  deviation 23 (default exports; `Section` owns the `<section>`/id/`data-reveal`/
+  container/draft-mark/`<h2>`; reveal config set once; `<main>` in `layout.tsx`).
+  Touching `page.tsx` or any file under `components/sections/`. Using
+  `useEffect` + `setState`. Adding an `<h1>` — that belongs to Hero
+  (Decision 24).
+- **Implementation sketch:**
+  - `layout.tsx`: wrap the page in a sheet frame (a bordered drawing sheet), and
+    render a title block from `sheet` — project, sheet title, sheet number,
+    revision, scale, date — in the register of a real drawing's corner block.
+    Add the skip link as the first focusable element, using `site.skipLinkText`,
+    targeting the `<main>` it already owns.
+  - `Section.tsx`: **fix N1** — `{children}` currently follows the `<h2>` with no
+    spacing contract, so six parallel executors would each invent the gap. Pin
+    one wrapper and one spacing class here, and note it in your report so it can
+    be carried into the six section briefs. Optionally give each section a sheet
+    number from its `meta`, consistent with the draft-mark idiom.
+- **Acceptance criterion:**
+  `cd site && npm run build && npx tsc --noEmit && npm run lint && grep -qiF "skip" out/index.html && grep -qF "internal pilot" out/index.html && grep -q "data-reveal" components/Section.tsx && [ "$(grep -o "<h1" out/index.html | wc -l | tr -d ' ')" -eq 0 ]`
 
 ### Wave 1.R — Quality review
 
