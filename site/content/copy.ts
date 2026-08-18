@@ -34,6 +34,16 @@ export interface FaqItem {
   a: string;
 }
 
+/** Title-block fields for the sheet frame the shell renders (Wave 1.5). */
+export interface Sheet {
+  project: string;
+  title: string;
+  sheetNumber: string;
+  revision: string;
+  scale: string;
+  date: string;
+}
+
 /** Section shells. Hero is exempt from SectionMeta and has no entry here. */
 export const meta: Record<
   "problem" | "evidence" | "terminal" | "lifecycle" | "install" | "faq",
@@ -78,6 +88,8 @@ export const site = {
   status: "internal pilot -- field benchmarks pending",
   version: "0.3.1",
   selfAuditHref: "../docs/self-audit.md",
+  selfAuditLinkText: "Read the self-audit",
+  skipLinkText: "Skip to content",
 };
 
 export const hero = {
@@ -90,6 +102,10 @@ export const hero = {
     "v0.3.1 -- INTERNAL PILOT",
     "FIELD BENCHMARKS: PENDING",
   ],
+  svgAriaLabel:
+    "Line drawing of a hull resting in a dry-dock cradle, with the waterline labelled approved",
+  draftMarks: ["2M", "4M", "6M", "8M", "10M", "12M"],
+  keelLabels: ["WAVE 1.1", "WAVE 1.2", "WAVE 1.3"],
 };
 
 export const problem = {
@@ -108,9 +124,13 @@ export const problem = {
 };
 
 export const evidence: {
+  verifiedHeading: string;
+  notVerifiedHeading: string;
   verified: EvidenceRow[];
   notVerified: EvidenceRow[];
 } = {
+  verifiedHeading: "VERIFIED",
+  notVerifiedHeading: "NOT YET VERIFIED",
   verified: [
     {
       id: "--",
@@ -224,11 +244,19 @@ export const lifecycle: { pieces: Piece[] } = {
   ],
 };
 
-export const install: { commands: string[] } = {
+export const install: {
+  commands: string[];
+  copyLabel: string;
+  copyAriaLabel: string;
+  copiedLabel: string;
+} = {
   commands: [
     "/plugin marketplace add <org>/drydock",
     "/plugin install drydock@drydock",
   ],
+  copyLabel: "Copy",
+  copyAriaLabel: "Copy install command to clipboard",
+  copiedLabel: "Copied",
 };
 
 export const faq: FaqItem[] = [
@@ -253,3 +281,12 @@ export const faq: FaqItem[] = [
     a: "A drydock is where ships get built and inspected, out of the water, before anyone trusts them at sea. Nothing sails until it leaves the dock.",
   },
 ];
+
+export const sheet: Sheet = {
+  project: "DRYDOCK",
+  title: "GENERAL ARRANGEMENT",
+  sheetNumber: "SHEET 1 OF 1",
+  revision: "REV 0.3.1",
+  scale: "NOT TO SCALE",
+  date: "2026-08-18",
+};
