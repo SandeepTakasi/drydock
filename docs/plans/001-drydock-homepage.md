@@ -1,7 +1,7 @@
 ---
 plan: 001-drydock-homepage
 format_version: 2
-status: EXECUTING
+status: RECONCILED
 isolation: none
 created: 2026-08-18
 approved_by: sandeep
@@ -1718,4 +1718,345 @@ reference in `drydock/skills/wavecheck/SKILL.md` should be corrected at reconcil
 
 ## Reconcile report
 
-*Appended once by `drydock:reconcile` at completion.*
+**Plan:** 001-drydock-homepage · **Reconciled:** 2026-08-19 · **Precondition:** 14
+implementation waves, 14 wavecheck reports, all PASS, zero BLOCK. Waves 1.R and 2.R
+take no wavecheck by design (§10). Proceeding.
+
+**Scope constraint, stated because it materially limits this report.**
+`docs_targets` is `CLAUDE.md,docs/decisions,docs/architecture.md`. **All three are
+absent from this repo.** So every proposal below is an `addition`, and — more
+importantly — the highest-value learning from this run is about the *Drydock
+plugin's own contract files*, which lie outside `docs_targets` and therefore
+**cannot be proposed as diffs**. Those appear as feedback in §R-F. See finding
+RF-0.
+
+---
+
+### Cluster synthesis (by root cause, not by task)
+
+| Cluster | Deviations | Produces |
+|---|---|---|
+| **(a) assumption was false** | 8, 10, 12, 13, 14, 18, 20, 21, 27, 37, 39, 43, 45 | doc proposals R1–R4 |
+| **(b) instructions were ambiguous** | 5, 15, 17, 28, 30, 31, 34, 46 (and 17→34 a repeat *within* this plan) | planwright feedback RF-1…RF-4 |
+| **(c) codebase drifted mid-execution** | — none. The repo had no other contributors; every staleness check was clean or explained by the prior wave. | nothing |
+| **(d) executor overreach** | **none.** Notable: across 20 executor tasks there was **not one** ownership violation or unreported forbidden-item breach. The recurring executor problem was the opposite of overreach — see (e). | executor-contract feedback |
+| **(e) executor could not complete its contract** | 1, 24, 26, 33 — seven stops after finishing work, before checkpointing, across four distinct causes | executor-contract feedback RF-5 |
+
+**Assumption postmortem** (§6 findings F1–F14 treated as the register):
+
+- **FAILED:** F12 (hermetic per-file `tsc` — broken for `@/*` aliases, dev 27; passed three times only by accident on alias-free files). F5a (the `[data-reveal]` restore was believed complete; dev 45/46 showed two further routes to the same defect). Decision 25's wording (dev 46).
+- **HELD:** F6, F6a, F7, F7a, F8, F9, F10, F11 — each verified in execution, several only after being stated as fact rather than left "empirical" (dev 27's lesson).
+- **NEVER EXERCISED:** F2 (no remote — deploy deferred, Q2 still open). F13 (`.claude/` gitignore never tested by a worktree run, since `isolation: none`).
+- **Highest-value class:** eight deviations (12, 13, 18, 20, 27, 40, 41, 43, 45) are one species — *a mistake that produces no error*. Every one was found by measurement or by a fresh-context reviewer, **never** by a passing gate. Three of them (20, 27, 45) invalidated a fix that a prior wavecheck had already marked closed.
+
+---
+
+#### Proposal R1 — target: `CLAUDE.md` — kind: addition
+**Finding:** The repo has no `CLAUDE.md`. Decision 4 records that its absence is why an entire practices interview was required, and 13 cluster-(a) deviations are toolchain facts a future session would otherwise rediscover at the same cost. **Confidence: high.**
+
+```diff
+--- /dev/null
++++ b/CLAUDE.md
+@@
++# Drydock — working notes for Claude
++
++Two deliverables live here: the **plugin** in `drydock/`, and the **homepage**.
++
++## Two homepages exist. This is deliberate, not a mistake.
++
++- `index.html` — hand-written single-file site at the repo root, no build step.
++- `site/` — Next.js static export, built by plan 001.
++
++They are visually different by decision (plan 001, Decision 1: design fresh, do
++not port). Neither has been retired. **Deployment is unresolved** — there is no
++git remote, so no `basePath` was ever chosen (plan 001, Q2/Q3).
++
++## Working on `site/`
++
++```bash
++cd site && npm install
++npm run build     # static export to site/out/
++npm run verify    # THE gate: build && tsc --noEmit && eslint . && assert-copy
++```
++
++`npm run verify` is deliberately **hermetic and browser-free**. Browser-only
++checks are a separate, explicit step:
++
++```bash
++node scripts/measure-reduced-motion.mjs   # needs Chrome; proven failable
++```
++
++There is **no `dev` script** — it was removed by an over-constrained task brief.
++The export uses absolute `/_next/…` paths, so `file://` will not load assets.
++To look at it: `cd site/out && python3 -m http.server 5173`.
++
++## Toolchain facts that cost time to discover
++
++- **`next lint` does not exist** in next@16. ESLint is wired directly
++  (`eslint .` with a flat `eslint.config.mjs`).
++- The ESLint config must **not** enable type-aware rules (`projectService`,
++  `parserOptions.project`) — parallel single-file linting depends on it staying
++  program-free — and must ignore `out/**` and `.next/**`.
++- **Tailwind v4 is CSS-first.** Tokens live in `@theme` in `app/globals.css`;
++  there is no `tailwind.config.js`. **A mistyped token emits nothing, with no
++  error**, and unreferenced tokens are tree-shaken out of the build.
++- **`react-hooks/set-state-in-effect` is a hard ERROR** here. The
++  `useState` + `useEffect(() => setX(true), [])` mount-flag idiom will not lint.
++  `useMotionSafe()` already solves hydration via `useSyncExternalStore`.
++- **Per-file typecheck must go through a temp tsconfig**, or `@/*` aliases fail:
++  `tsc` given explicit file arguments ignores `tsconfig.json` entirely.
++  ```bash
++  printf '{"extends":"'"$PWD"'/tsconfig.json","include":[],"files":["'"$PWD"'/<file>"]}' > /tmp/c.json
++  npx tsc --noEmit --project /tmp/c.json
++  ```
++  `"include": []` is load-bearing — `include` is inherited through `extends`.
++- **`out/index.html` contains the RSC flight payload**, so every rendered string
++  appears **twice**. Strip `<script>…</script>` **bodies** before matching or
++  counting anything in the export.
++- Turbopack resolves its workspace root **above** this repo (a stray
++  `~/yarn.lock`) and warns on every build. `turbopack.root` is unset.
++- `Big_Shoulders` has no `size-adjust` fallback metrics and an unpinned `opsz`
++  axis — expect layout shift on the hero headline.
++
++## Honesty rule for site copy
++
++`docs/compatibility.md` is the **source of truth** for every verification claim
++the site makes. `site/content/copy.ts` holds all on-page strings and must match
++it; `scripts/assert-copy.mjs` enforces the required literals and rejects
++over-claim patterns. Do not promote a PENDING or MEASURING row, and do not add a
++benchmark the repo cannot evidence.
++
++## Plans
++
++`docs/plans/`. Read a completed plan's Deviation Log before planning adjacent
++work — plan 001's has 49 entries and most are still live constraints.
+```
+
+---
+
+#### Proposal R2 — target: `docs/decisions/0001-reveal-attribute-contract.md` — kind: addition
+**Finding:** The reduced-motion reveal contract broke **three times** (B3 → B5 → C1/C2/M1; deviations 41, 45, 46) because it was recorded only inside a plan and expressed as a delta. It is an architectural invariant of `site/`, not a plan detail. **Confidence: high.**
+
+```diff
+--- /dev/null
++++ b/docs/decisions/0001-reveal-attribute-contract.md
+@@
++# ADR 0001 — Reveal attribute contract for reduced motion
++
++**Status:** accepted · **Date:** 2026-08-19 · **Origin:** plan 001, Decision 25
++and deviations 41, 45, 46
++
++## Context
++
++Framer Motion writes an element's `initial` variant state as an **inline style**
++(`style="opacity:0"`). CSS cannot override an inline style without `!important`,
++and CSS cannot detect absent JavaScript at all. Separately, Framer implements
++SVG `pathLength` by **writing `stroke-dasharray` / `stroke-dashoffset` as
++attributes** — which destroys any author dash pattern on that element.
++
++The hero contains both cases at once: a hull that is drawn on via `pathLength`
++and must end solid, and a waterline that is **dashed by design** and must keep
++its pattern.
++
++## Decision
++
++Every animated element carries exactly one of two attributes.
++
++| Attribute | For | Restored properties |
++|---|---|---|
++| `data-reveal` | clip / opacity / transform reveals | `opacity`, `transform`, `clip-path`, `width` |
++| `data-reveal-path` | `pathLength`-animated strokes | the four above **plus** `stroke-dasharray`, `stroke-dashoffset` |
++
++`data-reveal-path` is a **superset**, not a delta. Both rules are stated in full,
++in two places that must stay identical:
++
++1. `app/globals.css` — inside `@media (prefers-reduced-motion: reduce)`
++2. `app/layout.tsx` — inside `<noscript><style>`, for JS-disabled visitors
++
++`NO_MOTION` in `lib/motion.ts` must **never** set `pathLength`. Doing so makes
++Framer write a `1 1` dash onto every element it drives — rendering the dashed
++waterline solid and, because `stroke-dasharray` is **inherited**, stippling every
++child of any `<g>` it touches.
++
++## Consequences
++
++- Putting `data-reveal-path` on a dashed element strips its dash under reduced
++  motion. Putting `data-reveal` on a `pathLength` element leaves it a
++  zero-length dash: invisible.
++- **This pairing is not machine-checkable.** `data-reveal-path` contains
++  `data-reveal` as a substring, so text-based gates cannot distinguish them.
++  `scripts/measure-reduced-motion.mjs` is the only check that can, and it
++  measures computed styles in Chrome.
++- Any change to `NO_MOTION`, either restore block, or an element's reveal
++  attribute **must** be verified by running that script. It has a demonstrated
++  failure mode; a passing text gate proves nothing here.
+```
+
+---
+
+#### Proposal R3 — target: `docs/architecture.md` — kind: addition
+**Finding:** `site/` has four frozen contract modules whose boundaries are stated only inside plan 001. A future planner would re-derive them, and deviation 44 shows what happens when shell ownership is unclear: four separate repair waves. **Confidence: medium-high.**
+
+```diff
+--- /dev/null
++++ b/docs/architecture.md
+@@
++# Architecture
++
++## Repo shape
++
++| Path | What |
++|---|---|
++| `drydock/` | the Claude Code plugin (skills, agents, plan-format contract) |
++| `index.html` | hand-written single-file homepage, no build |
++| `site/` | Next.js static-export homepage (plan 001) |
++| `docs/compatibility.md` | runtime verification status — source of truth for site claims |
++| `docs/verification-log.md` | raw evidence behind each compatibility row |
++| `docs/self-audit.md` | adversarial dry-run of the auditor |
++| `docs/plans/` | Drydock plan documents |
++
++## `site/` — four frozen contracts, then components
++
++Section components are built against contracts that are pinned first. Changing a
++contract means changing every consumer.
++
++| Contract | Owns |
++|---|---|
++| `app/globals.css` | the nine `@theme` design tokens, the blueprint grid, the reduced-motion restore (ADR 0001) |
++| `lib/section.ts` | `SectionMeta`, `SectionProps`, `SectionShellProps`, `SectionComponent` |
++| `lib/motion.ts` | every animation variant **and every timing literal in the codebase** |
++| `content/copy.ts` | every on-page string, plus the six `SectionMeta` objects |
++
++**Composition:** `app/layout.tsx` owns the drawing-sheet frame, title block, skip
++link, `<main>`, and the `<noscript>` restore. `components/Section.tsx` owns each
++section's `<section>`, id, draft mark, `<h2>`, scroll reveal, and the `mt-8`
++heading-to-body gap. `app/page.tsx` renders `<Hero/>` unwrapped, then six
++`SectionComponent`s. Sections render their own `<Section meta={meta}>` root, use
++`space-y-6` for internal rhythm, and must **not** add a top margin.
++
++**Hero is exempt** from the section shell: no `SectionMeta`, no draft mark, no
++`<h2>`. It renders the page's only `<h1>`.
++
++**Nothing may bleed to the viewport edge** — `<body>` has `p-2 sm:p-4` and the
++page sits inside a trim border, so `min-h-screen` / full-bleed backgrounds
++overflow the sheet.
++
++## Gates
++
++| Gate | Catches | Blind to |
++|---|---|---|
++| `npm run verify` | build, types, lint, required literals, over-claim patterns, motion-contract source rules | anything only visible as a computed style |
++| `scripts/measure-reduced-motion.mjs` | the reveal-attribute contract, dash preservation, stippling, invisible elements | everything else |
++| human browser check | typography metrics, grid legibility, optical spacing | — |
++
++`verify` stays hermetic and browser-free on purpose. Timing lives only in
++`lib/motion.ts`; a section file containing `duration:` / `delay:` fails the gate.
+```
+
+---
+
+#### Proposal R4 — target: `docs/decisions/0002-static-export-no-deploy.md` — kind: addition
+**Finding:** Deployment was deferred with no remote and no `basePath` (Decision 2, Q2). The reason is non-obvious and a future session will otherwise either guess a `basePath` or assume deployment was forgotten. **Confidence: medium.**
+
+```diff
+--- /dev/null
++++ b/docs/decisions/0002-static-export-no-deploy.md
+@@
++# ADR 0002 — `site/` is a static export with deployment deferred
++
++**Status:** accepted · **Date:** 2026-08-19 · **Origin:** plan 001, Decision 2
++
++## Context
++
++`site/` targets GitHub Pages, which serves from a repo root, `/docs`, or a
++branch — never an arbitrary subdirectory. At the time of building, the repo had
++**no git remote**, so the eventual URL was unknowable.
++
++## Decision
++
++Build only. `output: 'export'`, `images: { unoptimized: true }`, and **no
++`basePath` / `assetPrefix`**. The deliverable is a verified export in `site/out/`.
++No deploy workflow, no `.nojekyll`, no custom domain.
++
++## Consequences
++
++- A project-site URL (`<user>.github.io/drydock`) will need
++  `basePath: '/drydock'`. Committing to one now would have broken every asset
++  path if wrong.
++- The export's absolute `/_next/…` paths mean `file://` does not work. Serve it.
++- Root `index.html` remains the repo's only published homepage. Retiring it, and
++  choosing the deploy shape, belong to a follow-up plan.
+```
+
+---
+
+### Low-confidence findings — questions, not diffs
+
+1. **Should root `index.html` be retired now that `site/` exists?** Both are complete homepages with different designs. Plan 001 deliberately did not decide (Q3). A future planner will find two and not know which is canonical.
+2. **`<org>` in the install commands is still an unresolved placeholder** (Q1), and three different install-command forms exist across `README.md`, `drydock/README.md`, and `index.html`. The site renders the root-README form.
+3. **Version strings disagree:** root `README.md` says `v0.3.0`, `plugin.json` says `0.3.1` (F14). The site uses `plugin.json`. `README.md` is outside `docs_targets`, so no diff is proposed.
+4. **Hero's bow draft marks overlap** (N17: `2M 4M 6M 8M 10M12M`). Cosmetic, surfaced to the human at the browser gate, accepted as non-blocking.
+
+---
+
+### §R-F — Feedback outside `docs_targets` (no diffs; for a human to fold in)
+
+**RF-0 — reconcile's own scope is too narrow for its most valuable output.**
+The strongest findings of this run are defects in the *plugin's* contract files
+(`drydock/agents/*.md`, `drydock/skills/*/SKILL.md`). `docs_targets` excludes
+them, so reconcile can only describe them. For a repo that *is* the plugin, that
+is the wrong boundary — consider allowing plugin paths, or documenting that
+plugin self-improvement is out of reconcile scope by design.
+
+**RF-1 — `drydock/agents/executor.md`: move the checkpoint commit off the end.**
+Deviations 1, 24, 26, 33. Seven executors finished their work and lost its
+attribution, across four distinct causes (turn exhaustion, API 529, a silent
+turn-end, a watchdog stall). Raising `maxTurns` 30 → 60 did **not** help, because
+the ceiling was never the problem: the contract puts the commit **last**. Every
+one was caught only by `git status`; three reported in a way indistinguishable
+from success. Proposed contract change: *commit as soon as your owned files
+satisfy the acceptance criterion, then verify and narrate.* Also add a rule for
+who owns the checkpoint when a presumed-dead executor later revives — deviation
+26 produced two commits with the same task-id subject and no rule to resolve it.
+
+**RF-2 — `drydock/skills/wavecheck/SKILL.md`: stale section reference.** It says
+to append reports "under §8". In a v2 plan §8 is *Open questions*; the format
+contract lists Wavecheck reports at position 14. **`reconcile/SKILL.md` has the
+same bug** — it says "append the full report as §9", where §9 is *Out of scope /
+follow-ups* and the contract puts the Reconcile report at 16. Fix both, or make
+the contract's section names canonical and reference them by name.
+
+**RF-3 — `planwright`: state contract rules as complete bodies, never as deltas.**
+Deviation 46. Decision 25 said a second attribute *"adds"* two properties. One
+task read that as *in addition to the full set* (correct), another as *the rule
+contains only these* (wrong). The two mirrors diverged for five waves while a
+comment claimed they matched, and the hull was invisible on one path the whole
+time. A prior wavecheck had already marked the area CLOSED.
+
+**RF-4 — `planwright`: a Decision that names a consuming task is not closed until
+that task's brief cites it.** Deviation 34 — and it is a *repeat of deviation 17
+within the same plan*. Decisions 23 and 24 were recorded in §7 and never
+propagated; T2.1.1's sketch still contained the exact construction Decision 23
+existed to forbid. The plan format should require a back-reference from Decision
+to brief, and planwright should validate it at write time the way it already
+validates disjoint ownership.
+
+**RF-5 — `planwright`: assign shell/config file ownership explicitly per phase.**
+Deviation 44, four instances. `app/layout.tsx`, `app/globals.css` and
+`lib/motion.ts` were owned by **no** Phase-2 task, so every defect touching them
+required appending a new repair wave (1.6, 2.3, 2.5). Either give a phase task
+ownership of its shell, or state in the plan that shell defects are out of phase
+scope and will be handled by amendment.
+
+**RF-6 — `planwright`: acceptance criteria must be provably failable.** Round-2's
+C3 found a criterion satisfied by earlier tasks before its own task began. This
+run's reduced-motion gate was only trusted after a controlled reintroduction of
+the defect proved it fails. Recommend: for any criterion guarding a defect class
+that text gates cannot see, require evidence the gate has been observed failing.
+
+---
+
+**Status → RECONCILED.** 4 proposals (3 new files + 1 ADR), all `addition`,
+targeting `CLAUDE.md` ×1, `docs/decisions/` ×2, `docs/architecture.md` ×1.
+Nothing was applied. 7 feedback items for the plugin's own contract files, which
+`docs_targets` puts outside proposal scope.
