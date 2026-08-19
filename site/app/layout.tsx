@@ -22,6 +22,31 @@ export default function RootLayout({
           by the base layer in globals.css. The padding is the sheet margin:
           the trim line below is inset from the edge like a drawing's frame. */}
       <body className="p-2 sm:p-4">
+        {/* Framer Motion writes the initial state as an inline style (e.g.
+            style="opacity:0"), which only runs once JS hydrates. Without JS
+            that inline style never gets replaced, so mirror globals.css's
+            reduced-motion rule here, split the same way: [data-reveal-path]
+            is the only selector that touches stroke-dasharray, because the
+            hero waterline (data-reveal only) is a dashed line by design. */}
+        <noscript>
+          <style>{`
+            [data-reveal] {
+              opacity: 1 !important;
+              transform: none !important;
+              clip-path: none !important;
+              width: auto !important;
+            }
+
+            [data-reveal-path] {
+              opacity: 1 !important;
+              transform: none !important;
+              clip-path: none !important;
+              width: auto !important;
+              stroke-dasharray: none !important;
+              stroke-dashoffset: 0 !important;
+            }
+          `}</style>
+        </noscript>
         {/* Skip link — first focusable element in the document. Parked off
             screen by a transform (not `sr-only`, whose `position: static`
             fights any positioning utility depending on stylesheet order) and
