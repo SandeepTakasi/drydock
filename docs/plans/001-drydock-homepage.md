@@ -1479,6 +1479,26 @@ the `data-reveal`/`data-reveal-path` pairing (row 40), Terminal's propagation
 fragility (row 43), the unpinned `opsz` axis and missing `size-adjust` metrics
 (rows 14, 21), and whether the grid reads as a drafting grid (verdict D).
 
+### Wavecheck 2.3 — PASS — 2026-08-19
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `status: EXECUTING`. Wave 2.3 exists with one task (`T2.3.2`). Waves 1.0–1.6, 2.0, 2.1, 2.2 all carry PASS reports. |
+| 2. Ownership | PASS | `2195438 drydock(T2.3.2)` → `site/app/layout.tsx` only. Tree clean. |
+| 3. Forbidden | PASS | **The load-bearing prohibition held.** The `<noscript>` CSS mirrors the reduced-motion block's two-rule split exactly: `[data-reveal]` restores `opacity`/`transform`/`clip-path`/`width`; `[data-reveal-path]` restores those **plus** `stroke-dasharray`/`stroke-dashoffset`. Parsed the authored rules and confirmed no stroke property appears under any non-path selector — **B5 was not reintroduced**, so the hero's dashed waterline keeps its `strokeDasharray="10 8"`. The diff is purely additive (one comment, one `<noscript>`); skip link, sheet frame, title block and `<main id="content" tabIndex={-1}>` are byte-identical. No `<h1>` added — export still has exactly 1. Nothing outside `layout.tsx` touched. |
+| 4. Acceptance | PASS | Criterion run verbatim → exit 0, with `npm run verify` reporting `14 literals, 4x executor, 1 h1, motion contract`. Verified beyond the criterion: exactly **one** `<noscript>` in the export, positioned at byte 2185 — **before** the first inline `opacity:0` at byte 3329, so the rule is parsed before the elements it restores. Sheet fields, skip link and focus target all still present. |
+| 5. Deviation reconciliation | PASS | No deviations reported. Its three observations were all independently reproduced by this audit: the stroke properties are confined to `[data-reveal-path]`, no extra `<h1>` was added, and the change is additive only. |
+
+Deviations logged: 44 (13 discovered by wavecheck)
+
+**Verdict: PASS.** Deviation 41 is closed. Wave 2.4 (integration) may start.
+
+**Note on what remains unverifiable here:** the no-JS path was verified
+structurally — the rule exists, is correctly split, and precedes the content it
+restores — but **not** by loading the page with JavaScript disabled. That is a
+browser check, and it belongs on the human gate's list alongside the four items
+already there.
+
 **Auditor's note on the plugin, not the plan:** the wavecheck skill instructs
 "Append to the plan under §8". In a v2 plan §8 is *Open questions*; the format
 contract lists Wavecheck reports at position 14. This report was appended to the
