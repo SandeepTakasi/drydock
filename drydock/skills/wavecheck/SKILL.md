@@ -57,7 +57,8 @@ Run in this order; stop early only on check 1 failure.
 
 ## Verdict
 
-Append to the plan under §8:
+Append to the plan's **`## Wavecheck reports`** section (position 14 in the
+format contract — NOT §8, which is *Open questions*):
 
 ```
 ### Wavecheck <P>.<W> — PASS|BLOCK — <date>

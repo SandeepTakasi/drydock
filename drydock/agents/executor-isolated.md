@@ -24,7 +24,10 @@ Additional isolation-specific duties:
 
 - Commit your completed work inside the worktree with message
   `drydock(<task-id>): <task name>` so the orchestrator's post-wavecheck merge
-  is clean and attributable.
+  is clean and attributable. The executor contract's checkpoint-ordering rule
+  applies here in full: **commit the moment your owned files satisfy the
+  criterion**, before your completion report. Work that is finished but
+  uncommitted when you stop is indistinguishable from work never done.
 - If your work cannot merge cleanly because a file outside your `owns` set
   changed underneath you, that is a plan defect — report BLOCKED, do not
   resolve conflicts in files you don't own.

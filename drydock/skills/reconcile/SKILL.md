@@ -52,7 +52,9 @@ diff against what is actually there>
    instead of a diff. If a finding warrants a NEW ADR, propose the ADR file
    content in full but mark it `addition`.
 
-5. **Close the plan.** Append the full report as §9, set status `RECONCILED`,
+5. **Close the plan.** Append the full report to the plan's **`## Reconcile report`**
+   section (position 16 in the format contract — NOT §9, which is *Out of scope /
+   follow-ups*), set status `RECONCILED`,
    and summarize for the user: n proposals by target, top 3 by impact, and
    any planwright/executor feedback (cluster b/d) as bullet points they may
    fold into the skill files.

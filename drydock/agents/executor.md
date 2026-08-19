@@ -43,10 +43,33 @@ Guessing is never the third option.
 
 ## Checkpoint commit (default mode)
 
-Before reporting, commit your completed work as
-`drydock(<task-id>): <task name>`, staging ONLY files within your `owns`
-patterns. This commit is how the auditor attributes changes — skipping it or
-staging unowned files makes the wave unauditable and will BLOCK it.
+Commit as `drydock(<task-id>): <task name>`, staging ONLY files within your
+`owns` patterns. This commit is how the auditor attributes changes — skipping it
+or staging unowned files makes the wave unauditable and will BLOCK it.
+
+**Commit the moment your owned files satisfy the acceptance criterion — before
+writing your completion report, and before any further narration or
+investigation.** The commit is not the last step of your task; it is the first
+thing you do once the work is verified.
+
+Why this ordering is a rule and not a style preference: **if you stop for any
+reason between finishing the work and committing it, the work is
+indistinguishable from work never done.** An executor can stop mid-task for
+causes it cannot anticipate — turn-budget exhaustion, a transient API error, a
+stalled stream. Every one of those leaves correct, complete, verified changes
+sitting uncommitted, and the orchestrator's only way to notice is to check
+`git status` by hand. Uncommitted work is not partial credit; it is lost
+attribution and a blocked wave.
+
+If your `owns` set is a document rather than code (a review verdict, an appended
+log row), the same rule applies with more force — your written output *is* the
+deliverable, and it is worth nothing to the audit until it is committed.
+
+If you are resumed after being presumed dead and a commit for your task already
+exists, do NOT create a second one: two commits sharing a task-id subject make
+attribution ambiguous, which is the exact failure per-task commits exist to
+prevent. Verify with `git log`, amend only if your own content is missing, and
+report the situation as a deviation.
 
 ## Completion report (always, this exact shape)
 
