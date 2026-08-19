@@ -23,7 +23,9 @@ without being asked to.
 |------|---------------------|---------------|------------|---------|-------|
 | 001-drydock-homepage | 14 | 14 | 14 | 0 | All PASS, zero BLOCK. One gate (1.5) was invoked after the orchestrator explicitly noted A3 was being measured — the clearest instance of the bias above. |
 
-**Running total:** 14 of 14 gates invoked, 0 skipped, across 1 plan.
+| 002-design-system-modernisation | 3 | 3 | 3 | 0 | Waves 1.0, 1.1, 1.2. All PASS. Wave 1.0 was serialized from a planned parallel pair before execution (deviation 1), so the gate count reflects the executed shape, not the drafted one. |
+
+**Running total:** 17 of 17 gates invoked, 0 skipped, across 2 plans.
 
 ## What would falsify this
 
