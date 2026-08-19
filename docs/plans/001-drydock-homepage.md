@@ -1206,6 +1206,116 @@ visible page.
   failure is a deviation to record and route per §10, not a file to patch.
 - **Acceptance criterion:** `cd site && npm run verify`
 
+### Wave 2.5 — Repair: reduced-motion regressions
+> Added by human-authorised amendment (deviation 48) after T2.R.1 REJECTED.
+> Three parallel tasks, disjoint files, source-level criteria only — no builds
+> inside the wave (Decision 16). Wave 2.6 measures the result in a browser,
+> because every finding here is invisible to source text and to `npm run verify`.
+
+#### T2.5.1 — Remove `pathLength` from `NO_MOTION` (closes C1 and C2)
+- **Status:** TODO
+- **Description:** `NO_MOTION` sets `pathLength: 1` in both states. Under reduced
+  motion Framer writes that as `stroke-dasharray`/`stroke-dashoffset` attributes,
+  destroying the hero waterline's author dash and stippling the linework.
+- **Files owned:** `site/lib/motion.ts`
+- **Depends on:** T2.R.1
+- **Model / thinking:** Complex / extended (Sonnet)  **Executor:** drydock:executor
+- **Context brief:** T2.R.1's C1 and C2 findings in the Progress log; Decisions
+  23, 25, 26; deviations 40, 45.
+- **Forbidden:** Reading root `index.html`. Removing or renaming any of the ten
+  existing exports. Touching `globals.css`, `components/`, `content/`, or
+  `layout.tsx`. Removing `pathLength` from `drawLine` or `heroSequence.hull`,
+  which use it legitimately on solid strokes.
+- **Implementation sketch:** delete `pathLength: 1` from both the `hidden` and
+  `shown` states of `NO_MOTION`, and nothing else. Note the corollary T2.R.1
+  raised: `pathLength: 1` is **not** what makes the hull visible under reduced
+  motion — `[data-reveal-path] { stroke-dasharray: none !important }` does that —
+  so removing it should not regress the hull. Verify that reasoning holds and say
+  so; if it does not, report a deviation rather than restoring the property.
+- **Acceptance criterion:**
+  `cd site && npx eslint lib/motion.ts && printf '{"extends":"'"$PWD"'/tsconfig.json","include":[],"files":["'"$PWD"'/lib/motion.ts"]}' > /tmp/dd-tc-m5.json && npx tsc --noEmit --project /tmp/dd-tc-m5.json && node -e "const s=require('fs').readFileSync('lib/motion.ts','utf8');const m=s.match(/export const NO_MOTION[\s\S]*?\n};/);if(!m)process.exit(1);process.exit(m[0].includes('pathLength')?1:0)" && grep -q "pathLength" lib/motion.ts && for n in sectionReveal staggerChildren childRise drawLine revealClip revealClipStagger heroSequence waterlineReveal useMotionSafe NO_MOTION; do grep -q "$n" lib/motion.ts || exit 1; done`
+
+#### T2.5.2 — Complete the `[data-reveal-path]` restore (closes M1)
+- **Status:** TODO
+- **Description:** `globals.css`'s `[data-reveal-path]` restores only the stroke
+  channels, while its `<noscript>` twin in `layout.tsx` also restores
+  `opacity`/`transform`/`clip-path`/`width`. CSS attribute selectors are exact, so
+  the hull — which carries `data-reveal-path` alone and animates `opacity` as well
+  as `pathLength` — is never opacity-restored on the CSS-only path.
+- **Files owned:** `site/app/globals.css`
+- **Depends on:** T2.R.1
+- **Model / thinking:** Standard / default (Sonnet)  **Executor:** drydock:executor
+- **Context brief:** T2.R.1's M1 finding; Decision 25; deviations 46, 41. Read the
+  `<noscript>` block in `site/app/layout.tsx` — it is the correct mirror, and this
+  task makes `globals.css` match it.
+- **Forbidden:** Reading root `index.html`. Renaming or removing any of the nine
+  design tokens. **Adding `stroke-dasharray` to the `[data-reveal]` rule** — that
+  is the B5 defect and it must stay out. Touching `layout.tsx`, `lib/`,
+  `components/`, or `content/`.
+- **Implementation sketch:** add `opacity: 1 !important`, `transform: none
+  !important`, `clip-path: none !important`, `width: auto !important` to the
+  existing `[data-reveal-path]` block, so it becomes a superset of `[data-reveal]`
+  plus the stroke channels — exactly what the noscript twin already does. Decision
+  25's word "adds" was ambiguous and produced these two divergent readings; the
+  noscript reading is the correct one.
+- **Acceptance criterion:**
+  `cd site && awk '/\[data-reveal-path\]/,/}/' app/globals.css | grep -q "opacity: 1" && awk '/\[data-reveal-path\]/,/}/' app/globals.css | grep -q "stroke-dasharray" && ! awk '/\[data-reveal\]/,/}/' app/globals.css | grep -q "stroke-dasharray" && for t in --color-dock --color-panel --color-line --color-ink --color-ink-dim --color-primer --font-display --font-mono --font-body; do grep -q -- "$t:" app/globals.css || exit 1; done`
+
+#### T2.5.3 — Reconcile Lifecycle's no-JS claim (closes M2)
+- **Status:** TODO
+- **Description:** `Lifecycle.tsx`'s header comment claims no-JS visitors see the
+  full content. Measured: closed rungs use `display: none`, `<noscript>` cannot
+  restore `display`, the toggles are inert without JS, and five of six details are
+  unreachable. Either fulfil the claim or correct it.
+- **Files owned:** `site/components/sections/Lifecycle.tsx`
+- **Depends on:** T2.R.1
+- **Model / thinking:** Standard / default (Sonnet)  **Executor:** drydock:executor
+- **Context brief:** T2.R.1's M2 finding; §6 F5; deviation 47.
+- **Forbidden:** Reading root `index.html`. Hardcoding copy. Removing detail text
+  from the markup (the harness and F5 both depend on it being present). Any timing
+  literal. Touching any other file.
+- **Implementation sketch:** two honest options — (a) make the disclosure CSS-only
+  so it works without JS, or (b) correct the comment to state what is actually
+  true. **(b) is the smaller, more honest change** and §1 never required no-JS
+  interaction; the repo's argument is that claims trace to evidence, and a comment
+  asserting an unmeasured guarantee is the defect. Whichever you choose, the false
+  sentence must go. Keep `aria-expanded`, keyboard operability, and all six
+  details in the markup.
+- **Acceptance criterion:**
+  `cd site && npx eslint components/sections/Lifecycle.tsx && printf '{"extends":"'"$PWD"'/tsconfig.json","include":[],"files":["'"$PWD"'/components/sections/Lifecycle.tsx"]}' > /tmp/dd-tc-l5.json && npx tsc --noEmit --project /tmp/dd-tc-l5.json && ! grep -q "no-JS visitors both see the full content" components/sections/Lifecycle.tsx && grep -q "aria-expanded" components/sections/Lifecycle.tsx && grep -q "lifecycle" components/sections/Lifecycle.tsx && ! grep -qE "(duration|delay):|duration-[0-9]" components/sections/Lifecycle.tsx`
+
+### Wave 2.6 — Browser verification under forced reduced motion
+> Single task. Every finding in Wave 2.5 is invisible to source text, to
+> `npm run verify`, and to twelve wavecheck reports — they were found only by
+> measuring computed styles in a real browser. This wave adds that measurement as
+> a repeatable check rather than a one-off.
+
+#### T2.6.1 — Reduced-motion measurement harness
+- **Status:** TODO
+- **Description:** Add a dependency-free Node script that serves the export,
+  drives headless Chrome over CDP, and asserts the reduced-motion contract that no
+  existing gate can see. Record the measured result.
+- **Files owned:** `site/scripts/measure-reduced-motion.mjs`,
+  `docs/plans/001-drydock-homepage.md` (Progress log only)
+- **Depends on:** T2.5.1, T2.5.2, T2.5.3
+- **Model / thinking:** Complex / extended (Sonnet)  **Executor:** drydock:executor
+- **Context brief:** T2.R.1's C1, C2, M1 findings and its stated method; §6 F5,
+  F5a; Decision 25; deviations 45, 46.
+- **Forbidden:** Reading root `index.html`. Modifying anything under `site/`
+  except the new script — a failing assertion is a deviation to report, not a file
+  to patch. Adding a runtime dependency (`node:*` built-ins, plus Chrome via CDP
+  over a WebSocket, only). Wiring this into `npm run verify` (it needs a browser;
+  keep the default gate hermetic).
+- **Implementation sketch:** serve `out/` on a loopback port (`node:http` is
+  enough), launch Chrome headless with `--remote-debugging-port`, then per
+  emulation mode read computed styles via CDP. Assert, under
+  `prefers-reduced-motion: reduce`: the hero waterline computes a **two-value
+  dash** (its author `10 8`, not `1 1` and not `none`); the linework paths compute
+  `none`; the hull computes `opacity: 1`. Then with script execution disabled,
+  assert **zero** text-bearing elements compute `opacity: 0`. Exit non-zero with a
+  per-assertion report naming what was measured versus expected.
+- **Acceptance criterion:** `cd site && node scripts/measure-reduced-motion.mjs`
+
 ### Wave 2.R — Quality review
 
 #### T2.R.1 — Fresh-context quality review of Phase 2 and the whole site
@@ -1272,6 +1382,10 @@ visible page.
 | 42 | T2.1.1 | Two judgement calls reported rather than absorbed: (a) the `<h1>` is a plain `<h1>` wrapping a `<motion.span data-reveal>` rather than a `<motion.h1>`, because the criterion greps the literal `<h1` and a `<motion.h1>` component reference does not contain that substring; (b) Hero's root is a `<div>`, not a `<header>`, since `layout.tsx` already provides a `<header>` landmark around `site.status` | The criterion's grep shape constrained the JSX, and a second `<header>` would have been a semantic clash the plan never asked for | Both correct. (a) yields exactly one `<h1>` containing `Drydock` — verified in the export — and animates only opacity/transform on the inner span, never text content. (b) avoids nested banner landmarks. Also confirmed: the only occurrence of the string `Section` in `Hero.tsx` is a doc comment explaining its Decision 18 exemption; it imports and renders none (0 matches) | executor report, verified by wavecheck |
 | 43 | T2.2.1 | **Terminal is the only section relying on Framer variant-context propagation.** It sets `initial="hidden" whileInView="shown"` once on a `motion.pre` ancestor and lets the per-line `variants={safe ? revealClipStagger(i) : NO_MOTION}` inherit that state from context. Hero and Lifecycle instead set `initial`/`animate` explicitly on every motion element | The staggered reveal needs one shared trigger with per-child cadence, which is what variant propagation is for; the alternative is a hand-managed in-view hook per line | **Silent-failure risk, and the executor flagged it unprompted as outside its owned file:** if `Section.tsx` or any intermediate wrapper's motion setup changes, Terminal's reveal stops firing with no lint error, no type error, no build error and no assertion failure — the twelve lines simply stay clipped. Same species as deviations 12, 13, 18, 20, 27, 40, 41. Added to T2.R.1's checklist and the human browser gate; the lines are all present in the export either way, so the failure would be visual only | executor report |
 | 44 | — (human-authorised) | **Wave 2.3 added as a no-JS repair and integration moved to Wave 2.4**, in response to deviation 41. New task `T2.3.2` owns `app/layout.tsx`; integration keeps its id `T2.3.1` per the format contract (ids never change once assigned) with only its wave assignment moved, and now depends on the repair | The human chose to fix before integrating so `T2.3.1` verifies the final tree rather than an intermediate one. The repair cannot share a wave with integration: integration verifies what the repair produces, which would be the sideways-dependency defect this plan has already hit three times (round-1 C4, round-2 C-1, deviation 34) | **Third structural instance of the same gap: `app/layout.tsx` and `app/globals.css` are owned by no Phase-2 task**, so B5, N15 and now the no-JS fix each required a new Phase-1-style repair wave. Reconcile: a plan whose Phase 2 cannot touch its own shell should either give a Phase-2 task ownership of the shell files or state that shell defects are out of phase scope by design |
+| 45 | — (B5, third route) | **C1/C2 BLOCKING: `NO_MOTION` sets `pathLength: 1` in both states, so under reduced motion Framer writes `stroke-dasharray`/`stroke-dashoffset`/`pathLength` as attributes** — destroying the hero waterline's author `strokeDasharray="10 8"` (renders SOLID) and, because `stroke-dasharray` is an inherited SVG presentation attribute, stippling the linework `<g>`s' children into dotted stipple. Measured in headless Chrome 151 over CDP on the shipped export: normal motion → `10px, 8px` dashed; reduced motion → `1px, 1px` with `pathLength="1"` → one solid line. None of those attributes appear in `Hero.tsx` | Decisions 23, 25 and 26 all address the **CSS** route to B5 and all work. Nobody re-measured after Hero existed, and the **JavaScript** route was never considered | **B5 arriving through a third door, and invisible to every gate:** the harness greps source text, the CSS is correct, `Hero.tsx` is correct, and `NO_MOTION` reads as a safety net. §1's signature requirement lost for exactly the visitors §1 promises a complete page to. Closed by T2.5.1; the fix is deleting one property from one frozen file | `discovered-by-wavecheck` (T2.R.1) |
+| 46 | — (my ambiguous wording) | **M1: `globals.css`'s `[data-reveal-path]` restores only the stroke channels, while its `<noscript>` twin in `layout.tsx` also restores `opacity`/`transform`/`clip-path`/`width`.** CSS attribute selectors are exact, so `[data-reveal]` never matches an element carrying only `data-reveal-path`. `heroSequence.hull` animates `pathLength` **and** `opacity`, so on the CSS-restore-only path (JS blocked, or before hydration) **exactly one element on the page is invisible: the hull**. A reduced-motion visitor sees a dock with no ship, then the hull appears at hydration — a motion event for the user who asked for none | **Decision 25's wording, which I wrote, said a second attribute "adds" the stroke properties.** T2.3.2 read "adds" as *in addition to the full set* and got it right; T1.6.1 read it as *the rule contains only these* and got it wrong. Both are defensible readings of an ambiguous sentence | The two mirrors disagreed for five waves while a comment above the noscript block claimed they were "split the same way". **I had both blocks printed on screen during wavecheck 1.6 and 2.3 and never compared them.** Phase 1's "B3 CLOSED — no channel left unrestored" was true before the attribute split and stopped being true after it. Closed by T2.5.2. Reconcile: state contract rules as complete rule bodies, never as deltas | `discovered-by-wavecheck` (T2.R.1) |
+| 47 | T2.1.3 | **M2: `Lifecycle.tsx`'s header comment claims no-JS visitors "see the full content"; measurement contradicts it.** Closed rungs use Tailwind `hidden` (`display: none`), `<noscript>` restores opacity/transform/clip-path/width and **cannot restore `display`**, and the toggle buttons are inert without JS. Measured with script execution disabled: one detail panel is `display: block`, the other **five are `display: none`** | The comment's first half — hidden via CSS, never conditional rendering — is true and load-bearing for the harness. Its second half was inferred from the first rather than measured | Not blocking: §1 never required no-JS interaction, and deviation 41's blank-page defect is genuinely fixed. Major because **a code comment asserts a guarantee that measurement contradicts, in a repo whose entire argument is that claims must trace to evidence.** Closed by T2.5.3, which may either fulfil the claim or correct it — the false sentence has to go either way | `discovered-by-wavecheck` (T2.R.1) |
+| 48 | — (human-authorised) | **Waves 2.5 and 2.6 added** after T2.R.1's REJECTED verdict: three parallel source-level fixes, then a browser measurement | The three findings live in `lib/motion.ts`, `app/globals.css` and one section file. The first two are **owned by no Phase-2 task — the fourth instance of that structural gap** (see deviation 44) | Wave 2.6 exists because **C1, C2 and M1 were invisible to source text, to `npm run verify`, and to twelve consecutive wavecheck PASSes.** They were found only by reading computed styles in a real browser, so the repair adds that measurement as a repeatable script rather than trusting it was a one-off. Deliberately NOT wired into `npm run verify`, which must stay hermetic and browser-free |
 | 8 | T1.0.1 | **Turbopack resolves its workspace root outside the repository.** Every `next build` emits `⚠ Next.js ignored yarn.lock in /Users/takasivenkatasandeep because it is outside the current Git repository`. A stray `~/yarn.lock` (83 KB, dated 2026-01-09) exists in the home directory; `turbopack.root` is unset in `next.config.ts`. Confirmed to recur on a clean `rm -rf .next out && npm run build` | Next 16 infers the workspace root by walking up for a lockfile and finds one above the repo | Currently a warning, not a failure — the criterion exits 0 and the export is correct. But root inference reaching outside the repo is a latent hazard for a reproducible build, and the executor did not report a warning that appeared in its own build output. `turbopack.root` should be pinned to `site/`; that is a change to `next.config.ts`, owned by T1.0.1 in a closed wave, so it belongs to a follow-up task or `/drydock:replan`, not to this wave | `discovered-by-wavecheck` |
 
 ## Wavecheck reports
