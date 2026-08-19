@@ -373,3 +373,100 @@ default mode.
 **Verdict:** PASSED — the merge procedure executes as specified, and the BLOCKED
 path is reachable and recoverable. Verified mechanically, not agent-driven. One
 documented limitation: a clean merge does not imply ownership compliance.
+
+---
+
+## A3 — Orchestrator gate compliance
+
+**Date:** 2026-08-19
+**Host:** `claude --version` → `2.1.235 (Claude Code)`
+**Scope:** closing the A3 measurement across pilot plans 001, 002 and 003.
+**Method:** mechanical re-derivation from `docs/plans/*.md`, not a reading of
+`a3-gate-compliance.md`'s own running notes. This matters — the ledger was appended
+by the same sessions it measures, so it is a self-report until independently counted.
+
+### Command 1 — declared implementation waves
+
+```sh
+grep -hoE "^### Wave [0-9]+\.[0-9R]+" docs/plans/*.md | sort | uniq -c
+```
+
+Output, verbatim:
+
+```
+   3 ### Wave 1.0
+   3 ### Wave 1.1
+   3 ### Wave 1.2
+   2 ### Wave 1.3
+   2 ### Wave 1.4
+   1 ### Wave 1.5
+   1 ### Wave 1.6
+   3 ### Wave 1.R
+   1 ### Wave 2.0
+   1 ### Wave 2.1
+   1 ### Wave 2.2
+   1 ### Wave 2.3
+   1 ### Wave 2.4
+   1 ### Wave 2.5
+   1 ### Wave 2.6
+   1 ### Wave 2.R
+```
+
+Implementation waves = 22. Review waves (`1.R`×3, `2.R`×1) = 4, excluded by design.
+
+### Command 2 — recorded wavecheck verdicts
+
+```sh
+grep -hoE "^### Wavecheck [0-9]+\.[0-9]+ — [A-Z]+" docs/plans/*.md | sort | uniq -c
+```
+
+Output, verbatim:
+
+```
+   3 ### Wavecheck 1.0 — PASS
+   3 ### Wavecheck 1.1 — PASS
+   3 ### Wavecheck 1.2 — PASS
+   2 ### Wavecheck 1.3 — PASS
+   2 ### Wavecheck 1.4 — PASS
+   1 ### Wavecheck 1.5 — PASS
+   1 ### Wavecheck 1.6 — PASS
+   1 ### Wavecheck 2.0 — PASS
+   1 ### Wavecheck 2.1 — PASS
+   1 ### Wavecheck 2.2 — PASS
+   1 ### Wavecheck 2.3 — PASS
+   1 ### Wavecheck 2.4 — PASS
+   1 ### Wavecheck 2.5 — PASS
+   1 ### Wavecheck 2.6 — PASS
+```
+
+22 reports, all PASS, zero BLOCK. **Wave-for-report match is exact** — the counts
+agree per wave id, so no wave opened without a report standing behind the prior one.
+
+### Observations
+
+1. **The falsification condition in the ledger did not fire.** Its stated test is "a
+   wave opening while the prior wave has no wavecheck report in its plan." 22 waves,
+   22 matching reports, nothing unmatched.
+2. **This check cannot see the one real blemish.** Plan 003's wave-1.0 gate was
+   performed but not *recorded* until wavecheck 1.1 caught the omission, so the 1.0
+   report exists today and the grep counts it as clean. The defect is only visible in
+   plan 003 deviation 2 and is timing, not presence — which is itself a limit of the
+   mechanical check worth stating: **it proves reports exist, not that they existed
+   before the next wave opened.** Recorded compliance is therefore 21 of 22 on the
+   stricter reading, 22 of 22 on the grep's.
+3. **Unprompted holds where it was tested.** Gates in plan 003 were invoked on bare
+   "continue" and "go ahead" instructions naming no gate.
+4. **The bias is unchanged and unresolvable here.** Every session counted above knew
+   A3 was measured; one said so aloud at a gate. 22/22 is an upper bound, not a rate.
+5. **Sample is 3 plans against a 5–10 bar.** Short, and closed short on purpose:
+   more plans under the same observed conditions raise the numerator without changing
+   what the number means.
+
+### Not tested
+
+A session that has not been told the gate is under observation, on a plan it did not
+itself plan. That is the only experiment that converts this row to PASSED.
+
+**Verdict:** PUBLISHED — **not PASSED.** 22 of 22 observed gates invoked, 0 skipped,
+21 of 22 recorded before the next wave opened, across 3 plans. Real numbers, published;
+an upper bound from self-observed runs, not a compliance rate. Measurement closed.

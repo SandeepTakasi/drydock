@@ -166,7 +166,7 @@ export const evidence: {
       id: "A3",
       label:
         "Orchestrator gate compliance (wavecheck invoked unprompted between waves)",
-      note: "MEASURING. Tracked across the first 5 to 10 pilot plans; results will be published when they exist. There are no numbers today, which is why the status still reads field benchmarks pending.",
+      note: "PUBLISHED, not passed. 22 of 22 wave gates invoked and 0 skipped across 3 pilot plans, 21 of 22 recorded before the next wave opened. Every session counted knew it was being observed, so read that as a ceiling, not a rate. The sample is 3 plans against the 5 to 10 this row asks for, and measurement closed there deliberately: more observed runs raise the count without changing what it means.",
     },
   ],
 };
@@ -276,7 +276,7 @@ export const faq: FaqItem[] = [
   },
   {
     q: "Can the model skip the gates?",
-    a: "Honestly: gates are named as blocking instructions in every plan, and compliance is being measured (A3), not asserted. Two things are mechanically absolute. A human flips a plan to APPROVED, and replan cannot be model-invoked.",
+    a: "Honestly: gates are named as blocking instructions in every plan, and compliance is measured (A3), not asserted. The figure is 22 of 22 invoked, 0 skipped, across 3 pilot plans -- but every one of those sessions knew it was being watched, so it is a ceiling rather than a rate. Two things are mechanically absolute. A human flips a plan to APPROVED, and replan cannot be model-invoked.",
   },
   {
     q: "Why the name?",

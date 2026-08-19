@@ -147,7 +147,7 @@ footer p{font-family:var(--mono);font-size:13px}
         <ul>
           <li>Per-task model right-sizing precedence in your Claude Code version</li>
           <li>Worktree isolation on a real multi-wave plan</li>
-          <li>Gate compliance rate across real executions — being measured during the internal pilot</li>
+          <li>Gate compliance rate across real executions — measured, not asserted: 22 of 22 gates invoked and 0 skipped across 3 pilot plans, though every one of those sessions knew it was being observed, so it is a ceiling rather than a rate</li>
         </ul>
       </div>
     </div>
@@ -223,7 +223,7 @@ actual diff:   src/greeting.py <span class="block">+ "# refactored by T1.1.2 for
       <dt>Does it review code quality?</dt>
       <dd>No — deliberately. Wavecheck audits conformance; a separate fresh-context quality review task runs after it passes. Pairs well with your existing review tooling, and with ponytail, which owns minimalism.</dd>
       <dt>Can the model skip the gates?</dt>
-      <dd>The gates are named as blocking instructions inside every plan the planner writes — and we're measuring compliance during the pilot instead of asserting it. The one gate that's mechanically absolute: a human flips APPROVED, and replan cannot be invoked by the model at all.</dd>
+      <dd>The gates are named as blocking instructions inside every plan the planner writes — and compliance is measured rather than asserted — 22 of 22 invoked, 0 skipped, across 3 pilot plans, every session aware it was watched, so treat it as a ceiling. The one gate that's mechanically absolute: a human flips APPROVED, and replan cannot be invoked by the model at all.</dd>
       <dt>Why "Drydock"?</dt>
       <dd>Where ships get built, inspected, and repaired — out of the water. Nothing sails until it leaves the dock.</dd>
     </dl>
