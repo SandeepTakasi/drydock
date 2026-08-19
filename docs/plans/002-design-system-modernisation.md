@@ -482,6 +482,181 @@ Deviations logged: 7 (0 discovered by wavecheck)
 | 2026-08-19 | — | **APPROVED by sandeep** | Round 2 not run — repair was ~20 lines of specification on a 4-task plan and every finding was reproduced. Status → EXECUTING |
 | 2026-08-19 | T0 | Baseline recorded | HEAD 9e6fadc..., CSS shasum 40b6a434... in 1s2vcbm8xcik1.css. Both gates green. |
 | 2026-08-19 | T1.2.1 | Integration verification PASS | **npm run verify:** assert-copy: PASS — /Users/takasivenkatasandeep/Desktop/drydock-repo/site/out/index.html (14 literals, 4x executor, 1 h1, motion contract). **measure-reduced-motion:** PASS — reducedMotion=true, waterline="10px, 8px", stippled=0, hull={"opacity":"1","dasharray":"none"}, invisibleText=0. Both gates exited 0. HEAD b71b2a34e90aae397285f5dc35ead848b37fd28a. **CSS checksum:** 40b6a434624dbb530bd0bbb2bd002125acba1037 out/_next/static/chunks/1s2vcbm8xcik1.css — **matches T0 baseline byte-for-byte**. No rendered output changed. |
+| 2026-08-19 | T1.R.1 | **Fresh-context quality review — APPROVED** | 3 thresholds independently re-measured and met; tier perceptually real (L* ladder 5.50 / 11.51 / 18.71); token retention empirically verified on all three consumption paths. 5 non-blocking findings, R1–R5 below. |
+
+### T1.R.1 — Fresh-context quality review — **APPROVED** — 2026-08-19
+
+Reviewed `git diff 9e6fadc..HEAD -- site/` (2 files, 11 + 101 lines). Conformance
+was already audited three times; this review asked the different question — **is
+the vocabulary good, and is it sufficient for plans 003–005 to build against
+without guessing.** It is. Nothing in these 110 lines will multiply into a
+downstream defect. Five findings below are notes for plans 003–005, not grounds
+for rejection.
+
+**1. `--color-raised = #0b304a` — all three thresholds re-measured from the WCAG
+formula, not accepted.** Using the tree's actual token values (`--color-ink-dim:
+#8ba5bb`, `--color-primer: #ff6a1f`, `--color-panel: #0b2032`):
+
+| Decision 5 threshold | Required | Measured |
+|---|---|---|
+| ink-dim on raised | ≥ 4.5:1 | **5.337:1** |
+| primer on raised | ≥ 4.5:1 | **4.775:1** |
+| raised vs panel | ≥ 1.15:1 | **1.212:1** |
+
+Matches wavecheck 1.0's 5.34 / 4.77 / 1.21 to three digits. Decision 5's cited
+failing candidate `#1a4159` reproduces as a control at 4.216:1 / 3.772:1 / 1.535:1.
+
+**And it is a real tier, not a token that does nothing.** 1.21:1 sounds inert only
+because WCAG ratios compress badly at the dark end — a `+0.05` flare term dominates
+when both luminances are ~0.01. The honest metric is CIE lightness, and the ramp is
+evenly spaced there:
+
+| Tier | Y | L* | ΔL* from previous |
+|---|---|---|---|
+| dock `#061320` | 0.00609 | **5.50** | — |
+| panel `#0b2032` | 0.01334 | **11.51** | +6.01 |
+| raised `#0b304a` | 0.02679 | **18.71** | +7.20 |
+
+A ~7 L* step on a large flat area is several times the just-noticeable difference;
+it will read as a distinct plane on any calibrated display, and the three-tier ramp
+is close to perceptually uniform. The executor's narrow-band note is also correct
+and worth keeping: the satisfiable band is Lr ∈ [0.02285, 0.03148], so the **maximum
+tier separation this constraint set permits is 1.286:1 (L\* 20.63)**. The chosen
+value sits at L\* 18.71 — within 2 L* of the ceiling. There is no brighter third
+tier available without dropping primer below AA, and spending the remaining headroom
+would buy an imperceptible ~1.9 L*. **Right call, and there is nothing better to
+pick.** (raised vs dock is 1.369:1 / ΔL* 13.2, so a raised plane on the page ground
+is unambiguous.)
+
+**2. Sufficiency — the tokens are consumable by plans 003–005 without owning
+`globals.css`, verified empirically rather than reasoned.** Deviation 2 correctly
+established that `--stroke-*` yields no utilities. The unasked follow-on question is
+the dangerous one: **F2 says Tailwind tree-shakes unreferenced `@theme` tokens, so
+does a bare custom property with no utility survive to be `var()`-ed at all?** If
+not, `border: var(--stroke-hair) solid …` resolves to a guaranteed-invalid value,
+the whole shorthand drops, and the plane edge silently disappears with no error —
+exactly this repo's recurring defect class. Tested on a scratch clone of `site/`
+(three separate production builds, nothing under `site/` touched):
+
+| Consumption path | Token emitted to `:root`? |
+|---|---|
+| `var(--stroke-hair)` in a CSS rule in `globals.css` | **yes** |
+| `className="border-[length:var(--stroke-rule)]"` in a `.tsx` | **yes**, and the utility emits `border-width:var(--stroke-rule)` |
+| `className="border-(length:--stroke-rule)"` (v4 shorthand) | **yes**, same declaration |
+| `className="[border-width:var(--stroke-rule)]"` | **yes** |
+| `style={{ borderTopWidth: "var(--stroke-heavy)" }}` in a `.tsx` | **yes** — the scanner keeps any theme var whose *name* appears in scanned source |
+| not mentioned anywhere | no (tree-shaken, as F2 predicts) |
+
+Retention is name-scan based, so it is robust across every path a section file
+would plausibly use. `.text-hero` emits `font-size` **plus** both paired modifiers
+(`--text-hero--line-height: .88`, `--text-hero--letter-spacing: -.02em` both land
+in `:root`), and `.bg-raised` / `.border-raised` / `.text-raised` all generate. The
+only way to lose a token is to build its name dynamically (`var(--stroke-${w})`) —
+worth one line in plan 003's forbidden list, nothing more.
+
+Against the six things plans 003–005 actually need — hero at `--text-hero`, six
+section anchors, layered depth from planes plus stroke weight, choreographed
+scroll, responsive behaviour, an a11y pass — **the frozen table covers five.**
+Responsive behaviour needs no new name (`clamp()` and existing breakpoints carry
+it). The a11y pass is plan 005's harness work, already correctly sequenced by F4.
+**I found nothing missing that forces a repair wave.**
+
+**3. `useDriftY` — shape correct, two behaviours the probe could not see.** The
+source is right: four hooks called unconditionally in fixed order, only the return
+value branching, and `useDriftY(ref: RefObject<HTMLElement | null>)` mirrors the
+installed package's own `UseScrollOptions.target` type exactly (framer-motion
+13.1.0, `index.d.ts:1044`) rather than inventing a looser one. `NO_MOTION` type-swaps
+cleanly against both new variant factories. What the `react-dom/server` probe could
+not reach:
+
+- **Geometry is sane but off-centre at the document edges.** With
+  `offset: ["start end", "end start"]`, progress = `(s − topᵈᵒᶜ + vh) / (eh + vh)`,
+  monotonic and well-defined for any `eh`, including `eh > vh` — an element taller
+  than the viewport is fine, it just traverses the range more slowly. But at the
+  **top** of the document the range cannot start at 0: a full-height hero begins at
+  progress 0.5 (y = 0, harmless), while a *short* element at the top begins at
+  `vh/(eh+vh)` — an 800px viewport and a 100px element start at progress 0.889,
+  i.e. **y ≈ −12.4px at rest, a static offset that never animates in and can never
+  reach +16.** The last element in the document is symmetric (max progress
+  `eh/(eh+vh)`, never reaches −16). Both are inherent to `useScroll`, not defects
+  here — but plan 003 is the hero plan, so: **`useDriftY` belongs on mid-document
+  anchors; on an above-the-fold element it reads as a static displacement, not
+  drift.** Worth stating in plan 003 rather than discovering in a browser.
+- **The docblock overclaims by one frame.** "Under reduced motion … nothing ever
+  writes to its transform" is not literally true. `useMotionSafe()` deliberately
+  returns `true` until hydration completes (correct for variant swaps, which
+  `[data-reveal]` covers), so on the hydration render `useDriftY` returns `drift`,
+  not `still`. `useScroll` measures in a layout effect; the `useSyncExternalStore`
+  correction lands in a passive effect — later. So a reduced-motion visitor can get
+  one painted frame at up to ±16px before it snaps to 0. Self-correcting and
+  sub-frame on a fast device; visible as a small jump on a slow one. Note that
+  **`useDriftY` could close this without a hydration mismatch** — unlike a variant
+  swap, `still` (y = 0) *is* the correct server output, so gating on hydration as
+  well as on `reduced` is strictly safer — but that needs `isHydrated` exposed and
+  is a change to a file this plan's waves have closed. **This is the assertion plan
+  005's harness extension should carry: check the post-hydration steady state and
+  the first paint, not merely that the branch exists.**
+
+**4. Three unconsumed exports next to two dead ones — justified.** Position: this
+is not the same thing as `drawLine`/`revealClip`. Those two are dead because
+nothing ever needed them; these three exist because F5 makes the alternative
+*fatal* — a section file that writes its own `delay:` fails `assert-copy.mjs`, so
+plan 003 cannot author a hero beat at all unless the cadence is exported from here
+first. That is frozen-contract-first sequencing with a gate enforcing it, not
+speculation. Deviation 7's refusal to add a `DRIFT` amplitude argument is the
+correct application of the same judgment in the other direction, and the file is
+now 3-for-3 on adding only what a named downstream consumer requires. The real
+lesson for reconcile is about the *old* pair: `drawLine` and `revealClip` have had
+zero consumers across two plans and should be **deleted**, not out-populated — a
+plan that owns `lib/motion.ts` should carry that deletion.
+
+**5. Silent-failure hunt — one confirmed, pre-existing and inherited, not
+introduced.** `Variants` is `{ [key: string]: Variant }`, an index-signature type,
+so **a misspelled state name typechecks silently**: a probe declaring
+`{ hidden: {…}, shwon: {…} } satisfies Variants` compiles with zero errors under
+this repo's own `tsconfig.json`. Neither the `: Variants` return annotation on
+`anchorReveal`/`heroReveal` nor a `satisfies` clause would catch it — the plan's
+"state names stay exactly `hidden`/`shown` (silent failure otherwise)" instruction
+is therefore **unenforceable by the type system, and no gate checks it either**.
+The new exports are correct and match the existing idiom exactly, so this is
+inherited surface, not a regression — but it is now on six more call sites in plan
+004, and the cheap fix is a literal union (`Record<"hidden" | "shown", Variant>`)
+in whichever plan next owns this file. The SVG counterpart is the good news:
+handing `useDriftY` a `RefObject<SVGGElement | null>` is a **compile error**
+(TS2345), so plan 004 drifting linework will fail loudly and must wrap in an HTML
+element — loud, not silent, and the right way round. Beyond those, I found nothing:
+no unanchored guard, no `pathLength` in `NO_MOTION` (byte-identical), no `shadow`
+/`blur(`/`backdrop-filter`/`radial-gradient` anywhere in `globals.css`, both
+reduced-motion restore selectors intact, zero deletions in either file, and
+`--text-hero` is strictly above `--text-sheet` at every clamp stop (3.5/12vw/9rem
+vs 2.75/9vw/6.5rem).
+
+**6. Scope and honesty.** Nothing was added beyond §1 and F6's table — exactly five
+tokens and three exports, no "supporting" extras, no second accent. Decision 2 was
+honoured in substance and not merely in grep: depth is built from hairline
+`border`/`outline` weights, and the executor's own comment states the rule
+("no diffuse depth effects anywhere in this design") rather than working around the
+substring ban. §10's "changes no rendered output" claim holds for CSS by checksum,
+and holds for the HTML for the right reason — unreferenced TypeScript never enters
+the bundle. See the addendum below for the independent whole-`out/` verification.
+
+**Verdict: APPROVED.** Plans 003–005 can be written against this without guessing.
+Findings R1–R5 are notes to carry forward, listed in the order a downstream plan
+will need them:
+
+- **R1** → plan 003: `useDriftY` on above-the-fold elements reads as a static
+  offset, not drift. Put it on mid-document anchors.
+- **R2** → plan 005: the harness assertion for scroll motion must check first
+  paint as well as the post-hydration steady state (the one-frame window in §3).
+- **R3** → plan 004: `useDriftY` takes an HTML ref, not an SVG one; wrap linework
+  in a `motion.div`. A single 16px `DRIFT` shared by six anchors produces no
+  *relative* depth — if differentiated parallax is wanted, amend this contract
+  (deviation 7), do not expect the knob to exist.
+- **R4** → whichever plan next owns `lib/motion.ts`: type the two variant state
+  names as a literal union, and delete `drawLine` / `revealClip`.
+- **R5** → plan 003: never build a token name dynamically; `var(--stroke-${w})`
+  is tree-shaken to nothing with no error.
+
 
 ## Reconcile report
 
