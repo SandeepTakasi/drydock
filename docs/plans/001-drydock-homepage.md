@@ -2056,6 +2056,13 @@ that text gates cannot see, require evidence the gate has been observed failing.
 
 ---
 
+**Applied 2026-08-19 by sandeep, one at a time, each verified against the live
+tree before committing:** R1 → `58dbb67`, R2 → `052be43`, R3 → `581ab83`,
+R4 → `b227a24`. All three `docs_targets` now exist. Both gates re-run green after
+the additions. The 7 §R-F feedback items remain **unapplied** — they target
+plugin contract files outside `docs_targets`, and applying them is a separate
+human decision.
+
 **Status → RECONCILED.** 4 proposals (3 new files + 1 ADR), all `addition`,
 targeting `CLAUDE.md` ×1, `docs/decisions/` ×2, `docs/architecture.md` ×1.
 Nothing was applied. 7 feedback items for the plugin's own contract files, which
