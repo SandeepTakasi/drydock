@@ -988,6 +988,13 @@ visible page.
     superstructure, bow draft marks, wave labels under the keel.
   - Sequence via `heroSequence`: linework fades → hull draws (`drawLine`,
     `pathLength` 0→1 — correct here, the hull is SOLID) → waterline → label fades.
+  - **TRAP — the contract contains two waterline variants and only one is correct
+    (deviation 37).** `heroSequence.waterline` still animates `pathLength` and was
+    forbidden from being removed, so it survives as a footgun: using it reproduces
+    B2 (solid instead of dashed) and B5 (dash stripped under reduced motion) exactly.
+    Use `heroSequence.linework`, `heroSequence.hull`, and `heroSequence.label` for
+    beats 1, 2 and 4 — **but NOT `heroSequence.waterline`.** Beat 3 is
+    `waterlineReveal`. The criterion asserts `heroSequence.waterline` is absent.
   - **The waterline is TWO elements, not one (Decision 23).** `pathLength` is
     implemented by overwriting `stroke-dasharray`, so a dashed line cannot also be
     drawn on with `drawLine` — the finished state would be solid. Instead: a
@@ -1013,7 +1020,7 @@ visible page.
     `<div className="mt-8">` (deviation 31/N1). Use `space-y-6` for rhythm
     between your own sibling blocks.
 - **Acceptance criterion:**
-  `cd site && npx eslint components/sections/Hero.tsx && printf '{"extends":"'"$PWD"'/tsconfig.json","include":[],"files":["'"$PWD"'/components/sections/Hero.tsx"]}' > /tmp/dd-tc-Hero.json && npx tsc --noEmit --project /tmp/dd-tc-Hero.json && grep -q "hero" components/sections/Hero.tsx && grep -q "heroSequence" components/sections/Hero.tsx && grep -q "waterlineReveal" components/sections/Hero.tsx && grep -q "data-reveal" components/sections/Hero.tsx && grep -q "<h1" components/sections/Hero.tsx && ! grep -q "drawLine.*waterline\|waterline.*drawLine" components/sections/Hero.tsx && ! grep -qE "(duration|delay):|duration-[0-9]" components/sections/Hero.tsx`
+  `cd site && npx eslint components/sections/Hero.tsx && printf '{"extends":"'"$PWD"'/tsconfig.json","include":[],"files":["'"$PWD"'/components/sections/Hero.tsx"]}' > /tmp/dd-tc-Hero.json && npx tsc --noEmit --project /tmp/dd-tc-Hero.json && grep -q "hero" components/sections/Hero.tsx && grep -q "heroSequence" components/sections/Hero.tsx && grep -q "waterlineReveal" components/sections/Hero.tsx && grep -q "data-reveal" components/sections/Hero.tsx && grep -q "<h1" components/sections/Hero.tsx && ! grep -q "drawLine.*waterline\|waterline.*drawLine" components/sections/Hero.tsx && ! grep -qF "heroSequence.waterline" components/sections/Hero.tsx && ! grep -qE "(duration|delay):|duration-[0-9]" components/sections/Hero.tsx`
   *(Added after T1.R.1's second verdict: `waterlineReveal` and `<h1>` are now
   asserted, and `drawLine` is barred from co-occurring with the waterline —
   Decisions 23, 24, 26. `drawLine` alone is still permitted, because the hull
@@ -1216,6 +1223,7 @@ visible page.
 | 34 | — (planner failure) | **Decisions 23 and 24 were recorded in §7 and never propagated into a single task block — the exact failure this plan already named in deviation 17.** T2.1.1's context brief listed Decisions 5, 9, 18, 20, 22, 17 and neither 23 nor 24; T2.0.1's listed 9, 13–15, 20, 22 and not 24. Worse than omission: **T2.1.1's implementation sketch still read "waterline `drawLine` (`pathLength` 0→1, dashed, primer)"** — the literal construction Decision 23 exists to forbid, in the one document the executor is handed. Decision 24 claimed the `<h1>` was "pinned in T2.1.1's brief and asserted by T2.0.1's harness"; neither was true, and the only `<h1>` check in the plan asserted count **0** | The orchestrator wrote both Decisions when closing round-2 findings B2 and B4, treating "fixed by contract" as complete, and did not edit the consuming briefs. Deviation 17 recorded the identical mistake earlier in this same plan and it was repeated anyway | **An executor following its brief would have built precisely the defect B2 found.** Caught by T1.R.1's second run. Closed by orchestrator edits: Decisions 23–26 added to T2.1.1's brief, its sketch rewritten to specify the dashed overlay and bar `drawLine` on the waterline, `waterlineReveal`/`<h1>` added to its criterion, and the heading assertion plus the deviation 18 and 20 fixes written into T2.0.1's sketch and fixture. **Reconcile: a Decision that names a consuming task is not closed until that task's brief cites it — the plan format should require the back-reference** | `discovered-by-wavecheck` (T1.R.1 re-run), fixed by orchestrator |
 | 35 | — (repairs collided) | **B5, a new blocker created by fixing B3.** The reduced-motion restore uses an unqualified `[data-reveal]`, so `stroke-dasharray: none !important` reaches every revealed element. Decision 23's dashed overlay must carry `data-reveal` (clip-animated → inline `opacity: 0`), so the dashed waterline renders **solid** under reduced motion, silently losing §1's dashed requirement. Measured in headless Chrome with `--force-prefers-reduced-motion`: the dashed path is restored visible and solid while a control stays dashed. `revert` does not help — SVG presentation attributes cascade at author origin | B3's fix and Decision 23 were each correct in isolation. Nobody checked them against each other | Closed by Decision 25 (split `[data-reveal]` / `[data-reveal-path]`) and Decision 26 (`waterlineReveal`, since `revealClip` is delay 0 and beat 3 needs 1.0s, leaving `revealClipStagger(11)` — a magic index no brief sanctioned — as the only route). Both delivered by Wave 1.6. **Note the structural cause: `app/globals.css` and `lib/motion.ts` are owned by no Phase-2 task**, so this was unfixable inside Phase 2 as scoped and needed a new Phase-1 wave | `discovered-by-wavecheck` (T1.R.1 re-run) |
 | 36 | — (human-authorised) | **Wave 1.6 added; the third T1.R.1 re-review deliberately SKIPPED.** The human chose "fix, then proceed without a 3rd review": Wave 1.6's wavecheck gates the code, and the orchestrator verifies B2/B4/B5 closure directly, so Phase 1 reaches the human gate on orchestrator verification rather than a fresh-context review | Two review rounds each cost a long cycle; the remaining fixes are small, mechanical, and individually assertable | **Residual risk, accepted explicitly by the human and recorded with the verifier named:** both prior rounds found real defects that the orchestrator had missed, including two (B2, B4) that were the orchestrator's own un-propagated decisions. Nobody with fresh eyes will confirm this closure. The Phase 2 quality review (T2.R.1) is the next fresh-context look at any of it | orchestrator, on human instruction |
+| 37 | T1.6.1 | **The contract now holds two waterline variants and only one is correct — a footgun created by protecting the nine exports.** `heroSequence.waterline` still animates `pathLength`, because T1.6.1 was forbidden from removing any of the nine existing exports. So `waterlineReveal` (correct: clip-based, keeps the dash) sits beside `heroSequence.waterline` (wrong: reproduces B2's solid line and B5's stripped dash), and the hero sketch tells the executor to drive beats 1, 2 and 4 from `heroSequence` | The "do not remove the nine exports" guard was written to protect nine consuming files, and had the side effect of preserving the defective variant next to its replacement | Flagged by the executor itself, unprompted, in its `observations` — it noted the wiring choice was outside its owned files and would fall to a downstream task. **Closed before Phase 2 opens:** T2.1.1's sketch now names the trap explicitly and says which three `heroSequence` beats to use and which one not to, and its criterion asserts `! grep -qF "heroSequence.waterline"`. Reconcile: when a contract fix supersedes an export that cannot be deleted, the plan should mark the superseded one deprecated in the contract file itself, not only in a consuming brief | executor report, closed by orchestrator |
 | 8 | T1.0.1 | **Turbopack resolves its workspace root outside the repository.** Every `next build` emits `⚠ Next.js ignored yarn.lock in /Users/takasivenkatasandeep because it is outside the current Git repository`. A stray `~/yarn.lock` (83 KB, dated 2026-01-09) exists in the home directory; `turbopack.root` is unset in `next.config.ts`. Confirmed to recur on a clean `rm -rf .next out && npm run build` | Next 16 infers the workspace root by walking up for a lockfile and finds one above the repo | Currently a warning, not a failure — the criterion exits 0 and the export is correct. But root inference reaching outside the repo is a latent hazard for a reproducible build, and the executor did not report a warning that appeared in its own build output. `turbopack.root` should be pinned to `site/`; that is a change to `next.config.ts`, owned by T1.0.1 in a closed wave, so it belongs to a follow-up task or `/drydock:replan`, not to this wave | `discovered-by-wavecheck` |
 
 ## Wavecheck reports
@@ -1330,6 +1338,40 @@ rhythm value in all six section briefs, or N1 reappears one level down), row 32
 (the trim border means nothing can bleed to the viewport edge — brief Hero
 explicitly), and the pinned `mt-8` contract (sections must not add a top margin
 to their first child).
+
+### Wavecheck 1.6 — PASS — 2026-08-19
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `format_version: 2`, `status: EXECUTING`. Wave 1.6 exists with two tasks. Waves 1.0–1.5 all carry PASS reports. |
+| 2. Ownership | PASS | Two per-task commits, disjoint: `e8fb04b drydock(T1.6.1)` → `site/app/globals.css`, `site/lib/motion.ts`; `241bf7d drydock(T1.6.2)` → `site/app/layout.tsx`. T1.6.1 touched nothing under `layout.tsx`, `components/`, or `content/` (0 matches). No `index.lock` collision. |
+| 3. Forbidden | PASS | All nine design tokens and all nine pre-existing `lib/motion.ts` exports intact. Exactly **one** `prefers-reduced-motion` query — no second one added. T1.6.2's diff is a single attribute (`<main id="content">` → `<main id="content" tabIndex={-1}>`), adds no `<h1>` (0), and touched no sibling file. Root `index.html` not opened by either. |
+| 4. Acceptance | PASS | Both criteria run verbatim → exit 0. **Verified in the compiled stylesheet, not just the source:** `[data-reveal]` resolves to `opacity:1!important;clip-path:none!important;width:auto!important;transform:none!important` with **no stroke properties**, and `[data-reveal-path]` to `stroke-dasharray:none!important;stroke-dashoffset:0!important`. `<main id="content" tabindex="-1">` present in the export. `waterlineReveal` is `CLIP_HIDDEN → CLIP_SHOWN` with `t(REVEAL, WATERLINE_DELAY)`, `WATERLINE_DELAY = 1.0` as a named constant rather than a bare literal, state names `"hidden"`/`"shown"`. Full gate green: build, `tsc --noEmit`, `eslint .` all exit 0. |
+| 5. Deviation reconciliation | PASS | Both tasks reported no deviations. T1.6.1's `observations` surfaced a genuine new hazard — logged as row 37 — that the protected `heroSequence.waterline` survives as a footgun beside its replacement. It flagged that the wiring choice fell outside its owned files rather than reaching into `components/` to fix it. |
+
+Deviations logged: 37 (11 discovered by wavecheck)
+
+**Verdict: PASS.** Phase 1's seven waves are complete.
+
+**Blocker closure, verified by the orchestrator (no third fresh-context review —
+human decision, deviation 36):**
+- **B1 CLOSED** — T1.R.1 enumerated the inventory against all seven sections and
+  found no task blocked for want of a string.
+- **B2 CLOSED** — T2.1.1's brief now cites Decisions 23–26; its sketch specifies
+  the dashed overlay revealed by `waterlineReveal`, names the
+  `heroSequence.waterline` trap, and its criterion asserts `waterlineReveal` is
+  present while `drawLine`-near-waterline and `heroSequence.waterline` are absent.
+- **B3 CLOSED** — verified in compiled CSS in wavecheck 1.4 and re-verified here
+  after the split.
+- **B4 CLOSED** — T2.0.1's brief cites Decision 24, its sketch carries the
+  exactly-one-`<h1>` assertion, its good fixture contains `<h1>Drydock</h1>` so the
+  assertion is itself exercised, and T2.1.1's criterion greps `<h1`.
+- **B5 CLOSED** — attribute split verified in compiled CSS above.
+- **D CLOSED** — by T1.R.1's own re-assessment.
+- Also delivered from earlier findings that had never reached the harness spec:
+  deviation 20's flight-payload stripping and deviation 18's `executor` ≥ 2
+  discriminator are now written into T2.0.1's sketch with the normalisation order
+  spelled out.
 
 **Auditor's note on the plugin, not the plan:** the wavecheck skill instructs
 "Append to the plan under §8". In a v2 plan §8 is *Open questions*; the format
