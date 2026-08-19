@@ -1,6 +1,5 @@
 "use client";
 
-import { useRef } from "react";
 import { motion } from "motion/react";
 
 import { hero } from "@/content/copy";
@@ -8,7 +7,6 @@ import {
   NO_MOTION,
   heroReveal,
   heroSequence,
-  useDriftY,
   useMotionSafe,
   waterlineReveal,
 } from "@/lib/motion";
@@ -23,8 +21,10 @@ import {
  * `<h2>`, no `meta` prop. The title block above the drawing is a staged load
  * sequence (`heroReveal` beats, `initial`/`animate`), not a scroll reveal
  * (`whileInView`). The drawing itself keeps its own four-beat
- * `heroSequence` (linework, hull, waterline, label) and additionally drifts
- * a few px with scroll via `useDriftY`, for depth.
+ * `heroSequence` (linework, hull, waterline, label). The cradle, deckhouse
+ * and annotations render at their authored coordinates, rigidly joined to
+ * the dock floor (`y=360`) and hull deck line (`y=225`) — no scroll-linked
+ * drift.
  *
  * The waterline is two elements on purpose: `pathLength` overwrites
  * `stroke-dasharray`, so a dashed stroke cannot also be the thing that draws
@@ -36,13 +36,7 @@ import {
  *
  * Depth comes from two stacked planes (dock ground -> `bg-raised` drafting
  * board) and stroke weight (`--stroke-hair|rule|heavy`), never a shadow,
- * blur or glass. The board is a plain, unanimated element on purpose — it is
- * only the scroll target for `useDriftY` — so stacking a `heroReveal` fade
- * on top of it can't multiply against the drawing's own `heroSequence`
- * opacity and delay everything inside it. Only the interior `[data-drift]`
- * group receives the resulting MotionValue, and nothing that group wraps
- * carries a `heroReveal` variant of its own — both write `y`, and the later
- * one silently wins.
+ * blur or glass.
  */
 export default function Hero() {
   const safe = useMotionSafe();
@@ -51,9 +45,6 @@ export default function Hero() {
   const hull = safe ? heroSequence.hull : NO_MOTION;
   const waterline = safe ? waterlineReveal : NO_MOTION;
   const label = safe ? heroSequence.label : NO_MOTION;
-
-  const board = useRef<HTMLDivElement>(null);
-  const y = useDriftY(board);
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-10 px-6 pt-20 pb-12 sm:pt-28">
@@ -106,7 +97,7 @@ export default function Hero() {
         </ul>
       </div>
 
-      <div ref={board} className="border border-line bg-raised p-4 sm:p-8">
+      <div className="border border-line bg-raised p-4 sm:p-8">
         <svg
           viewBox="0 0 960 420"
           role="img"
@@ -127,39 +118,37 @@ export default function Hero() {
             strokeWidth="var(--stroke-hair)"
           />
 
-          {/* Cradle, superstructure and annotations drift a few px against
-              the fixed hull and floor as the page scrolls — the depth cue. */}
+          {/* Cradle, deckhouse and annotations, at authored coordinates —
+              rigidly joined to the fixed hull and dock floor. */}
           <motion.g data-reveal variants={linework} initial="hidden" animate="shown">
-            <motion.g data-drift style={{ y }}>
-              <g stroke="var(--color-line)" strokeWidth="var(--stroke-rule)" fill="none">
-                <path d="M220 360 L220 330 L260 330 L260 360" />
-                <path d="M420 360 L420 330 L460 330 L460 360" />
-                <path d="M620 360 L620 330 L660 330 L660 360" />
-              </g>
-              <g stroke="var(--color-line)" strokeWidth="var(--stroke-rule)" fill="none">
-                <rect x="420" y="185" width="120" height="40" />
-                <line x1="460" y1="185" x2="460" y2="150" />
-              </g>
-              <g fill="var(--color-line)" fontFamily="var(--font-mono)" fontSize="10">
-                {hero.draftMarks.map((mark, i) => (
-                  <text key={mark} x={140 + i * 14} y={315 - i * 4}>
-                    {mark}
-                  </text>
-                ))}
-              </g>
-              <g
-                fill="var(--color-line)"
-                fontFamily="var(--font-mono)"
-                fontSize="11"
-                letterSpacing="1.5"
-              >
-                {hero.keelLabels.map((text, i) => (
-                  <text key={text} x={280 + i * 200} y="382" textAnchor="middle">
-                    {text}
-                  </text>
-                ))}
-              </g>
-            </motion.g>
+            <g stroke="var(--color-line)" strokeWidth="var(--stroke-rule)" fill="none">
+              <path d="M220 360 L220 330 L260 330 L260 360" />
+              <path d="M420 360 L420 330 L460 330 L460 360" />
+              <path d="M620 360 L620 330 L660 330 L660 360" />
+            </g>
+            <g stroke="var(--color-line)" strokeWidth="var(--stroke-rule)" fill="none">
+              <rect x="420" y="185" width="120" height="40" />
+              <line x1="460" y1="185" x2="460" y2="150" />
+            </g>
+            <g fill="var(--color-line)" fontFamily="var(--font-mono)" fontSize="10">
+              {hero.draftMarks.map((mark, i) => (
+                <text key={mark} x={140 + i * 20} y={315 - i * 4}>
+                  {mark}
+                </text>
+              ))}
+            </g>
+            <g
+              fill="var(--color-line)"
+              fontFamily="var(--font-mono)"
+              fontSize="11"
+              letterSpacing="1.5"
+            >
+              {hero.keelLabels.map((text, i) => (
+                <text key={text} x={280 + i * 200} y="382" textAnchor="middle">
+                  {text}
+                </text>
+              ))}
+            </g>
           </motion.g>
 
           {/* Hull outline — the only pathLength-drawn element. */}
