@@ -1,10 +1,10 @@
 ---
 plan: 002-design-system-modernisation
 format_version: 2
-status: DRAFT
+status: EXECUTING
 isolation: none
 created: 2026-08-19
-approved_by: unapproved
+approved_by: sandeep
 ---
 
 # 002 — Design system modernisation
@@ -385,6 +385,8 @@ need; both gates green; no consumer changed.
 | Date | Task | Result | Notes |
 |------|------|--------|-------|
 | 2026-08-19 | — | Plan drafted | Lean by design: plan 001 ran 2,069 lines for a 240-line artifact, which its own case study flagged as disproportionate |
+| 2026-08-19 | — | Round-1 pressure test REJECTED | 4 CRITICAL / 5 MAJOR / 5 MINOR, all fixed (§11). Three findings indicted the planner and were independently reproduced before acceptance |
+| 2026-08-19 | — | **APPROVED by sandeep** | Round 2 not run — repair was ~20 lines of specification on a 4-task plan and every finding was reproduced. Status → EXECUTING |
 
 ## Reconcile report
 
