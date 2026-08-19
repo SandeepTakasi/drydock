@@ -274,6 +274,9 @@ diffs.
 | 23 | **B2** — §1 requires the waterline to "draw in as a dashed orange line", but `pathLength` in `motion-dom` implements drawing by overwriting `stroke-dasharray` with one dash and one gap, so dashed and drawing-on are mutually exclusive on a single element and the finished state is solid | **The waterline is built as TWO elements: a dashed overlay `<path>` with an author `stroke-dasharray`, revealed left-to-right by `revealClip` (a clip/width animation), NOT by `drawLine`/`pathLength`.** `drawLine` remains correct for the hull outline, which is solid | planner, on human instruction | Satisfies §1's dashed requirement with no change to the frozen `lib/motion.ts` and no timing literal in a section file. The alternative — adding a `pathSpacing`-aware variant — would reopen a contract that seven tasks already build against. Traced to the installed source, not assumed |
 | 24 | **B4** — the export has no `<h1>`; Decision 18 removed Hero's `<h2>` but nothing ever assigned the page a top-level heading | **Hero renders `hero.headline` as the page's single `<h1>`.** Pinned in T2.1.1's brief and asserted by T2.0.1's harness | planner, on human instruction | Restores heading order and gives the page an accessible name. Fixed by contract rather than by code, so Phase 1 will still show zero `<h1>` while Hero is a stub — the re-review must treat B4 as addressed-by-decision, not look for it in Phase 1's diff |
 
+| 25 | **B5** — the reduced-motion restore uses an unqualified `[data-reveal]` selector, so `stroke-dasharray: none !important` hits every revealed element. Decision 23's dashed overlay must carry `data-reveal` (it is clip-animated, so Framer writes inline `opacity: 0`), which means the dashed waterline renders **solid** under reduced motion — silently losing §1's dashed requirement | **The restore attribute is split.** `[data-reveal]` restores `opacity`, `transform`, `clip-path`, `width` — everything a clip/opacity reveal needs. A second attribute `[data-reveal-path]` adds `stroke-dasharray: none !important` and `stroke-dashoffset: 0 !important`, and is applied **only** to elements animated via `pathLength`. The dashed overlay carries `data-reveal` alone and keeps its author dash pattern | planner, on human instruction | B3 and Decision 23 were each correct in isolation and collided. Splitting the attribute is the minimum change that keeps both: path-drawn strokes still get restored to visible, dash-patterned strokes keep their pattern. Measured in headless Chrome by T1.R.1 before the fix: a dashed `data-reveal` path is restored visible and solid while a control stays dashed |
+| 26 | **B2 residue** — `revealClip` is `t(REVEAL)` = 0.5s at **delay 0**, so beat 3 of `heroSequence` (waterline at 1.0s) has no in-contract carrier. The only route was `revealClipStagger(11)`, a magic line index no brief sanctions and the timing-ban regex does not catch | **`lib/motion.ts` gains `waterlineReveal`** — a clip/width reveal carrying the waterline's 1.0s delay, so the dashed overlay is revealed on the hero timeline without a section file containing any timing literal | planner, on human instruction | Decision 23 told T2.1.1 to reveal the dash by clip instead of `pathLength`, but the frozen contract had no delayed clip variant to do it with. A contract fix that cannot be built is not a fix |
+
 ## 8. Open questions
 
 | # | Question | Blocks | Recommended answer |
@@ -430,8 +433,11 @@ SVG stroke channels, the blueprint grid is perceptible, and the shell carries
 drawing furniture rather than reading as a dark landing page.
 
 **Phase gate:** `cd site && npm run build && npx tsc --noEmit && npm run lint`
-exits 0; wavecheck PASS on 1.0, 1.1, 1.2, 1.3, **1.4, 1.5**; **T1.R.1 re-run and
-APPROVED** (its first run REJECTED — see the Progress log); human approval.
+exits 0; wavecheck PASS on 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, **1.6**; human approval.
+**T1.R.1 ran twice and REJECTED twice** (B1–B4 + D, then B2/B4/B5). B1, B3 and D
+were closed by waves 1.4/1.5; B2 and B4 by orchestrator brief edits; B5 by wave
+1.6. **A third review run was deliberately skipped by human decision** — see
+deviation 36, which records the accepted residual risk and names the verifier.
 
 ### Wave 1.0 — Scaffold
 > Single task by necessity: nothing builds, typechecks, or lints until a
@@ -801,6 +807,61 @@ APPROVED** (its first run REJECTED — see the Progress log); human approval.
 - **Acceptance criterion:**
   `cd site && npm run build && npx tsc --noEmit && npm run lint && grep -qiF "skip" out/index.html && grep -qF "internal pilot" out/index.html && grep -q "data-reveal" components/Section.tsx && [ "$(grep -o "<h1" out/index.html | wc -l | tr -d ' ')" -eq 0 ]`
 
+### Wave 1.6 — Repair: attribute split, delayed clip variant, focus target
+> Added by human-authorised amendment (deviation 36) after T1.R.1's SECOND
+> REJECTED verdict. Two parallel tasks, disjoint files. Closes B5 and N15; B2 and
+> B4 were closed by orchestrator edits to the briefs and criteria, not by code.
+
+#### T1.6.1 — Split the reveal attribute and add the delayed clip variant
+- **Status:** TODO
+- **Description:** Close B5 by splitting the reduced-motion restore so a dashed
+  stroke keeps its dash pattern, and give the hero timeline a delayed clip variant
+  so the dashed waterline can be revealed without `pathLength` and without a
+  hand-written delay.
+- **Files owned:** `site/app/globals.css`, `site/lib/motion.ts`
+- **Depends on:** T1.R.1 (re-run)
+- **Model / thinking:** Complex / extended (Sonnet)  **Executor:** drydock:executor
+- **Context brief:** T1.R.1's B5 finding in the Progress log; §6 F5, F5a;
+  Decisions 23, 25, 26; deviation 17. Read both owned files.
+- **Forbidden:** Reading root `index.html`. Renaming or removing any of the nine
+  contract tokens, or any of the nine `lib/motion.ts` exports — nine files build
+  against those names. Weakening the reduced-motion guarantee for
+  `pathLength`-animated elements. Touching `layout.tsx`, `components/`, or
+  `content/`.
+- **Implementation sketch:**
+  - `globals.css`: `[data-reveal]` keeps `opacity`, `transform`, `clip-path`,
+    `width`. **Move** `stroke-dasharray: none !important` and
+    `stroke-dashoffset: 0 !important` to a new `[data-reveal-path]` rule in the
+    same media query. Both selectors live side by side; nothing else changes.
+    Rationale, measured: an unqualified `[data-reveal]` strips the author dash
+    from Decision 23's overlay, rendering §1's dashed waterline solid under
+    reduced motion.
+  - `lib/motion.ts`: add **`waterlineReveal`** — a clip/width reveal
+    (`CLIP_HIDDEN` → `CLIP_SHOWN`) carrying the hero's beat-3 delay of 1.0s, in
+    the same style as the existing variants and using the existing `t()` helper
+    and constants. Keep `"hidden"`/`"shown"` as the state names (deviation 13 —
+    any other name fails silently). Document in the file header which attribute
+    each variant requires: `pathLength` variants → `data-reveal-path`,
+    clip/opacity variants → `data-reveal`.
+- **Acceptance criterion:**
+  `cd site && npx eslint lib/motion.ts && printf '{"extends":"'"$PWD"'/tsconfig.json","include":[],"files":["'"$PWD"'/lib/motion.ts"]}' > /tmp/dd-tc-m.json && npx tsc --noEmit --project /tmp/dd-tc-m.json && grep -q "waterlineReveal" lib/motion.ts && for n in sectionReveal staggerChildren childRise drawLine revealClip revealClipStagger heroSequence useMotionSafe NO_MOTION; do grep -q "$n" lib/motion.ts || exit 1; done && grep -q "data-reveal-path" app/globals.css && awk '/prefers-reduced-motion/,/^}$/' app/globals.css | grep -A6 "data-reveal-path" | grep -q "stroke-dasharray" && ! awk '/\[data-reveal\]/,/}/' app/globals.css | grep -q "stroke-dasharray"`
+
+#### T1.6.2 — Make the skip-link target focusable
+- **Status:** TODO
+- **Description:** Close N15 — the skip link targets `<main id="content">`, but a
+  non-interactive element needs `tabIndex={-1}` or focus does not move to it in
+  several browsers, which makes the skip link decorative.
+- **Files owned:** `site/app/layout.tsx`
+- **Depends on:** T1.R.1 (re-run)
+- **Model / thinking:** Mechanical / off (Haiku)  **Executor:** drydock:executor
+- **Context brief:** T1.R.1's N15 finding; deviation 29. Read
+  `site/app/layout.tsx` only.
+- **Forbidden:** Reading root `index.html`. Authoring any user-visible copy.
+  Changing anything other than adding the focus affordance. Adding an `<h1>`
+  (Decision 24 — that is Hero's). Touching `Section.tsx` or `page.tsx`.
+- **Acceptance criterion:**
+  `cd site && npm run build && npx tsc --noEmit && npm run lint && grep -qiF "skip" out/index.html && grep -E 'id="content"[^>]*tabindex="-1"|tabindex="-1"[^>]*id="content"' out/index.html`
+
 ### Wave 1.R — Quality review
 
 #### T1.R.1 — Fresh-context quality review of Phase 1
@@ -843,7 +904,10 @@ visible page.
 - **Depends on:** T1.3.1
 - **Model / thinking:** Judgment / extended (Opus)  **Executor:** drydock:executor
 - **Context brief:** This plan §1, §6 (F4, F5, F5a, F11), Decisions 9, 13–15, 20,
-  22. Read `site/content/copy.ts`, `site/lib/motion.ts`.
+  22, **24, 25**, and deviations **18, 20**. Read `site/content/copy.ts`,
+  `site/lib/motion.ts`.
+  *(Decision 24 added after T1.R.1's second REJECTED verdict — it claimed this
+  harness asserted the `<h1>` and no such assertion existed. Deviation 34.)*
 - **Forbidden:** Reading root `index.html`. Modifying any component to make an
   assertion pass — a failing assertion is a finding, reported as a deviation.
   Adding a test runner. Asserting on any string containing `<`, `>`, or an
@@ -858,6 +922,25 @@ visible page.
     `A2b`, `drift`, `one-file change`,
     `NOTHING SAILS UNTIL IT LEAVES THE DOCK`, and the six pieces — matching
     `executor` via its `agents` kind cell, not bare substring.
+  - **Heading assertions (Decision 24).** On the RAW input, before normalisation:
+    exactly ONE `<h1>` must exist, and it must contain `hero.headline`. Zero or
+    two `<h1>` elements both fail. This is a structural count on markup, not a
+    text-literal match, so F11's ban on asserting strings containing `<` does not
+    apply — that ban exists because React splits and escapes *text*, which does
+    not affect tag counting.
+  - **Counting must ignore the RSC flight payload (deviation 20).** `out/index.html`
+    embeds the hydration payload as escaped JSON, so every rendered string appears
+    **twice** — measured exactly 2× (`TODO` 14 raw / 7 real for 7 stubs). Strip
+    `<script>…</script>` **bodies** first; stripping tags alone does not remove
+    them. Normalisation order: strip script bodies → strip comments → strip tags →
+    collapse whitespace → decode entities. Without this, every counting assertion
+    passes vacuously off the payload — including the `<h1>` count above and the
+    `executor` discriminator below.
+  - **`executor` vs `executor-isolated` (deviation 18).** Both carry
+    `kind: "agents"`, so `agents` proves an agent-kind row exists, not that
+    `executor` specifically does. Require **≥ 2 occurrences of `executor`** in the
+    normalised text (one bare, one inside `executor-isolated`), which only works
+    once the flight payload is stripped.
   - Over-claim blocklist: `/\d+\s*%\s*(faster|fewer|more)/i`,
     `/\d+(\.\d+)?\s*x\s*(faster|speedup)/i`.
   - Motion-contract assertions over **exactly `components/sections/*.tsx`**
@@ -869,7 +952,10 @@ visible page.
   - Adds `"verify": "next build && tsc --noEmit && eslint . && node scripts/assert-copy.mjs"`.
 - **Acceptance criterion** — a two-fixture self-test, so a script that asserts
   nothing fails:
-  `cd site && npx eslint scripts/assert-copy.mjs && node --check scripts/assert-copy.mjs && printf '%s' "APPROVED (HUMAN-ONLY) internal pilot field benchmarks pending Deviations logged: 1 (1 discovered by wavecheck) A2b drift one-file change NOTHING SAILS UNTIL IT LEAVES THE DOCK agents planwright executor-isolated wavecheck replan reconcile" > /tmp/dd-ok.txt && printf '%s' "internal pilot" > /tmp/dd-bad.txt && node scripts/assert-copy.mjs /tmp/dd-ok.txt && ! node scripts/assert-copy.mjs /tmp/dd-bad.txt && node -e "process.exit(require('./package.json').scripts.verify?0:1)"`
+  `cd site && npx eslint scripts/assert-copy.mjs && node --check scripts/assert-copy.mjs && printf '%s' "<h1>Drydock</h1> APPROVED (HUMAN-ONLY) internal pilot field benchmarks pending Deviations logged: 1 (1 discovered by wavecheck) A2b drift one-file change NOTHING SAILS UNTIL IT LEAVES THE DOCK agents planwright executor executor-isolated wavecheck replan reconcile" > /tmp/dd-ok.txt && printf '%s' "internal pilot" > /tmp/dd-bad.txt && node scripts/assert-copy.mjs /tmp/dd-ok.txt && ! node scripts/assert-copy.mjs /tmp/dd-bad.txt && node -e "process.exit(require('./package.json').scripts.verify?0:1)"`
+  *(The good fixture now carries an `<h1>` and both `executor` spellings so the
+  heading assertion and the ≥2 `executor` discriminator are themselves exercised;
+  the bad fixture omits everything, so a harness that asserts nothing fails.)*
 
 ### Wave 2.1 — Signature and structural sections
 > Four parallel tasks. Criteria scoped to owned files (Decision 16) with hermetic
@@ -885,8 +971,10 @@ visible page.
 - **Depends on:** T1.3.1, T2.0.1
 - **Model / thinking:** Complex / extended (Sonnet)  **Executor:** drydock:executor
 - **Context brief:** This plan §1, §6 (F5, F5a, F12), Decisions 5, 9, 18, 20, 22,
-  17, §10 Checkpointing. Read `site/lib/motion.ts`, `site/content/copy.ts`,
-  `site/app/globals.css`.
+  **23, 24, 25, 26**, 17, §10 Checkpointing, and deviations **31, 32**. Read
+  `site/lib/motion.ts`, `site/content/copy.ts`, `site/app/globals.css`.
+  *(Decisions 23–26 added after T1.R.1's second REJECTED verdict: they were
+  recorded in §7 and never propagated here, which is deviation 34.)*
 - **Forbidden:** Reading or copying root `index.html` — draw the SVG fresh.
   **Hardcoding any copy — every string comes from `hero` in `content/copy.ts`.**
   Touching `page.tsx`, `Section.tsx`, or any other section. A second accent
@@ -898,12 +986,38 @@ visible page.
     in token colours.
   - Structure: dock floor, cradle blocks under the keel, hull outline,
     superstructure, bow draft marks, wave labels under the keel.
-  - Sequence via `heroSequence`: linework fades → hull draws → waterline
-    `drawLine` (`pathLength` 0→1, dashed, primer) → label fades.
+  - Sequence via `heroSequence`: linework fades → hull draws (`drawLine`,
+    `pathLength` 0→1 — correct here, the hull is SOLID) → waterline → label fades.
+  - **The waterline is TWO elements, not one (Decision 23).** `pathLength` is
+    implemented by overwriting `stroke-dasharray`, so a dashed line cannot also be
+    drawn on with `drawLine` — the finished state would be solid. Instead: a
+    dashed overlay `<path>` with an author `stroke-dasharray`, revealed
+    left-to-right by **`waterlineReveal`** (Decision 26 — a clip/width variant
+    carrying the 1.0s beat-3 delay). Do **not** use `drawLine` or `pathLength` on
+    the waterline, and do not hand-write a delay.
+  - **Attribute discipline (Decision 25).** Elements animated by `pathLength`
+    (the hull) carry **`data-reveal-path`**; elements animated by clip/opacity
+    (the dashed overlay, the label, the linework) carry **`data-reveal`** only.
+    Putting `data-reveal-path` on the dashed overlay would strip its dash pattern
+    under reduced motion, which is exactly the defect B5 found.
+  - **Hero renders `hero.headline` as the page's single `<h1>` (Decision 24).**
+    It is the only `<h1>` in the document; every section heading is an `<h2>`
+    owned by the shell.
   - `hero.waterlineLabel` renders as a real `<text>` node (F5); animation touches
-    only opacity. `data-reveal` on every animated element (F5a).
+    only opacity.
+  - **The trim border means nothing can bleed to the viewport edge** (deviation
+    32): `<body>` carries `p-2 sm:p-4` and the page sits inside a
+    `border border-line` sheet. Do not use `min-h-screen` or full-bleed
+    backgrounds — they overflow the sheet margin (N11).
+  - **Do not add a top margin to your root** — the shell owns the gap via
+    `<div className="mt-8">` (deviation 31/N1). Use `space-y-6` for rhythm
+    between your own sibling blocks.
 - **Acceptance criterion:**
-  `cd site && npx eslint components/sections/Hero.tsx && printf '{"extends":"'"$PWD"'/tsconfig.json","include":[],"files":["'"$PWD"'/components/sections/Hero.tsx"]}' > /tmp/dd-tc-Hero.json && npx tsc --noEmit --project /tmp/dd-tc-Hero.json && grep -q "hero" components/sections/Hero.tsx && grep -q "heroSequence" components/sections/Hero.tsx && grep -q "data-reveal" components/sections/Hero.tsx && ! grep -qE "(duration|delay):|duration-[0-9]" components/sections/Hero.tsx`
+  `cd site && npx eslint components/sections/Hero.tsx && printf '{"extends":"'"$PWD"'/tsconfig.json","include":[],"files":["'"$PWD"'/components/sections/Hero.tsx"]}' > /tmp/dd-tc-Hero.json && npx tsc --noEmit --project /tmp/dd-tc-Hero.json && grep -q "hero" components/sections/Hero.tsx && grep -q "heroSequence" components/sections/Hero.tsx && grep -q "waterlineReveal" components/sections/Hero.tsx && grep -q "data-reveal" components/sections/Hero.tsx && grep -q "<h1" components/sections/Hero.tsx && ! grep -q "drawLine.*waterline\|waterline.*drawLine" components/sections/Hero.tsx && ! grep -qE "(duration|delay):|duration-[0-9]" components/sections/Hero.tsx`
+  *(Added after T1.R.1's second verdict: `waterlineReveal` and `<h1>` are now
+  asserted, and `drawLine` is barred from co-occurring with the waterline —
+  Decisions 23, 24, 26. `drawLine` alone is still permitted, because the hull
+  legitimately uses it.)*
 
 #### T2.1.2 — Evidence: verified vs not-yet-verified board
 - **Status:** TODO
@@ -1099,6 +1213,9 @@ visible page.
 | 31 | — (N1 recurring one level down) | **Section-internal rhythm is still unpinned.** T1.5.1 fixed N1 by pinning the `<h2>` → `children` gap as exactly one wrapper, `<div className="mt-8">`. But the gap BETWEEN a section's own sibling blocks is not fixed by the shell, so six parallel executors will each invent it — `space-y-4` vs `space-y-6` vs per-block margins — and no gate inspects layout | The criterion asked for one wrapper with one class, which is what it got; the level below was out of its scope | Flagged by the executor itself, unprompted. **All six section briefs must name one value** (recommended: `space-y-6` on the section's own top-level wrapper inside `<Section>`), or N1 simply reappears one level down after the review already caught it once | executor report |
 | 32 | T1.5.1 | **The sheet frame changes the bleed edge.** `<body>` now carries `p-2 sm:p-4` and the whole page sits inside a `border border-line` div, so nothing inside a section can reach the viewport edge — a full-bleed background or edge-to-edge SVG now stops at the trim line | Inherent to adding a drawing sheet frame, which was the requested fix for verdict D | **Most likely to bite Hero**, whose signature SVG spans the page. Must be in T2.1.1's brief explicitly. Also: `site.selfAuditHref` / `site.selfAuditLinkText` are deliberately not consumed by the footer, left free for Evidence | executor report |
 | 33 | T1.R.1 | **Fifth executor stop-before-checkpoint in this plan, and the third on this single task.** Sequence: (a) first instance killed by API 529 after writing its verdict — orchestrator committed for it (row 24); (b) same instance revived later and committed again, producing duplicate attribution (row 26); (c) re-run instance stopped at 35 tool uses under the raised 60 cap, reported `completed`, wrote nothing; (d) resumed instance stalled — watchdog, no progress for 600s — with the fragment "I have everything I need. Writing the verdict and committing immediately", having written nothing. A fresh instance was then spawned with the verified facts front-loaded and a commit-first instruction | Four distinct causes across five stops: turn exhaustion, API error, silent turn-end, watchdog stall. **The common factor is not the cause but the ordering** — the executor contract puts the checkpoint commit LAST, so every failure mode discards attribution for work that was already complete | **The `maxTurns` 30 → 60 raise (row 9) did not help, because the ceiling was never the problem.** All five were caught only by checking `git status`; every one reported in a way indistinguishable from success or produced no report at all. **Reconcile, highest-value plugin change identified by this plan:** move the checkpoint commit to fire as soon as owned files satisfy the criterion, before final verification narration — and give the contract a rule for who owns the checkpoint when an executor is presumed dead and later revives (row 26 has no rule today). Applied as a workaround in the fresh instance's brief rather than by editing the frozen contract mid-execution | orchestrator |
+| 34 | — (planner failure) | **Decisions 23 and 24 were recorded in §7 and never propagated into a single task block — the exact failure this plan already named in deviation 17.** T2.1.1's context brief listed Decisions 5, 9, 18, 20, 22, 17 and neither 23 nor 24; T2.0.1's listed 9, 13–15, 20, 22 and not 24. Worse than omission: **T2.1.1's implementation sketch still read "waterline `drawLine` (`pathLength` 0→1, dashed, primer)"** — the literal construction Decision 23 exists to forbid, in the one document the executor is handed. Decision 24 claimed the `<h1>` was "pinned in T2.1.1's brief and asserted by T2.0.1's harness"; neither was true, and the only `<h1>` check in the plan asserted count **0** | The orchestrator wrote both Decisions when closing round-2 findings B2 and B4, treating "fixed by contract" as complete, and did not edit the consuming briefs. Deviation 17 recorded the identical mistake earlier in this same plan and it was repeated anyway | **An executor following its brief would have built precisely the defect B2 found.** Caught by T1.R.1's second run. Closed by orchestrator edits: Decisions 23–26 added to T2.1.1's brief, its sketch rewritten to specify the dashed overlay and bar `drawLine` on the waterline, `waterlineReveal`/`<h1>` added to its criterion, and the heading assertion plus the deviation 18 and 20 fixes written into T2.0.1's sketch and fixture. **Reconcile: a Decision that names a consuming task is not closed until that task's brief cites it — the plan format should require the back-reference** | `discovered-by-wavecheck` (T1.R.1 re-run), fixed by orchestrator |
+| 35 | — (repairs collided) | **B5, a new blocker created by fixing B3.** The reduced-motion restore uses an unqualified `[data-reveal]`, so `stroke-dasharray: none !important` reaches every revealed element. Decision 23's dashed overlay must carry `data-reveal` (clip-animated → inline `opacity: 0`), so the dashed waterline renders **solid** under reduced motion, silently losing §1's dashed requirement. Measured in headless Chrome with `--force-prefers-reduced-motion`: the dashed path is restored visible and solid while a control stays dashed. `revert` does not help — SVG presentation attributes cascade at author origin | B3's fix and Decision 23 were each correct in isolation. Nobody checked them against each other | Closed by Decision 25 (split `[data-reveal]` / `[data-reveal-path]`) and Decision 26 (`waterlineReveal`, since `revealClip` is delay 0 and beat 3 needs 1.0s, leaving `revealClipStagger(11)` — a magic index no brief sanctioned — as the only route). Both delivered by Wave 1.6. **Note the structural cause: `app/globals.css` and `lib/motion.ts` are owned by no Phase-2 task**, so this was unfixable inside Phase 2 as scoped and needed a new Phase-1 wave | `discovered-by-wavecheck` (T1.R.1 re-run) |
+| 36 | — (human-authorised) | **Wave 1.6 added; the third T1.R.1 re-review deliberately SKIPPED.** The human chose "fix, then proceed without a 3rd review": Wave 1.6's wavecheck gates the code, and the orchestrator verifies B2/B4/B5 closure directly, so Phase 1 reaches the human gate on orchestrator verification rather than a fresh-context review | Two review rounds each cost a long cycle; the remaining fixes are small, mechanical, and individually assertable | **Residual risk, accepted explicitly by the human and recorded with the verifier named:** both prior rounds found real defects that the orchestrator had missed, including two (B2, B4) that were the orchestrator's own un-propagated decisions. Nobody with fresh eyes will confirm this closure. The Phase 2 quality review (T2.R.1) is the next fresh-context look at any of it | orchestrator, on human instruction |
 | 8 | T1.0.1 | **Turbopack resolves its workspace root outside the repository.** Every `next build` emits `⚠ Next.js ignored yarn.lock in /Users/takasivenkatasandeep because it is outside the current Git repository`. A stray `~/yarn.lock` (83 KB, dated 2026-01-09) exists in the home directory; `turbopack.root` is unset in `next.config.ts`. Confirmed to recur on a clean `rm -rf .next out && npm run build` | Next 16 infers the workspace root by walking up for a lockfile and finds one above the repo | Currently a warning, not a failure — the criterion exits 0 and the export is correct. But root inference reaching outside the repo is a latent hazard for a reproducible build, and the executor did not report a warning that appeared in its own build output. `turbopack.root` should be pinned to `site/`; that is a change to `next.config.ts`, owned by T1.0.1 in a closed wave, so it belongs to a follow-up task or `/drydock:replan`, not to this wave | `discovered-by-wavecheck` |
 
 ## Wavecheck reports
