@@ -81,12 +81,14 @@ export const meta: Record<
   },
 };
 
+const VERSION = "0.4.1";
+
 export const site = {
   title: "Drydock -- plan-first parallel execution for Claude Code",
   description:
     "Plan-first parallel execution for Claude Code: a rigorous plan document as the source of truth, subagents executing it in parallel waves with disjoint file ownership, a conformance audit gating every wave, and a reconcile loop that feeds execution learnings back into your docs.",
   status: "internal pilot -- field benchmarks pending",
-  version: "0.3.1",
+  version: VERSION,
   selfAuditHref: "../docs/self-audit.md",
   selfAuditLinkText: "Read the self-audit",
   skipLinkText: "Skip to content",
@@ -99,7 +101,7 @@ export const hero = {
   waterlineLabel: "WATERLINE -- STATUS: APPROVED (HUMAN-ONLY)",
   badges: [
     "CLAUDE CODE PLUGIN",
-    "v0.3.1 -- INTERNAL PILOT",
+    `v${VERSION} -- INTERNAL PILOT`,
     "FIELD BENCHMARKS: PENDING",
   ],
   svgAriaLabel:
@@ -149,17 +151,17 @@ export const evidence: {
       note: "PASSED, 2026-08-18, host 2.1.234, git 2.51.0. Worktree created on its own branch, checkpoint commit in contract format touching only the owned file, main tree left unmerged. A worktree holding changes is not auto-removed: cleanup is the orchestrator job.",
     },
     {
+      id: "A2b",
+      label: "Post-wavecheck worktree merge procedure",
+      note: "PASSED, 2026-08-19. Disjoint worktrees merge conflict-free in task-id order and the integration smoke passes; a rogue edit colliding with a sibling conflicts, and aborting restores the target branch with the compliant work intact. Verified mechanically rather than agent-driven. One limitation, measured: a clean merge is not evidence of ownership compliance, because a non-colliding unowned edit merges silently. The ownership audit is the only defence there.",
+    },
+    {
       id: "A4",
       label: "claude plugin validate --strict",
       note: "PASSED, 2026-08-18, including the disable-model-invocation and isolation frontmatter.",
     },
   ],
   notVerified: [
-    {
-      id: "A2b",
-      label: "Post-wavecheck worktree merge procedure",
-      note: "PENDING. Split out of A2 on 2026-08-18: the spawning half passed, the merge half was never exercised. It needs its own test, including a deliberate conflict outside the owned set to confirm the BLOCKED path.",
-    },
     {
       id: "A3",
       label:
@@ -286,7 +288,7 @@ export const sheet: Sheet = {
   project: "DRYDOCK",
   title: "GENERAL ARRANGEMENT",
   sheetNumber: "SHEET 1 OF 1",
-  revision: "REV 0.3.1",
+  revision: `REV ${VERSION}`,
   scale: "NOT TO SCALE",
   date: "2026-08-18",
 };

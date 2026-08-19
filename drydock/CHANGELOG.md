@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.1 — 2026-08-19
+
+- **plan-format: worktree merge procedure gains step 2a.** A2b verified the
+  procedure works, and found that its wording invited a false inference: step 2
+  said conflicts indicate a defect, which reads as though conflict-freeness
+  indicates compliance. It does not. A rogue edit conflicts only if a sibling
+  touched the same file; a non-colliding unowned edit merges cleanly and lands
+  silently — measured. Step 2a states the one-way implication, names the
+  ownership audit as the only defence, and explains why step 1's ordering is
+  load-bearing. Steps 1 and 3 annotated with the same run's evidence.
+- No `format_version` bump: this adds no required section, field, or task-block
+  shape, so no consumer would refuse an existing v2 plan. Bumping would force
+  every skill to reject every existing plan over a wording fix.
+
 ## 0.4.0 — 2026-08-19
 
 Field-driven fixes from the first full pilot plan (001-drydock-homepage: 2 phases,

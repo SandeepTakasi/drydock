@@ -140,13 +140,24 @@ Ownership rules:
 
 ## Worktree merge procedure (isolation: worktree only)
 
-Minimal v1 — expect revision after the first real isolated run:
-1. Merge only after the wave's wavecheck PASS, in ascending task-id order.
-2. Each merge is expected conflict-free — ownership is disjoint by
+Revised after the first isolated run (A2b, 2026-08-19):
+1. Merge only after the wave's wavecheck PASS, in ascending task-id order. This
+   ordering is load-bearing, not cosmetic — see 2a.
+2. Each merge is expected conflict-free, because ownership is disjoint by
    construction. ANY conflict is a plan defect: stop merging, set BLOCKED,
    record a deviation naming both tasks and the file.
+2a. **A conflict-free merge is NOT evidence of ownership compliance.** The
+   implication runs one way only: conflict proves a defect; absence of conflict
+   proves nothing. A task that writes a file it does not own conflicts only if
+   some sibling happened to touch the same file — a non-colliding unowned edit
+   merges cleanly and lands silently (verified in A2b). **The ownership audit in
+   step 1 is the only defence against that**, which is why merging before
+   wavecheck PASS is forbidden rather than merely discouraged. Per-worktree
+   `git diff --name-only <base>` is the sound attribution mechanism in isolation
+   mode; the merge is a collision backstop, not an audit.
 3. Never resolve conflicts inline; resolution goes through `/drydock:replan`
-   or human decision.
+   or human decision. `git merge --abort` restores the target branch with
+   already-merged siblings' work intact (verified in A2b).
 4. After the last merge, re-run the wave's command-shaped acceptance criteria
    once against the merged tree (integration smoke) before closing the wave.
 
