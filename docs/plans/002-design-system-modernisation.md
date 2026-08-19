@@ -54,11 +54,15 @@ seven section components and the shell consume them.
 
 ## 4. Baseline
 
-Filled by T0. Pre-observed 2026-08-19: HEAD `7cb635a`, tree clean, `npm run verify`
-PASS (`14 literals, 4x executor, 1 h1, motion contract`),
-`node scripts/measure-reduced-motion.mjs` PASS. **T0 must also record the
-basename and `shasum` of the compiled stylesheet in `site/out/_next/static/chunks/*.css`** —
-Wave 1.0's criteria compare against it (F7).
+Recorded 2026-08-19. HEAD `9e6fadc04e9c4c77989ab97eb45e9b89e3f65e82`, tree clean.
+`npm run verify` PASS (`14 literals, 4x executor, 1 h1, motion contract`).
+`node scripts/measure-reduced-motion.mjs` PASS (reducedMotion=true, waterline="10px, 8px", stippled=0, hull={"opacity":"1","dasharray":"none"}, invisibleText=0).
+
+**Compiled stylesheet baseline:**
+- Basename: `1s2vcbm8xcik1.css`
+- Shasum: `40b6a434624dbb530bd0bbb2bd002125acba1037`
+
+This shasum is the load-bearing one (F7): Wave 1.0's criteria compare against it to verify no accidental compiled changes. Purely additive `@theme` work leaves the stylesheet byte-identical.
 
 ## 5. Practices in effect
 
@@ -387,6 +391,7 @@ need; both gates green; no consumer changed.
 | 2026-08-19 | — | Plan drafted | Lean by design: plan 001 ran 2,069 lines for a 240-line artifact, which its own case study flagged as disproportionate |
 | 2026-08-19 | — | Round-1 pressure test REJECTED | 4 CRITICAL / 5 MAJOR / 5 MINOR, all fixed (§11). Three findings indicted the planner and were independently reproduced before acceptance |
 | 2026-08-19 | — | **APPROVED by sandeep** | Round 2 not run — repair was ~20 lines of specification on a 4-task plan and every finding was reproduced. Status → EXECUTING |
+| 2026-08-19 | T0 | Baseline recorded | HEAD 9e6fadc..., CSS shasum 40b6a434... in 1s2vcbm8xcik1.css. Both gates green. |
 
 ## Reconcile report
 
