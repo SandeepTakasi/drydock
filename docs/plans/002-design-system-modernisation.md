@@ -451,6 +451,28 @@ Deviations logged: 7 (0 discovered by wavecheck)
 
 **Verdict: PASS.** Wave 1.2 (integration) may start.
 
+### Wavecheck 1.2 — PASS — 2026-08-19
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `status: EXECUTING`. Wave 1.2 exists with one task. Waves 1.0 and 1.1 both carry PASS reports. |
+| 2. Ownership | PASS | `61c5e3d drydock(T1.2.1)` → `docs/plans/002-design-system-modernisation.md` only. **Zero files under `site/` touched** — the constraint that matters for a verifier. Tree clean. |
+| 3. Forbidden | PASS | Nothing under `site/` modified; no gate "fixed"; only the Progress log edited. |
+| 4. Acceptance | PASS | Criterion exit 0, re-run independently by the auditor: `assert-copy PASS (14 literals, 4x executor, 1 h1, motion contract)` and `measure-reduced-motion PASS (reducedMotion=true, waterline="10px, 8px", stippled=0, hull opacity 1 / dasharray none, invisibleText=0)`. |
+| 5. Deviation reconciliation | PASS | No deviations, no observations. |
+
+**The plan's central claim is now mechanically verified.** Compiled CSS is
+`40b6a434624dbb530bd0bbb2bd002125acba1037  out/_next/static/chunks/1s2vcbm8xcik1.css`
+— byte-identical to T0's baseline. Five `@theme` tokens and three motion exports were
+added and **rendered output did not change**, because Tailwind tree-shakes
+unreferenced tokens and unreferenced TypeScript never reaches the bundle. That is
+what C3's checksum gate was built to prove, and it is the only mechanism in this plan
+capable of proving it.
+
+Deviations logged: 7 (0 discovered by wavecheck)
+
+**Verdict: PASS.** All three implementation waves complete. T1.R.1 may run.
+
 ## Progress log
 
 | Date | Task | Result | Notes |
