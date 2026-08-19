@@ -460,6 +460,7 @@ green; a human has confirmed it in a browser.
 
 | # | Task | What deviated | Why | Impact | Recorded |
 |---|------|---------------|-----|--------|----------|
+| 3 | T1.3.1 | **A sound measurement paired with an unsound inference.** Its report states Hero.tsx "remains at 209 lines (baseline 209), confirming no extraneous changes". The count is correct, but the diff is **151 insertions and 151 deletions — 302 changed lines in a 209-line file**. The totals balance by coincidence; the file was substantially rewritten | Line count was treated as a proxy for change volume | None on the work, which is sound. Corrected here because the claim would otherwise mislead a later reader into thinking the hero was barely touched — and because "no extraneous changes" is exactly the kind of conclusion a reviewer might rely on rather than re-derive. **Wavecheck verified the ownership question directly instead:** one file, in-scope, nothing else touched |
 | 2 | — (orchestrator protocol violation) | **Wave 1.1 was opened with no recorded Wavecheck 1.0 PASS.** The orchestrator ran the substance of checks 2–4 on T1.0.1 before proceeding — ownership, the one-line diff, the criterion verbatim, the +42,640-byte font growth, the persisting warning — but never appended a report. Wavecheck 1.1's check 1 caught it; the 1.0 report above is retroactive and labelled as such | Verification was performed and treated as sufficient; writing the report was skipped as bookkeeping rather than recognised as the gate itself | **Counted against A3, not excused.** A3 measures whether the orchestrator invokes the gate between waves, and an unrecorded gate is indistinguishable from a skipped one to any later auditor. The ledger now records 1 unrecorded gate rather than reporting a clean 20/20 — a compliance ledger that only captures successes measures nothing. **Root cause worth reconciling:** the protocol says "invoke wavecheck, then proceed", and nothing distinguishes *performing the checks* from *recording that they passed*. The checks are re-runnable; the record is the only durable artifact |
 | 1 | — (human-authorised) | **Round-2 pressure test skipped**; approved after round 1's fixes | The human read §11 — including its own warning that this plan's three criticals were planner *reasoning* errors, the category a second round catches best — and chose to proceed | **Residual risk accepted and named:** every round-1 finding was reproduced before acceptance, but nobody with fresh eyes has examined the repaired plan. If T1.R.1 rejects on the same axis (an unbuildable decision, an unfallible gate, or an assertion inert on its real target), the plan is the problem rather than the review, and that is the signal to stop revising and reconsider the approach |
 
@@ -519,6 +520,18 @@ only real proof at this point.
 | 5. Deviation reconciliation | PASS | No deviations; three observations, all sound. The most valuable was volunteered rather than asked for: an earlier draft gave the drafting-board wrapper its own late `heroReveal` beat, which would have multiplied its zero-starting opacity against the interior `heroSequence` and delayed the whole drawing until the panel's beat caught up. It identified that as a real regression rather than a stylistic choice, and left the wrapper unanimated. |
 
 **Verdict: PASS.** Wave 1.3 (integration) may start.
+
+### Wavecheck 1.3 — PASS — 2026-08-19
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `status: EXECUTING`. Wave 1.3 exists. Waves 1.0–1.2 all carry PASS reports. |
+| 2. Ownership | PASS | `43131e4 drydock(T1.3.1)` → `docs/plans/003-hero-revamp.md` only. **Zero files under `site/` touched** — the constraint that matters for a verifier. Tree clean. |
+| 3. Forbidden | PASS | Nothing under `site/` modified; no gate "fixed"; only the Progress log edited. |
+| 4. Acceptance | PASS | Criterion exit 0, re-run independently. `assert-copy: PASS (14 literals, 4x executor, 1 h1, motion contract)`. `measure-reduced-motion: PASS` with **`drift[reduced]=1, drift[motion-allowed]=1`** — the headline result, since a count of 0 would mean D1 and D2 had silently reverted to passing vacuously while the harness still exited 0. Live and holding. |
+| 5. Deviation reconciliation | PASS, with one correction | No deviations reported. Its drift-count reading and both gate lines are accurate. **One inference was wrong and is logged as deviation 3:** it read Hero.tsx at 209 lines, matched that to the 209-line baseline, and concluded "no extraneous changes". The diff is **+151/−151** — 302 changed lines in a 209-line file, balancing by coincidence. Ownership was verified directly instead: one file, in scope, nothing else touched. |
+
+**Verdict: PASS.** All four implementation waves complete. T1.R.1 may run.
 
 ## Progress log
 
