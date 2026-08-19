@@ -118,6 +118,10 @@
   }
 
   [data-reveal-path] {
+    opacity: 1 !important;
+    transform: none !important;
+    clip-path: none !important;
+    width: auto !important;
     stroke-dasharray: none !important;
     stroke-dashoffset: 0 !important;
   }
