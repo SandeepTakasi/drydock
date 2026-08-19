@@ -460,11 +460,53 @@ green; a human has confirmed it in a browser.
 
 | # | Task | What deviated | Why | Impact | Recorded |
 |---|------|---------------|-----|--------|----------|
+| 2 | — (orchestrator protocol violation) | **Wave 1.1 was opened with no recorded Wavecheck 1.0 PASS.** The orchestrator ran the substance of checks 2–4 on T1.0.1 before proceeding — ownership, the one-line diff, the criterion verbatim, the +42,640-byte font growth, the persisting warning — but never appended a report. Wavecheck 1.1's check 1 caught it; the 1.0 report above is retroactive and labelled as such | Verification was performed and treated as sufficient; writing the report was skipped as bookkeeping rather than recognised as the gate itself | **Counted against A3, not excused.** A3 measures whether the orchestrator invokes the gate between waves, and an unrecorded gate is indistinguishable from a skipped one to any later auditor. The ledger now records 1 unrecorded gate rather than reporting a clean 20/20 — a compliance ledger that only captures successes measures nothing. **Root cause worth reconciling:** the protocol says "invoke wavecheck, then proceed", and nothing distinguishes *performing the checks* from *recording that they passed*. The checks are re-runnable; the record is the only durable artifact |
 | 1 | — (human-authorised) | **Round-2 pressure test skipped**; approved after round 1's fixes | The human read §11 — including its own warning that this plan's three criticals were planner *reasoning* errors, the category a second round catches best — and chose to proceed | **Residual risk accepted and named:** every round-1 finding was reproduced before acceptance, but nobody with fresh eyes has examined the repaired plan. If T1.R.1 rejects on the same axis (an unbuildable decision, an unfallible gate, or an assertion inert on its real target), the plan is the problem rather than the review, and that is the signal to stop revising and reconsider the approach |
 
 ## Wavecheck reports
 
-*Appended by `drydock:wavecheck`, one section per wave.*
+### Wavecheck 1.0 — PASS — 2026-08-19 — **RECORDED RETROACTIVELY, see deviation 2**
+
+**Protocol violation, stated first.** This report was written *after* Wave 1.1 had
+already executed. The orchestrator performed the substance of checks 2–4 on T1.0.1
+before opening Wave 1.1 — commit and file set, the one-line diff, the criterion
+verbatim, the font-binary byte growth, and the persistence of the font warning — but
+**never appended a report**, so Wave 1.1 began with no recorded PASS. Wavecheck 1.1's
+own check 1 caught it. Logged as deviation 2 and counted against A3.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `format_version: 2`, `status: EXECUTING`, `approved_by: sandeep`. Wave 1.0 exists with one task; first wave, no prior report expected. |
+| 2. Ownership | PASS | `38b303e drydock(T1.0.1)` → `site/lib/fonts.ts` only. Diff is a single line: `+  axes: ["opsz"],`. Tree clean. |
+| 3. Forbidden | PASS | No new font family; `IBM_Plex_Mono` and `Archivo` untouched; no `--font-src-*` renamed; nothing outside `lib/fonts.ts`. |
+| 4. Acceptance | PASS | Criterion run verbatim → exit 0 (anchored `axes: ["opsz"]` grep, `--max-warnings 0`, `npm run verify`). **Independently measured, not accepted:** the served Big Shoulders woff2 set grew **255,276 → 297,916 bytes (+42,640)**, confirming the axis is embedded and the task is not a no-op — the question M5 raised. |
+| 5. Deviation reconciliation | PASS | No deviations. Its observations hold: the `Failed to find font override values` warning persists **verbatim** (confirmed, 1 occurrence), and it correctly declined to claim layout shift was improved — the specific overclaim review had struck from §1. It also noted `next/font` emits no `opsz` string into CSS; the axis lives only in the binary. |
+
+**Verdict: PASS** (retroactive).
+
+### Wavecheck 1.1 — PASS — 2026-08-19
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS, with a violation found | `status: EXECUTING`. Wave 1.1 exists. **Wave 1.0 had no PASS report at the time this wave opened** — found by this check, recorded above and as deviation 2. |
+| 2. Ownership | PASS | `fd88099 drydock(T1.1.1)` → `site/scripts/measure-reduced-motion.mjs` only. Tree clean. |
+| 3. Forbidden | PASS | Touched neither `lib/motion.ts` nor any component (0). No runtime dependency added (0 non-`node:` imports). **Not** wired into `npm run verify` — confirmed by reading the script entry. All four pre-existing assertions still present and still asserting; C1 still checks the `10px, 8px` dash value in three places, so hardening its selector did not weaken it. |
+| 4. Acceptance | PASS | Criterion run verbatim → exit 0, including all three harness invocations: clean run PASS, `DRIFT_FIXTURE=1` run **exits non-zero**, and that failure **names D1**. Main gate unaffected: `assert-copy PASS`. |
+| 5. Deviation reconciliation | PASS | No deviations; three observations, all verified. **The requirement most likely to be quietly skipped was met:** the fixture sets *both* `data-drift` and `data-reveal` in code — verified at source, not from its docblock — so it exercises the CSS-masking case rather than dodging it. The failure output proves the fix landed: `bottom=["translate(0px, 12px)"], top=["translate(0px, 12px)"]` is the **inline** value on an element whose computed transform CSS has forced to `none`; the plan's original computed-value spec would have read `none` and passed. |
+
+**Better than specified:** C1's hardening needs no new markup. Instead of an id the
+hero would have to preserve, it pins the selector to
+`svg path[data-reveal][stroke-dasharray="10 8"]` — the dash C1 already asserts — and
+reports the match count on failure instead of silently taking document order. It can
+only mis-target if another `path` carries *both* `data-reveal` and an identical
+`10 8` dash, which T1.2.1 is independently forbidden from creating.
+
+**`[data-drift]` count: 0 on the tree, 1 under the fixture.** D1 and D2 are vacuous
+until Wave 1.2 adds the marker, which is precisely why the permanent fixture is the
+only real proof at this point.
+
+**Verdict: PASS.** Wave 1.2 may start.
+
 
 ## Progress log
 
