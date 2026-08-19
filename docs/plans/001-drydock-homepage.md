@@ -887,7 +887,7 @@ animation; `npm run verify` passes; reduced motion yields a still, complete,
 visible page.
 
 **Phase gate:** `cd site && npm run verify` exits 0; wavecheck PASS on 2.0, 2.1,
-2.2, 2.3; T2.R.1 APPROVED; **human browser confirmation**; human approval.
+2.2, 2.3, 2.4; T2.R.1 APPROVED; **human browser confirmation**; human approval.
 
 ### Wave 2.0 — Contracts: the export gate
 > Single task. Freezes the executable definition of "done" for all seven sections
@@ -1148,9 +1148,50 @@ visible page.
 - **Acceptance criterion:**
   `cd site && npx eslint components/sections/Faq.tsx && printf '{"extends":"'"$PWD"'/tsconfig.json","include":[],"files":["'"$PWD"'/components/sections/Faq.tsx"]}' > /tmp/dd-tc-Faq.json && npx tsc --noEmit --project /tmp/dd-tc-Faq.json && grep -q "faq" components/sections/Faq.tsx && grep -qE "<dl|<dt|<dd" components/sections/Faq.tsx && ! grep -qE "(duration|delay):|duration-[0-9]" components/sections/Faq.tsx`
 
-### Wave 2.3 — Integration
-> Single task. First point at which a full build is safe, because nothing is
-> concurrent (Decision 16).
+### Wave 2.3 — Repair: no-JS visibility
+> Added by human-authorised amendment (deviation 44) after wavecheck 2.1 found
+> that the page renders blank without JavaScript. Placed BEFORE integration so
+> T2.3.1 verifies the final tree rather than an intermediate one.
+
+#### T2.3.2 — Restore revealed content for visitors without JavaScript
+- **Status:** TODO
+- **Description:** Add a `<noscript>` style block that force-restores every
+  revealed element, mirroring the reduced-motion rule and preserving the split
+  between clip-revealed and path-drawn strokes.
+- **Files owned:** `site/app/layout.tsx`
+- **Depends on:** T2.2.1, T2.2.2, T2.2.3
+- **Model / thinking:** Complex / extended (Sonnet)  **Executor:** drydock:executor
+- **Context brief:** deviation 41 in the Deviation Log; §6 F5, F5a; Decision 25.
+  Read `site/app/layout.tsx` and the `@media (prefers-reduced-motion: reduce)`
+  block in `site/app/globals.css` — the noscript rule must mirror its structure.
+- **Forbidden:** Reading root `index.html`. Authoring any user-visible copy.
+  Touching `globals.css`, `components/`, `content/`, or `page.tsx`. Adding an
+  `<h1>` (Hero owns the only one). Changing the sheet frame, title block, skip
+  link, or `<main tabIndex={-1}>`. **Blanket-restoring `stroke-dasharray` on
+  `[data-reveal]`** — that is precisely the B5 defect, and it would render the
+  dashed waterline solid.
+- **Implementation sketch:**
+  - Measured problem: the export carries **24 elements with inline `opacity:0`,
+    23 of them `data-reveal`**, and no `<noscript>` fallback. With JS the reveal
+    animates; under reduced motion the CSS restore fires; **with JS off and
+    motion not reduced, nothing restores them** — including the `<h1>`, whose
+    text `Drydock` is present in markup but invisible.
+  - CSS cannot detect absent JS, so `<noscript><style>…</style></noscript>` in
+    `layout.tsx` is the mechanism. Server-rendered, so it lands in the export.
+  - **Mirror the split exactly (Decision 25):**
+    `[data-reveal],[data-reveal-path]` restore `opacity`, `transform`,
+    `clip-path`, `width`; **only** `[data-reveal-path]` additionally restores
+    `stroke-dasharray` and `stroke-dashoffset`. Blanketing the stroke properties
+    across both would strip the dashed waterline's pattern — the exact defect
+    B5 identified and Wave 1.6 fixed.
+  - Keep it to one `<noscript>`; no new dependencies; no JS.
+- **Acceptance criterion:**
+  `cd site && npm run verify && grep -q "<noscript>" out/index.html && node -e "const s=require('fs').readFileSync('app/layout.tsx','utf8');const i=s.indexOf('noscript');if(i<0)process.exit(1);const b=s.slice(i,i+900);process.exit(b.includes('data-reveal')&&b.includes('data-reveal-path')&&b.includes('opacity')?0:1)"`
+
+### Wave 2.4 — Integration
+> Single task. Verifies the assembled site after the no-JS repair. Task id
+> `T2.3.1` is preserved per the format contract (ids never change once assigned);
+> only its wave assignment moved, logged as deviation 44.
 
 #### T2.3.1 — Integration verification of the assembled site
 - **Status:** TODO
@@ -1158,7 +1199,7 @@ visible page.
   result. This task fixes nothing; it establishes whether seven independently
   built sections satisfy the frozen export contract.
 - **Files owned:** `docs/plans/001-drydock-homepage.md` (Progress log only)
-- **Depends on:** T2.1.1–T2.1.4, T2.2.1–T2.2.3
+- **Depends on:** T2.1.1–T2.1.4, T2.2.1–T2.2.3, **T2.3.2**
 - **Model / thinking:** Mechanical / off (Haiku)  **Executor:** drydock:executor
 - **Context brief:** This plan §10 (escalation, `T2.3.2+` policy).
 - **Forbidden:** Editing anything under `site/`. Fixing a failing assertion — a
@@ -1174,7 +1215,7 @@ visible page.
   section reimplemented shared behaviour, and whether the page over-claims
   against `docs/compatibility.md`.
 - **Files owned:** `docs/plans/001-drydock-homepage.md` (Progress log only)
-- **Depends on:** T2.3.1 and wavecheck PASS on 2.0, 2.1, 2.2, 2.3
+- **Depends on:** T2.3.1 and wavecheck PASS on 2.0, 2.1, 2.2, 2.3, 2.4
 - **Model / thinking:** Judgment / extended (Opus)  **Executor:** drydock:executor
 - **Context brief:** the full `site/` diff, this plan, §7, `docs/compatibility.md`.
 - **Forbidden:** Editing anything under `site/`. Re-litigating §7 decisions.
@@ -1230,6 +1271,7 @@ visible page.
 | 41 | — (design gap, no task violated anything) | **Without JavaScript and without reduced motion, the page renders essentially blank.** Measured on the real export: **24 elements carry inline `opacity:0`, 23 of them `data-reveal`**, and there is **no `<noscript>` fallback** (0 matches). The `<h1>` contains `<span data-reveal style="opacity:0;transform:translateY(12px)">Drydock</span>` — text present in the markup, invisible on screen. Three paths, only two covered: JS on → Framer animates to visible ✓; reduced motion → `[data-reveal]` restores ✓; **JS off, motion not reduced → nothing ever restores it ✗** | F5 secured *presence* in the markup so the copy assertions could grep it. F5a secured *visibility* under reduced motion. Neither addressed no-JS, and having two adjacent guarantees made it easy to assume the third was covered | **No Wave 2.1 task violated any criterion or forbidden item** — this is a consequence of the Phase 1 shell and motion contract, so wavecheck 2.1 still PASSES. Fix is one `<noscript><style>` block force-restoring `[data-reveal]`/`[data-reveal-path]`, mirroring the reduced-motion rule. **Structurally the same problem as B5: it belongs in `layout.tsx` or `globals.css`, which no Phase-2 task owns**, so it needs a repair task. Deferred to a single Phase-2 repair rather than a wave of its own — flagged to the human | `discovered-by-wavecheck` |
 | 42 | T2.1.1 | Two judgement calls reported rather than absorbed: (a) the `<h1>` is a plain `<h1>` wrapping a `<motion.span data-reveal>` rather than a `<motion.h1>`, because the criterion greps the literal `<h1` and a `<motion.h1>` component reference does not contain that substring; (b) Hero's root is a `<div>`, not a `<header>`, since `layout.tsx` already provides a `<header>` landmark around `site.status` | The criterion's grep shape constrained the JSX, and a second `<header>` would have been a semantic clash the plan never asked for | Both correct. (a) yields exactly one `<h1>` containing `Drydock` — verified in the export — and animates only opacity/transform on the inner span, never text content. (b) avoids nested banner landmarks. Also confirmed: the only occurrence of the string `Section` in `Hero.tsx` is a doc comment explaining its Decision 18 exemption; it imports and renders none (0 matches) | executor report, verified by wavecheck |
 | 43 | T2.2.1 | **Terminal is the only section relying on Framer variant-context propagation.** It sets `initial="hidden" whileInView="shown"` once on a `motion.pre` ancestor and lets the per-line `variants={safe ? revealClipStagger(i) : NO_MOTION}` inherit that state from context. Hero and Lifecycle instead set `initial`/`animate` explicitly on every motion element | The staggered reveal needs one shared trigger with per-child cadence, which is what variant propagation is for; the alternative is a hand-managed in-view hook per line | **Silent-failure risk, and the executor flagged it unprompted as outside its owned file:** if `Section.tsx` or any intermediate wrapper's motion setup changes, Terminal's reveal stops firing with no lint error, no type error, no build error and no assertion failure — the twelve lines simply stay clipped. Same species as deviations 12, 13, 18, 20, 27, 40, 41. Added to T2.R.1's checklist and the human browser gate; the lines are all present in the export either way, so the failure would be visual only | executor report |
+| 44 | — (human-authorised) | **Wave 2.3 added as a no-JS repair and integration moved to Wave 2.4**, in response to deviation 41. New task `T2.3.2` owns `app/layout.tsx`; integration keeps its id `T2.3.1` per the format contract (ids never change once assigned) with only its wave assignment moved, and now depends on the repair | The human chose to fix before integrating so `T2.3.1` verifies the final tree rather than an intermediate one. The repair cannot share a wave with integration: integration verifies what the repair produces, which would be the sideways-dependency defect this plan has already hit three times (round-1 C4, round-2 C-1, deviation 34) | **Third structural instance of the same gap: `app/layout.tsx` and `app/globals.css` are owned by no Phase-2 task**, so B5, N15 and now the no-JS fix each required a new Phase-1-style repair wave. Reconcile: a plan whose Phase 2 cannot touch its own shell should either give a Phase-2 task ownership of the shell files or state that shell defects are out of phase scope by design |
 | 8 | T1.0.1 | **Turbopack resolves its workspace root outside the repository.** Every `next build` emits `⚠ Next.js ignored yarn.lock in /Users/takasivenkatasandeep because it is outside the current Git repository`. A stray `~/yarn.lock` (83 KB, dated 2026-01-09) exists in the home directory; `turbopack.root` is unset in `next.config.ts`. Confirmed to recur on a clean `rm -rf .next out && npm run build` | Next 16 infers the workspace root by walking up for a lockfile and finds one above the repo | Currently a warning, not a failure — the criterion exits 0 and the export is correct. But root inference reaching outside the repo is a latent hazard for a reproducible build, and the executor did not report a warning that appeared in its own build output. `turbopack.root` should be pinned to `site/`; that is a change to `next.config.ts`, owned by T1.0.1 in a closed wave, so it belongs to a follow-up task or `/drydock:replan`, not to this wave | `discovered-by-wavecheck` |
 
 ## Wavecheck reports
