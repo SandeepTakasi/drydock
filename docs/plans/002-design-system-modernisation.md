@@ -657,6 +657,34 @@ will need them:
 - **R5** → plan 003: never build a token name dynamically; `var(--stroke-${w})`
   is tree-shaken to nothing with no error.
 
+**Addendum — §10's "no rendered output" claim independently verified across the
+whole emitted tree, not just the stylesheet.** The plan's checksum gate covers one
+file. The unchecked surfaces are the exported HTML and the client JS bundles:
+`lib/motion.ts` **is** imported by four components, so three new exports added to a
+live module could plausibly survive into a bundle and change its content hash,
+which would change the `<script src>` in `index.html`. Tested by building both
+revisions from clean source in a scratch clone (`git archive 9e6fadc` and
+`git archive HEAD`, four production builds total, nothing under `site/` touched):
+
+- Both builds emit **45 files with identical names** — so every content-hashed JS
+  chunk is unchanged, and the three new motion exports were tree-shaken out of the
+  client bundle as F7 assumes.
+- After normalising Next's build id, **all 45 files are byte-identical (0 differing
+  files).** The only variance anywhere in `out/` is the 21-character random build id,
+  which appears in the RSC flight payload as `"b":"<id>"` and in the
+  `_next/static/<id>/` directory name. It differs between two builds of *identical*
+  source — three separate builds of HEAD produced `vWsqz6rk…`, `Zn1Ws1tf…` and a
+  base build produced `XY-ZOPIo…` — so it is build nondeterminism, not a source
+  change. Worth knowing: a future plan that tries to checksum `index.html` directly
+  will get a false positive unless it normalises that id first.
+- The compiled stylesheet is `40b6a434624dbb530bd0bbb2bd002125acba1037` in basename
+  `1s2vcbm8xcik1.css` from both revisions — matching T0's recorded baseline exactly.
+
+Both project gates were also re-run first-hand against a HEAD build rather than
+taken from wavecheck 1.2: `assert-copy: PASS (14 literals, 4x executor, 1 h1, motion
+contract)` and `measure-reduced-motion: PASS (reducedMotion=true, waterline="10px,
+8px", stippled=0, hull opacity 1 / dasharray none, invisibleText=0)`.
+
 
 ## Reconcile report
 
