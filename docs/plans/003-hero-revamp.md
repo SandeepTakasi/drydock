@@ -1,10 +1,10 @@
 ---
 plan: 003-hero-revamp
 format_version: 2
-status: DRAFT
+status: EXECUTING
 isolation: none
 created: 2026-08-19
-approved_by: unapproved
+approved_by: sandeep
 ---
 
 # 003 — Hero revamp
@@ -444,7 +444,7 @@ green; a human has confirmed it in a browser.
 
 | # | Task | What deviated | Why | Impact | Recorded |
 |---|------|---------------|-----|--------|----------|
-| — | — | — | — | — | — |
+| 1 | — (human-authorised) | **Round-2 pressure test skipped**; approved after round 1's fixes | The human read §11 — including its own warning that this plan's three criticals were planner *reasoning* errors, the category a second round catches best — and chose to proceed | **Residual risk accepted and named:** every round-1 finding was reproduced before acceptance, but nobody with fresh eyes has examined the repaired plan. If T1.R.1 rejects on the same axis (an unbuildable decision, an unfallible gate, or an assertion inert on its real target), the plan is the problem rather than the review, and that is the signal to stop revising and reconsider the approach |
 
 ## Wavecheck reports
 
@@ -455,6 +455,7 @@ green; a human has confirmed it in a browser.
 | Date | Task | Result | Notes |
 |------|------|--------|-------|
 | 2026-08-19 | — | Plan drafted | Carries inherited constraints from plans 001–002 as F1–F11; each traces to a defect already paid for |
+| 2026-08-19 | — | **APPROVED by sandeep** | Round 2 skipped by human decision (deviation 1); status → EXECUTING |
 | 2026-08-19 | — | Round-1 pressure test REJECTED | 3 CRITICAL / 8 MAJOR / 6 MINOR. All confirmed findings fixed (§11). Three were errors in the planner's own reasoning, not its wording, and were independently reproduced before acceptance |
 
 ## Reconcile report
