@@ -542,6 +542,214 @@ only real proof at this point.
 | 2026-08-19 | — | Round-1 pressure test REJECTED | 3 CRITICAL / 8 MAJOR / 6 MINOR. All confirmed findings fixed (§11). Three were errors in the planner's own reasoning, not its wording, and were independently reproduced before acceptance |
 | 2026-08-19 | T0 | Baseline recorded | SHA 2187c52, both gates green, Hero.tsx 209 lines, [data-drift] count 0 |
 | 2026-08-19 | T1.3.1 | Integration verification | **assert-copy final:** `assert-copy: PASS — /Users/takasivenkatasandeep/Desktop/drydock-repo/site/out/index.html (14 literals, 4x executor, 1 h1, motion contract)`. **measure-reduced-motion final:** `measure-reduced-motion: PASS — reducedMotion=true, waterline="10px, 8px", stippled=0, hull={"opacity":"1","dasharray":"none"}, invisibleText=0, drift[reduced]=1, drift[motion-allowed]=1`. **Both exited 0.** Metrics: Hero.tsx 209 lines (baseline 209), [data-drift] count 2. SHA: `213dfd5b9f9afb99337f3f83c3ee6f1e9e2697c2`. |
+| 2026-08-19 | T1.R.1 | **REJECTED** — fresh-context quality review | 2 BLOCKING / 4 MAJOR / 3 observations. Both blockers are in `Hero.tsx` (T1.2.1's owned file) and both are drift-related; the harness, the copy contract, the token and the type step all hold. Full findings below. |
+
+### T1.R.1 — Fresh-context quality review of plan 003 — **REJECTED** — 2026-08-19
+
+Reviewed `git diff 2187c52..HEAD -- site/` (three files, +351/−201) against §1, §6 (F1–F11), §7,
+the Deviation Log and all four wavecheck reports. Method: both gates re-run verbatim, the
+`DRIFT_FIXTURE=1` failure re-run, and headless Chrome over `out/` at 1440×1000 and 380×820
+(2× DPR) for computed styles, rendered geometry and screenshots.
+
+**Verdict: REJECTED.** Not on any of round 1's three axes — see "Round 1's repairs hold"
+below, which is why Deviation 1's *"if this is rejected again on the same axis, the plan is
+the problem"* trigger is **not** met. Both blockers are fixable inside `Hero.tsx`, the file
+T1.2.1 already owns, without touching `lib/motion.ts`, `globals.css` or `content/copy.ts`.
+
+#### R1 — BLOCKING — the drift's rest offset visibly breaks two of the drawing's construction joints, and buys no perceptible depth
+
+Measured, hydrated, motion allowed, 1440×1000:
+
+| scrollY | inline transform on `[data-drift]` | cradle-block bottom vs dock floor | deckhouse bottom vs hull deck |
+|---|---|---|---|
+| 0 — what a visitor lands on | `translateY(5.64706px)` | **5.4px below** | **5.4px below** |
+| 200 | `translateY(1.26949px)` | 1.2px below | 1.2px below |
+| 400 | `translateY(-3.10807px)` | 2.9px above | 2.9px above |
+| 512 — board leaving | `translateY(-5.55951px)` | 5.3px above | 5.3px above |
+
+Screenshots confirm it: the deckhouse's bottom rail is plainly sunk below the hull's deck
+line, and the cradle legs plainly pierce the dock floor and stick out beneath it — **at
+load, before the visitor scrolls.**
+
+The plan predicted the offset (F5: a short interior layer rests at "≈ +5.9px"; measured
++5.65px, so the arithmetic was right) and dismissed it: *"that is inherent and not a bug to
+chase."* That is correct about the **hook** and wrong about the **drawing**. The drift group
+contains the three cradle blocks (`M220 360 L220 330 L260 330 L260 360` — bottoms authored
+flush with the dock floor at `y=360`) and the deckhouse (`rect y="185" height="40"` — bottom
+authored flush with the hull deck line at `y=225`). Both are in rigid contact with elements
+that do **not** drift. Decision 3's rationale — "parallax reads as depth only when one layer
+moves relative to others" — is true of layers at different depths; these are mechanically
+joined at the same depth, so the relative motion reads as the drawing coming apart, not as
+depth.
+
+And the depth cue is not bought either. Over the board's entire on-screen life
+(scrollY 0→512) the differential is **10.7px against ~512px of scroll — about 2%**, well
+under what registers as parallax. `DRIFT = 16` never reaches ±16 while the board is visible;
+it hits −16 only at scrollY ≈ 1023, long after the board has left. So the effect is
+simultaneously **too small to read as depth and too large to be invisible at rest** — it
+reads as neither parallax nor jitter, but as a misaligned drawing.
+
+Fix, entirely inside the owned file: put `data-drift` on the annotation-only layers (the
+`draftMarks` and `keelLabels` groups, which touch nothing), and leave the cradle blocks and
+superstructure with the fixed hull and floor. The rest offset then moves type that has no
+joint to break.
+
+#### R2 — BLOCKING — silent failure #11: with JavaScript disabled the drawing is permanently 16px broken
+
+`out/index.html` ships:
+
+```
+<g data-drift="true" style="transform:translateY(16px);transform-origin:50% 50%;transform-box:fill-box">
+```
+
+Both safety nets that exist for exactly this key on `data-reveal`: `globals.css`'s
+`[data-reveal] / [data-reveal-path] { transform: none !important }` and the `<noscript>`
+block in `app/layout.tsx` that mirrors it. The drifting `<g>` carries **neither** attribute —
+correctly, per T1.2.1's brief — so **nothing resets it**. No JS: the cradle blocks sit 16px
+through the dock floor and the deckhouse 16px into the hull, permanently. No error, every
+gate green — the harness only ever measures a hydrated page. `grep -c data-drift
+app/layout.tsx` → 0.
+
+This also corrects F5/Q1's characterisation of the pre-hydration frame. It is not a
+reduced-motion-visitor issue: **every** visitor paints at +16px and snaps to +5.65px on
+hydration; the reduced-motion visitor snaps from +16px to 0. And the no-JS case is not "one
+painted frame", it is permanent.
+
+Root cause is a contract gap worth reconciling: `lib/motion.ts` rule 2 pairs `data-reveal`
+with **variants**, and a MotionValue-driven `style={{ y }}` is not a variant — so the site's
+entire reduced-motion/no-JS restore mechanism has no rule covering scroll-linked motion. The
+cheapest fix is inside the owned file: put a bare `data-reveal` on the `[data-drift]` group.
+The `<noscript>` rule then zeroes it with JS off, the reduced-motion rule zeroes it with JS
+on, and **D1 is unaffected because it reads `el.style.transform`, not the computed value** —
+Decision 8 already made the gate immune to precisely this attribute. Note this is *not* the
+forbidden "`heroReveal` and `style={{ y }}` on the same element": no variant is added, only
+the bare attribute.
+
+#### M1 — MAJOR — `axes: ["opsz"]` has zero rendered effect at display size, the size §1 and Decision 4 justified it by
+
+Advance width of "Drydock" in Big Shoulders, `letter-spacing: -0.02em`, measured in the page:
+
+| font-size | `optical-sizing: auto` | `optical-sizing: none` | forced `"opsz" 72` | forced `"opsz" 40` | forced `"opsz" 10` |
+|---|---|---|---|---|---|
+| **144px** (h1, wide) | **319.375px** | **319.375px** | **319.375px** | 341.438px | 362.125px |
+| 56px (h1, narrow) | 128.500px | 124.203px | — | — | — |
+| 16px | 39.781px | 35.500px | — | — | — |
+
+The axis is live and does vary the face — but the served font's default `opsz` already equals
+the axis maximum (72), and `auto` clamps to 72 at any size ≥ 72px. So the axis changes
+rendering only **below** 72px: at title sizes and at the h1's narrow-viewport 56px, i.e.
+everywhere the display face is used *except* display size.
+
+Wavecheck 1.0 measured +42,640 bytes of font payload and inferred "the axis is embedded and
+the task is not a no-op". The measurement is right; the inference is **Deviation 3's shape
+again** — a sound measurement paired with a conclusion it does not support. §1's *"so auto
+optical sizing applies at display size"* and T1.0.1's title should read *at title and
+narrow-viewport sizes*. The good news for the optical judgment: the h1 at 144px renders at
+the display end of the axis, so it does **not** look like body type scaled up — it simply
+already did before this plan.
+
+*Method caveat, stated so it is not over-trusted:* I inferred the baseline rendering from
+`font-optical-sizing: none` on the current build rather than rebuilding at 2187c52, which
+would have required writing under `site/`.
+
+#### M2 — MAJOR — the drafting board shrank the drawing 6.8% while the headline grew 38%
+
+Rendered SVG width **910px** (viewBox scale 0.9479) against **976px** at baseline: the new
+wrapper's `p-4 sm:p-8` eats 64px inside the same `max-w-5xl px-6`. Meanwhile `text-sheet`
+(104px) → `text-hero` (144px). The plan set out to make the drawing the page's centrepiece at
+display scale, and the drawing is the one element that got smaller. Not a defect — a
+composition consequence a human should look at deliberately.
+
+#### M3 — MAJOR — the board is 36% empty at the top
+
+Drawing content occupies viewBox `y` 150–382 of 420. At 1440px that is **245 CSS px of blank
+`--color-raised` above the mast tip**, inside a 655px-tall panel. The inherited viewBox was
+invisible when the SVG sat directly on the grid; now that the plane is a visibly lighter
+rectangle, the panel reads as an oversized frame around a bottom-anchored drawing rather than
+a composed sheet.
+
+#### M4 — MAJOR (inherited, out of scope here) — the drawing's only fine detail is a collision
+
+Measured bounding boxes in user units: `10M` occupies x 196–214, `12M` starts at x 210 — **4
+units of overlap**, and it is legible as overlap in the render. Coordinates are byte-identical
+to baseline (`x={140 + i * 14} y={315 - i * 4}`), so this is N17 and §9 excludes it "unless
+the new display scale makes it worse". It is not worse *in kind* — but M2's 6.8% shrink makes
+every mark absolutely smaller, and making `--color-raised` visible behind them draws the eye
+to them. At 380px the same text renders at ≈3.1 CSS px. For plan 005's responsive/a11y sweep,
+not for this plan.
+
+#### `--color-raised` is perceptible — plan 002's prediction holds against pixels
+
+Rendered: the drafting board and the badge chips both compute `rgb(11, 48, 74)`; `<body>`
+computes `rgb(6, 19, 32)`. The hero sits on `--color-dock`, **not** `--color-panel` — the
+sheet `<div>` and `<main>` carry no background — so the step the hero actually exercises is
+dock → raised: **L\* 5.5 → 18.7, +13.2 L\***, and it is unmistakable in the screenshot as a
+lighter plane. Plan 002's arithmetic checks out (dock→panel +6.0, panel→raised +7.2 L\*), so
+the token, the decision and the plan were built on a **correct** premise. One honest
+qualification: the panel→raised case that review actually argued about (+7.2 L\*, 1.21:1) is
+still exercised by no consumer — the hero does not put raised on panel.
+
+#### Round 1's repairs hold — re-verified independently, not accepted from the reports
+
+- **C1 (unbuildable decision):** the drift is built in the only shape that compiles —
+  `useRef<HTMLDivElement>` on an HTML wrapper → `useDriftY` → `<motion.g data-drift
+  style={{ y }}>`. No SVG ref, no `TS2345`.
+- **C2 (unfallible gate):** clean run `PASS — … drift[reduced]=1, drift[motion-allowed]=1`;
+  `DRIFT_FIXTURE=1` → `FAIL (2/7)` naming D1, non-zero exit. Re-runnable, permanent, real.
+- **C3 (assertion inert on its real target):** D1/D2 read `el.style.transform`. I measured
+  the inline value at `translateY(5.64706px)` on an element whose surrounding `[data-reveal]`
+  group has its computed transform forced to `none` — the gate reads the live value, not the
+  masked one. Decision 8 landed.
+
+#### No overflow at narrow viewports — F7 holds
+
+380×820: `documentElement.scrollWidth` 380 = `innerWidth` 380; **zero** elements extend past
+the viewport; h1 at 56px, the clamp floor (12vw = 45.6px < 3.5rem). 1440px: scrollWidth 1440,
+h1 at 144px, the 9rem ceiling (12vw = 172.8px). `12vw` is only the live term between ~467px
+and 1200px, where "Drydock" in a condensed face at ≤144px sits far inside `max-w-5xl`. The
+`-0.02em` tracking only ever reduces width. Nothing bleeds to the trim.
+
+#### Honesty and scope hold
+
+All eight `hero` exports render; no on-page string is authored in the component. `assert-copy:
+PASS — 14 literals, 4x executor, 1 h1, motion contract`, so no pinned literal is fragmented
+across tags (zero `.split(` in the file). No timing literal. Nine `initial="hidden"` and nine
+`animate="shown"`, no F8 misspelling. Exactly one `data-reveal-path` attribute (the hull), so
+the `pathLength` pairing is right. Exactly one `strokeDasharray="10 8"`, so C1's hardened
+selector still matches uniquely. No `min-h-screen`/`w-screen`, no second accent, no shadow,
+blur or glass. Nothing in the diff is outside what §1 requires.
+
+#### Observations — no action requested
+
+- `strokeWidth="var(--stroke-hair|rule|heavy)"` is **new** in this diff (baseline used the
+  literals `"2"` / `"3"`). It resolves correctly in Chrome — measured 1px / 2px / 3px on
+  floor / cradle / hull. `var()` in an SVG *presentation attribute* is spec-legal, but only
+  Chrome was available here; in a browser that rejects it the value falls back to the initial
+  `stroke-width: 1` and the whole `--stroke-*` ramp silently collapses to hairlines with no
+  error. Worth one glance in Safari at the human browser gate. Baseline already relied on the
+  same mechanism for `fontFamily="var(--font-mono)"`, so the risk is smaller than it looks.
+- The harness's `isIdentityTransform` numeric fallback requires *every* number to be 0, so it
+  would treat `scale(1)` as non-identity. Harmless today; would misfire if a future drift used
+  scale.
+- The board's opaque `bg-raised` occludes the blueprint grid across the largest area of the
+  hero. Defensible as a board laid on a drafting table — noted only because the grid is the
+  substrate the whole design argument rests on.
+
+#### Is it modern, and is it still an engineering drawing?
+
+The type answers yes. "Drydock" at 144px in Big Shoulders over a primer-orange mono eyebrow,
+with the lead paragraph and three raised chips beneath, is genuinely striking and clearly not
+"a competent dark landing page with a grid background" — the blueprint grid, the microtype and
+the single accent keep it on the drawing side of the line, and the dashed primer waterline
+carrying `APPROVED (HUMAN-ONLY)` is the strongest single device on the page.
+
+The drawing does not yet answer yes, and that is what this rejection is about. On a page whose
+entire argument is that claims trace to evidence, the centrepiece drawing's own construction
+joints do not meet at load (R1), a visitor without JS sees them three times further apart
+(R2), its only fine detail is a legible collision (M4), it is 36% empty at the top (M3), and it
+is the one element the display-scale revamp made smaller (M2). Fix R1 and R2 — both inside
+`Hero.tsx` — and this is ready for a human's browser check.
+
 
 ## Reconcile report
 
