@@ -251,12 +251,16 @@ into delegating names and types alongside values.
 **Exit state:** the token and motion vocabularies carry everything plans 003–005
 need; both gates green; no consumer changed.
 
-**Phase gate:** `cd site && npm run verify` exits 0; `node scripts/measure-reduced-motion.mjs` exits 0; wavecheck PASS on 1.0 and 1.1; T1.R.1 APPROVED; human approval.
+**Phase gate:** `cd site && npm run verify` exits 0; `node scripts/measure-reduced-motion.mjs` exits 0; wavecheck PASS on 1.0, 1.1 and 1.2; T1.R.1 APPROVED; human approval.
 
-### Wave 1.0 — Contracts
-> Two parallel tasks, disjoint files, neither importing the other's output.
-> Criteria are source-scoped: new tokens are tree-shaken until consumed (F2), so
-> asserting on `out/` would fail for a correct implementation.
+### Wave 1.0 — Contracts: tokens
+> **Single task, deliberately not parallel.** The C3 fix ends each criterion with
+> `npm run build` plus a compiled-CSS checksum diff. Two concurrent builds write
+> the same `site/out` and `site/.next`, which is the shared-build-directory race
+> plan 001 Decision 16 forbids — one task's checksum would be diffed against a
+> stylesheet the other task built. Serializing costs almost nothing at two tasks
+> and keeps both the build gate (C3) and the isolation rule (Decision 16). Logged
+> as deviation 1.
 
 #### T1.0.1 — Surface tier, display step, stroke ramp
 - **Status:** TODO
@@ -299,15 +303,20 @@ need; both gates green; no consumer changed.
   byte-identical, so any accidental rendered change fails loudly here rather than
   in a later task forbidden from fixing it.)*
 
-#### T1.0.2 — Choreography primitives
+### Wave 1.1 — Contracts: motion primitives
+> Second half of the contract, serialized behind 1.0 for the reason above. It owns
+> a different file and depends on nothing 1.0 produces — the ordering is purely to
+> keep builds off each other.
+
+#### T1.1.1 — Choreography primitives
 - **Status:** TODO
 - **Description:** Add the motion primitives for scroll-choreographed sections —
   scroll-linked drift and a per-index anchor reveal — each with a reduced-motion
   path. Additive; the ten existing exports are untouched.
 - **Files owned:** `site/lib/motion.ts`
-- **Depends on:** T0
+- **Depends on:** T1.0.1
 - **Model / thinking:** Judgment / extended (Opus)  **Executor:** drydock:executor
-- **Context brief:** This plan §1, §6 (F1, F3, F5), Decisions 1, 4. Read
+- **Context brief:** This plan §1, §6 (F1, F3, F5, F6, F7, F8), Decisions 1, 4. Read
   `site/lib/motion.ts` including its header contract.
 - **Forbidden:** Renaming or removing any of the ten existing exports. Adding
   `pathLength` to `NO_MOTION` (destroys author dash patterns — plan 001
@@ -337,15 +346,14 @@ need; both gates green; no consumer changed.
   `revealClipStagger` and `drawLine` by its own doc comment, so both export blocks
   could be deleted with the guard still passing — F8.)*
 
-### Wave 1.1 — Integration
-> Single task; first point a full build is safe.
+### Wave 1.2 — Integration
 
-#### T1.1.1 — Integration verification
+#### T1.2.1 — Integration verification
 - **Status:** TODO
 - **Description:** Run both gates against the extended system and record the
   result. Fixes nothing.
 - **Files owned:** `docs/plans/002-design-system-modernisation.md` (Progress log)
-- **Depends on:** T1.0.1, T1.0.2
+- **Depends on:** T1.0.1, T1.1.1
 - **Model / thinking:** Mechanical / off (Haiku)  **Executor:** drydock:executor
 - **Context brief:** This plan §10.
 - **Forbidden:** Editing anything under `site/`. Fixing a failing gate — a failure
@@ -361,7 +369,7 @@ need; both gates green; no consumer changed.
   plans 003–005 to build against without guessing, and whether Decision 2's
   no-shadows constraint was honoured in spirit as well as in grep.
 - **Files owned:** `docs/plans/002-design-system-modernisation.md` (Progress log)
-- **Depends on:** T1.1.1 and wavecheck PASS on 1.0, 1.1
+- **Depends on:** T1.2.1 and wavecheck PASS on 1.0, 1.1, 1.2
 - **Model / thinking:** Judgment / extended (Opus)  **Executor:** drydock:executor
 - **Context brief:** `git diff <T0 baseline SHA>..HEAD -- site/` — the **code**
   diff, not the plan document's diff — plus this plan and §7. Measure the new
@@ -378,7 +386,7 @@ need; both gates green; no consumer changed.
 
 | # | Task | What deviated | Why | Impact | Recorded |
 |---|------|---------------|-----|--------|----------|
-| — | — | — | — | — | — |
+| 1 | — (planner, caught pre-execution) | **Wave 1.0 was split into two serial waves (1.0 tokens, 1.1 motion); integration moved to 1.2.** Task `T1.0.2` renumbered to `T1.1.1` — legitimate, as it had not executed | The C3 repair added `npm run build` + a compiled-CSS checksum to both criteria. Run in parallel, the two tasks build into the same `site/out` and `site/.next`, so one task's checksum would be diffed against a stylesheet the other built — the shared-build-directory race plan 001 Decision 16 exists to forbid. **The pressure test could not have caught this: it reviewed the plan before the fix that introduced it** | None on output; caught before either task ran. Serializing costs almost nothing at two tasks and preserves both the build gate and the isolation rule. **Reconcile: a fix that adds a build step to a criterion must re-check the wave's parallelism** — the two constraints interact and nothing currently forces that check |
 
 ## Wavecheck reports
 
