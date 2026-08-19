@@ -57,9 +57,25 @@ Three files: `site/lib/fonts.ts`, `site/scripts/measure-reduced-motion.mjs`,
 
 ## 4. Baseline
 
-Filled by T0: SHA, `npm run verify`, `node scripts/measure-reduced-motion.mjs`.
-**No CSS checksum gate in this plan** — unlike 002, this one deliberately changes
-rendered output, so a byte-identical stylesheet would mean the work did not happen.
+**Baseline SHA:** `2187c522dfc6f0a832212ea93c25025378e19693`
+
+**Working tree state:** clean (no untracked or modified files)
+
+**`npm run verify` result:**
+```
+assert-copy: PASS — /Users/takasivenkatasandeep/Desktop/drydock-repo/site/out/index.html (14 literals, 4x executor, 1 h1, motion contract)
+```
+
+**`node scripts/measure-reduced-motion.mjs` result:**
+```
+measure-reduced-motion: PASS — reducedMotion=true, waterline="10px, 8px", stippled=0, hull={"opacity":"1","dasharray":"none"}, invisibleText=0
+```
+
+**Pre-implementation metrics:**
+- `site/components/sections/Hero.tsx`: 209 lines
+- `[data-drift]` occurrence count in `site/`: 0 (as expected — marker does not exist yet)
+
+**Note:** No CSS checksum gate in this plan — unlike 002, this one deliberately changes rendered output, so a byte-identical stylesheet would mean the work did not happen.
 
 ## 5. Practices in effect
 
@@ -457,6 +473,7 @@ green; a human has confirmed it in a browser.
 | 2026-08-19 | — | Plan drafted | Carries inherited constraints from plans 001–002 as F1–F11; each traces to a defect already paid for |
 | 2026-08-19 | — | **APPROVED by sandeep** | Round 2 skipped by human decision (deviation 1); status → EXECUTING |
 | 2026-08-19 | — | Round-1 pressure test REJECTED | 3 CRITICAL / 8 MAJOR / 6 MINOR. All confirmed findings fixed (§11). Three were errors in the planner's own reasoning, not its wording, and were independently reproduced before acceptance |
+| 2026-08-19 | T0 | Baseline recorded | SHA 2187c52, both gates green, Hero.tsx 209 lines, [data-drift] count 0 |
 
 ## Reconcile report
 
