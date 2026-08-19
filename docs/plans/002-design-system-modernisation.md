@@ -140,6 +140,10 @@ be written against names an executor invents.
 | `heroReveal(i: number)` | motion.ts | `Variants`, per-beat, so 003 adds hero beats without a timing literal | 003 |
 | `useDriftY(ref)` | motion.ts | hook → `MotionValue<number>`; constant 0 when `useMotionSafe()` is false (F3) | 003, 004 |
 
+**Namespace note (deviation 2):** `--color-*` and `--text-*` are Tailwind v4 theme
+namespaces and yield utilities (`bg-raised`, `text-hero`). `--stroke-*` is **not** —
+those three are bare custom properties, consumed as `var(--stroke-hair)` in CSS.
+
 Nothing outside this table may be added. Motion exports carry `satisfies` types
 against the `motion` package's own, matching `heroSequence`'s existing idiom —
 untyped object literals pass single-file `tsc` and fail only in a later plan that
@@ -386,6 +390,8 @@ need; both gates green; no consumer changed.
 
 | # | Task | What deviated | Why | Impact | Recorded |
 |---|------|---------------|-----|--------|----------|
+| 2 | T1.0.1 | **`--stroke-hair` / `--stroke-rule` / `--stroke-heavy` are not a Tailwind v4 theme namespace, so they emit no utilities.** Plans 003–005 must consume them as `var(--stroke-hair)` in CSS, not as `border-hair`-style classes | The planner specified three token names without checking them against Tailwind v4's namespace rules — only `--color-*`, `--font-*`, `--text-*` and the other documented namespaces generate utilities | None yet: caught before any consumer exists, and the tokens are correctly placed inside `@theme` so tree-shaking keeps the stylesheet byte-identical until referenced. **Would have cost plan 004 a repair wave** had a section task tried `border-hair` and found nothing. Added to F6's table for 003–005. Reconcile: a plan that freezes token names should state, per token, whether it yields a utility or a bare custom property |
+| 3 | T1.0.1 | The `! grep -qE "shadow\|…"` clause bans the bare substring `shadow`, so the file cannot contain the word even in a comment, and a zero-blur plane edge — which Decision 2 explicitly permits — must be written as `border`/`outline` rather than `box-shadow: inset` | A crude substring assertion cannot distinguish blur-0 from blur-8 | Accepted cost, and it worked: the executor phrased its rationale as "no diffuse depth effects" and used hairline borders. But the gate forces an implementation around itself, which is worth noting rather than pretending the constraint is free |
 | 1 | — (planner, caught pre-execution) | **Wave 1.0 was split into two serial waves (1.0 tokens, 1.1 motion); integration moved to 1.2.** Task `T1.0.2` renumbered to `T1.1.1` — legitimate, as it had not executed | The C3 repair added `npm run build` + a compiled-CSS checksum to both criteria. Run in parallel, the two tasks build into the same `site/out` and `site/.next`, so one task's checksum would be diffed against a stylesheet the other built — the shared-build-directory race plan 001 Decision 16 exists to forbid. **The pressure test could not have caught this: it reviewed the plan before the fix that introduced it** | None on output; caught before either task ran. Serializing costs almost nothing at two tasks and preserves both the build gate and the isolation rule. **Reconcile: a fix that adds a build step to a criterion must re-check the wave's parallelism** — the two constraints interact and nothing currently forces that check |
 
 ## Wavecheck reports
