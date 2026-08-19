@@ -39,7 +39,7 @@ export default function RootLayout({
             {site.status}
           </header>
 
-          <main id="content">{children}</main>
+          <main id="content" tabIndex={-1}>{children}</main>
 
           {/* Title block. A real sheet carries it bottom-right in a ruled box:
               two rows of three cells, project / title / sheet number over
