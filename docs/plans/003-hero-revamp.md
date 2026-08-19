@@ -542,7 +542,7 @@ only real proof at this point.
 | 2026-08-19 | — | Round-1 pressure test REJECTED | 3 CRITICAL / 8 MAJOR / 6 MINOR. All confirmed findings fixed (§11). Three were errors in the planner's own reasoning, not its wording, and were independently reproduced before acceptance |
 | 2026-08-19 | T0 | Baseline recorded | SHA 2187c52, both gates green, Hero.tsx 209 lines, [data-drift] count 0 |
 | 2026-08-19 | T1.3.1 | Integration verification | **assert-copy final:** `assert-copy: PASS — /Users/takasivenkatasandeep/Desktop/drydock-repo/site/out/index.html (14 literals, 4x executor, 1 h1, motion contract)`. **measure-reduced-motion final:** `measure-reduced-motion: PASS — reducedMotion=true, waterline="10px, 8px", stippled=0, hull={"opacity":"1","dasharray":"none"}, invisibleText=0, drift[reduced]=1, drift[motion-allowed]=1`. **Both exited 0.** Metrics: Hero.tsx 209 lines (baseline 209), [data-drift] count 2. SHA: `213dfd5b9f9afb99337f3f83c3ee6f1e9e2697c2`. |
-| 2026-08-19 | T1.R.1 | **REJECTED** — fresh-context quality review | 2 BLOCKING / 4 MAJOR / 3 observations. Both blockers are in `Hero.tsx` (T1.2.1's owned file) and both are drift-related; the harness, the copy contract, the token and the type step all hold. Full findings below. |
+| 2026-08-19 | T1.R.1 | **REJECTED** — fresh-context quality review | 2 BLOCKING / 5 MAJOR / 3 observations. Both blockers are in `Hero.tsx` (T1.2.1's owned file) and both are drift-related; the harness, the copy contract, the token and the type step all hold. Full findings below. |
 
 ### T1.R.1 — Fresh-context quality review of plan 003 — **REJECTED** — 2026-08-19
 
@@ -606,7 +606,8 @@ Both safety nets that exist for exactly this key on `data-reveal`: `globals.css`
 `[data-reveal] / [data-reveal-path] { transform: none !important }` and the `<noscript>`
 block in `app/layout.tsx` that mirrors it. The drifting `<g>` carries **neither** attribute —
 correctly, per T1.2.1's brief — so **nothing resets it**. No JS: the cradle blocks sit 16px
-through the dock floor and the deckhouse 16px into the hull, permanently. No error, every
+through the dock floor and the deckhouse 16px into the hull, permanently. (16 is in the
+drawing's own user units — ≈15 CSS px at a 1440px viewport, scaling with it.) No error, every
 gate green — the harness only ever measures a hydrated page. `grep -c data-drift
 app/layout.tsx` → 0.
 
@@ -677,6 +678,26 @@ the new display scale makes it worse". It is not worse *in kind* — but M2's 6.
 every mark absolutely smaller, and making `--color-raised` visible behind them draws the eye
 to them. At 380px the same text renders at ≈3.1 CSS px. For plan 005's responsive/a11y sweep,
 not for this plan.
+
+#### M5 — MAJOR — the new `bg-raised` plane cut the drawing's internal contrast by 27%
+
+Moving the drawing off `--color-dock` and onto `--color-raised` raises the ground under every
+mark in it. Computed from the tokens (sRGB relative luminance, WCAG ratio):
+
+| foreground | on dock (baseline) | on raised (now) | change |
+|---|---|---|---|
+| `--color-line` — linework, draft marks, keel labels | 3.13:1 | **2.29:1** | −27% |
+| `--color-primer` — waterline + `APPROVED (HUMAN-ONLY)` | 6.54:1 | **4.77:1** | −27% |
+| `--color-ink-dim` — badge chips | 7.31:1 | 5.34:1 | −27% |
+
+The primer row is the one to watch: `app/layout.tsx`'s own comment treats "primer-on-dock at
+6.54:1" as a tracked number, and the page's single most load-bearing string is now at 4.77:1 —
+still over AA's 4.5:1 for normal text, but with a 6% margin where it had 45%. The `--color-line`
+row was already under AA at baseline and stayed under it, so that is not a new failure; the
+keel labels do, however, carry information (`WAVE 1.1/1.2/1.3`) that `hero.svgAriaLabel` does
+not mention, so it is visible only at 2.29:1 and absent from the text alternative — an
+inherited gap this diff makes slightly worse. Badge chips stay comfortably AA. Full sweep is
+plan 005's (§9); recorded here because the plane that caused it is new in this diff.
 
 #### `--color-raised` is perceptible — plan 002's prediction holds against pixels
 
