@@ -502,6 +502,7 @@ green; a human has confirmed it in a browser.
 
 | # | Task | What deviated | Why | Impact | Recorded |
 |---|------|---------------|-----|--------|----------|
+| 10 | — (discovered-by-wavecheck 1.4) | **`site/scripts/measure-reduced-motion.mjs`'s docblock now documents a mechanism the site no longer has.** Lines 6, 14 and 20–22 still read "`[data-drift]` elements (`useDriftY` in `lib/motion.ts`)", "the drifting layer **will** carry `data-reveal`", and "passes vacuously while no `[data-drift]` element exists yet (today's count is 0; **the hero adds one in the next wave**)". Wave 1.4 removed the hero's marker, so that forward-looking parenthetical is now permanently false and the file reads as though D1/D2 are awaiting a consumer that is never coming | T1.4.1 owns only `Hero.tsx` and is forbidden from touching any other file, so it correctly did **not** edit the harness. No task in this plan owns the harness after wave 1.1 | **Documentation-only, zero functional impact** — re-measured, not assumed: clean run PASS at `drift[reduced]=0, drift[motion-allowed]=0`, `DRIFT_FIXTURE=1` still `FAIL (2/7)` naming D1. The vacuity handling the docblock describes is exactly what now runs. The risk is a later reader taking "the hero adds one in the next wave" as current state and reintroducing drift to satisfy it. **Reconcile should correct the prose** (or a follow-up task that owns the harness); not fixable inside wave 1.4's ownership | wavecheck 1.4 |
 | 9 | — (orchestrator, systemic across three plans) | **Every per-task `Status` field in every plan is still `TODO` — 40 of 40, across plans 001, 002 and 003.** That includes plan 001, which is `RECONCILED` with 28 tasks committed, wavechecked and merged, and plan 002, which is `DONE`. The field is defined in the format contract (`Status: TODO | IN PROGRESS | DONE | BLOCKED(Qn)`) and was never updated once, by any orchestrator session | Nothing reads the field and nothing enforces it. The state a resuming session actually trusts lives in two evidence-backed places — the per-task commit (`git log --grep 'drydock(T1.4.1)'`) and the wavecheck report — so the field is a hand-maintained mirror of derivable state, and mirrors drift | **Low impact on this run, high impact on a resumed one:** a fresh session reading plan 001 top-to-bottom sees 28 tasks marked TODO under a plan marked RECONCILED and must distrust one or the other. **Reconcile should decide between enforcing and deleting, not default to enforcing.** For deleting: `DONE` and `TODO` are both derivable from commit presence, `IN PROGRESS` is transient state that does not belong in a durable document, and a field wrong in 40/40 instances has earned deletion. For keeping: `BLOCKED(Qn)` is the one value carrying information git cannot show, since a blocked task has no commit and "no commit" is ambiguous between not-started and blocked — though plan-level `status: BLOCKED` plus Open questions already covers that. **Not fixed here:** patching 40 fields mid-wave is busywork, and the fix differs depending on which way that decision goes |
 | 8 | — (human-authorised) | **Wave 1.4 added: remove the drift.** T1.R.1 rejected on R1/R2. The human chose removal over retargeting or amplifying it | Removal is one task in one owned file. Retargeting needs `globals.css` + `layout.tsx` (3 tasks, 2 files no task here owns); amplifying also reopens `lib/motion.ts`, a frozen contract 5 files consume | Keeps everything that actually modernised the hero — `text-hero`, beats 0–5, `bg-raised` chips and board, the stroke ramp — and drops the one device that damaged the drawing for ~2% differential. **R2 becomes moot** (no `data-drift` means nothing to restore). `useDriftY`, `anchorReveal` and `parallaxDrift`-class exports join `drawLine`/`revealClip` as unconsumed surface in `lib/motion.ts` — four dead exports now, which reconcile should weigh against plan 002's contract-first justification |
 | 7 | — (planner, second instance of deviation 3's shape) | **`axes: ["opsz"]` is inert at display size — the size §1 justified it by.** T1.R.1 measured 144px with `auto`, `none`, and forced `"opsz" 72`: all render **319.375px**. The font's default already sits at the axis max, so the axis only varies **below 72px** | Wavecheck 1.0 measured a +42,640-byte font growth and inferred "not a no-op". The bytes prove the axis is **served**; they do not prove it **changes** display rendering | **Same error shape as deviation 3, made by the orchestrator this time:** a correct measurement supporting a wrong inference. The headline does not look like scaled-up body type — it already didn't. T1.0.1's change is not harmful and not worth reverting, but §1's justification for it is false and the record now says so |
@@ -580,6 +581,67 @@ only real proof at this point.
 | 5. Deviation reconciliation | PASS, with one correction | No deviations reported. Its drift-count reading and both gate lines are accurate. **One inference was wrong and is logged as deviation 3:** it read Hero.tsx at 209 lines, matched that to the 209-line baseline, and concluded "no extraneous changes". The diff is **+151/−151** — 302 changed lines in a 209-line file, balancing by coincidence. Ownership was verified directly instead: one file, in scope, nothing else touched. |
 
 **Verdict: PASS.** All four implementation waves complete. T1.R.1 may run.
+
+### Wavecheck 1.4 — PASS — 2026-08-19
+
+Repair wave, added mid-execution by human authorisation (deviation 8) after T1.R.1
+REJECTED on blockers R1 and R2. One task, one owned file, one commit.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `format_version: 2`, `status: EXECUTING`, `approved_by: sandeep`. Wave 1.4 exists with one task (T1.4.1). Waves 1.0–1.3 all carry PASS reports. **Judged, not waved through:** 1.0's report is retroactive (deviation 2), which means wave 1.1 opened with no recorded PASS — a real ordering violation. It does not re-block here: the substance of 1.0's checks was performed, the report exists and reads PASS, its retroactivity is stated in its own heading rather than concealed, and it is counted against A3 rather than excused. Check 1 asks whether prior gates passed and are recorded; both are now true for 1.0. A retroactive report is weaker evidence than a contemporaneous one and should not become practice — gate 1.4 was recorded at invocation, which is the corrective. |
+| 2. Ownership | PASS | `eace589 drydock(T1.4.1)` → `site/components/sections/Hero.tsx` **only**, `+36/−47`. `git diff --name-only 810ab1a..eace589` = that one file. Working tree clean. Two orchestrator commits sit outside the wave and were each verified to touch only what they claim: `a2fe19e` → `docs/plans/003-hero-revamp.md` only (`+1/−0`, the deviation-9 row); `7eda71f` → `docs/a3-gate-compliance.md` only (`+2/−2`, the gate ledger, same pattern as `2069f4d` at wavecheck 1.3). T1.4.1 does not own the plan file and did not write to it. |
+| 3. Forbidden | PASS | Every item checked against the diff, not the report. **No file but its own** — see check 2. **Everything that modernised the hero survives:** `className="…text-hero"` ×1, `heroReveal(` ×1, `waterlineReveal` present, `bg-raised` ×2 in JSX (the three chips at line 92 and the drafting board at line 100 — the diff's only touch to line 100 is deleting `ref={board}`), `var(--stroke-` ×5. **Waterline untouched:** `strokeDasharray="10 8"` still ×1 and still on the `data-reveal` `motion.path` (lines 168–178); the waterline hunk does not appear in the diff at all, so C1's `svg path[data-reveal][stroke-dasharray="10 8"]` selector still matches uniquely. `<h1` ×1. `data-reveal-path` ×2 (one docblock, one attribute) — hull still the sole `pathLength` element. **No timing literal:** zero `delay`/`duration`/`stiffness`/`damping`/`repeat`/`times` on any added line; the only numeric change is a geometry coordinate. `content/copy.ts` untouched since T0 (`hero.draftMarks` already held all six labels). **`lib/motion.ts` untouched since T0** and `useDriftY` still exports (`^export function useDriftY` at line 269) with zero consumers — expected, logged as deviation 8, and specifically not "helpfully" deleted. |
+| 4. Acceptance | PASS | Criterion run **verbatim** → exit 0, including `npm run verify` (`assert-copy: PASS — 14 literals, 4x executor, 1 h1, motion contract`) and the trailing `drift[reduced]=0` grep. Harness full line re-run independently: `PASS — reducedMotion=true, waterline="10px, 8px", stippled=0, hull={"opacity":"1","dasharray":"none"}, invisibleText=0, drift[reduced]=0, drift[motion-allowed]=0`. **The vacuity question answered by measurement, not by the plan's assurance:** with `[data-drift]` count back to 0, D1/D2 are vacuous on real content, so the fixture is the only thing keeping them honest — `DRIFT_FIXTURE=1 node scripts/measure-reduced-motion.mjs` re-run → **exit 1, `FAIL (2/7)`, naming D1 and D2** with `bottom=["translate(0px, 12px)"], top=["translate(0px, 12px)"]`. Identical to the failure wavecheck 1.1 recorded. The gate is still fallible. |
+| 5. Deviation reconciliation | PASS, one discovery | The executor's reported deviations reconcile: the dead `useDriftY` export is deviation 8, and D1/D2 going vacuous is disclosed in the task's own acceptance-criterion note. **One unlogged item found and logged as deviation 10 (`discovered-by-wavecheck`):** the harness docblock still says "the hero adds one in the next wave" and "the drifting layer will carry `data-reveal`" — documentation-only, in a file T1.4.1 was forbidden to touch, no functional impact. |
+
+**R2 verified in the built export, not just the source.** Source-level absence proves
+nothing about a no-JS defect in the static export, so `out/` was rebuilt and grepped
+with `<script>` bodies stripped (`index.html` embeds the RSC flight payload, so every
+string appears twice, and its build id makes it unchecksummable). Results: `data-drift`
+occurrences across all 45 files in `out/` = **0**. The cradle group now renders as
+`<g data-reveal="true" style="opacity:0">` — **no `transform` attribute or inline
+transform at all**, with the cradle paths at authored `M220 360`/`M420 360`/`M620 360`
+and the deckhouse at `x="420" y="185" width="120" height="40"` immediately inside it.
+The only `translateY` values left anywhere in the export are `12px` and `24px`, and
+**every one of them is on an element carrying `data-reveal="true"`** — i.e. inside the
+restore net, which is exactly the coverage hole R2 named. `harness invisibleText=0`
+confirms the net fires. R1's rest offset and R2's permanent 16px break are both closed.
+
+**M4 (draft-mark collision) measured, not accepted on arithmetic.** The executor's
+claim — 20-unit pitch clears a 3-character label with ~2px to spare — is an assertion
+about text metrics from an agent that measured no text, so it was measured: headless
+Chrome over `out/` at 1440×1000, `document.fonts.ready` awaited, `getBBox()` and
+`getComputedTextLength()` on the six `<text>` nodes. Rendered in IBM Plex Mono at
+`font-size="10"` (advance 0.6em, so the real face and not a fallback): `2M`–`8M` are
+**12.000** user units wide, `10M`/`12M` **17.984**. Inter-label gaps, in user units:
+8.000, 8.000, 8.000, 8.000, **2.016** (the `10M`→`12M` pair, ≈1.91 CSS px at this
+viewport). All six vertical bands still overlap — the `y = 315 − i*4` stagger does not
+separate them — so horizontal clearance is the whole defence, and it is **positive
+everywhere**. The claim holds. At the old 14-unit pitch the same pair measures
+14 − 17.984 = **−3.984** units, reproducing the ~4-unit overlap N17 described. Whether
+1.9px is *comfortable* is a proportion judgement for T1.R.1 and the human browser gate,
+not a conformance question; note that the clearance scales with the SVG, so it narrows
+proportionally on a small viewport.
+
+**No scope creep.** `git show eace589 -w -b --ignore-blank-lines` reduces the whole
+commit to eight non-comment changes: the `useRef` import, the `useDriftY` import, the
+`board`/`y` declarations, `ref={board}`, the `<motion.g data-drift style={{ y }}>`
+open and close tags, and `x={140 + i * 14}` → `x={140 + i * 20}`. Everything else in
+the `+36/−47` is the re-indentation of the un-wrapped block plus three comment edits,
+all confirmed comment-only. **Nothing rode along:** no proportion tweak, no colour
+change, no re-layout, and no touch to the M2/M3 judgement calls (board scale, top
+whitespace) the task declared out of scope — the `viewBox`, the wrapper's padding
+classes, the hull, the waterline and every keel label are byte-identical.
+
+**Observations, not findings.** (a) The Progress log has no wave-1.4 row, because
+T1.4.1 owns only `Hero.tsx` and no plan-file-owning task ran in this wave — consistent
+with waves 1.0–1.2, which have no rows either; this report is the record. (b) T1.4.1's
+`Status:` field is still `TODO` — deviation 9, not re-litigated here.
+
+Deviations logged: 1 (1 discovered by wavecheck)
+
+**Verdict: PASS.** R1 and R2 are closed and M4 is measurably closed. T1.R.1 may re-run.
 
 ## Progress log
 
