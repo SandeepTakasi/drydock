@@ -396,7 +396,26 @@ need; both gates green; no consumer changed.
 
 ## Wavecheck reports
 
-*Appended by `drydock:wavecheck`, one section per wave.*
+### Wavecheck 1.0 — PASS — 2026-08-19
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `format_version: 2`, `status: EXECUTING`, `approved_by: sandeep`. Wave 1.0 exists with one task. First wave, so no prior report expected — 0 found. |
+| 2. Ownership | PASS | `9821002 drydock(T1.0.1)` → `site/app/globals.css` only. Tree clean (0 dirty paths). |
+| 3. Forbidden | PASS | Touched none of `fonts.ts`, `lib/motion.ts`, `components/`, `content/`, `layout.tsx`, `page.tsx` (0 matches). **Zero deletions in the diff** — 11 insertions, 0 removals, so no existing token was rescaled or removed. No second warm accent. The word `shadow` appears 0 times, so Decision 2's grep is satisfied without a workaround in a comment. Both reduced-motion restore selectors survive. |
+| 4. Acceptance | PASS | Criterion run verbatim → exit 0, including `npm run build` and the compiled-CSS checksum diff against T0's baseline. Both project gates re-run green afterwards: `assert-copy PASS (14 literals, 4x executor, 1 h1, motion contract)` and `measure-reduced-motion PASS`. Only the two known pre-existing build warnings appeared (stray `~/yarn.lock` workspace root; `Big Shoulders` missing `size-adjust`). |
+| 5. Deviation reconciliation | PASS | Executor reported no deviations and three observations; two were promoted to Deviation Log rows 2 and 3 because they bind on later plans. **Contrast ratios independently recomputed by the auditor from the WCAG luminance formula rather than accepted:** ink-dim on raised **5.34:1**, primer on raised **4.77:1**, raised vs panel **1.21:1** — all three thresholds met, and the brief's cited failing candidate `#1a4159` reproduces at 4.22:1 / 1.53:1 as a control. |
+
+**F7 validated.** The compiled stylesheet is byte-identical to T0's baseline, which
+was the one mechanism in this plan that had never been exercised. A purely additive
+`@theme` change leaves the hash unchanged, so any later task that alters rendered
+output will fail in the task that caused it rather than in a task forbidden from
+fixing it. That was C3's whole point and it now demonstrably works.
+
+Deviations logged: 3 (0 discovered by wavecheck)
+
+**Verdict: PASS.** Wave 1.1 may start.
+
 
 ## Progress log
 
