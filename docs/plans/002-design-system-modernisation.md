@@ -459,6 +459,7 @@ Deviations logged: 7 (0 discovered by wavecheck)
 | 2026-08-19 | — | Round-1 pressure test REJECTED | 4 CRITICAL / 5 MAJOR / 5 MINOR, all fixed (§11). Three findings indicted the planner and were independently reproduced before acceptance |
 | 2026-08-19 | — | **APPROVED by sandeep** | Round 2 not run — repair was ~20 lines of specification on a 4-task plan and every finding was reproduced. Status → EXECUTING |
 | 2026-08-19 | T0 | Baseline recorded | HEAD 9e6fadc..., CSS shasum 40b6a434... in 1s2vcbm8xcik1.css. Both gates green. |
+| 2026-08-19 | T1.2.1 | Integration verification PASS | **npm run verify:** assert-copy: PASS — /Users/takasivenkatasandeep/Desktop/drydock-repo/site/out/index.html (14 literals, 4x executor, 1 h1, motion contract). **measure-reduced-motion:** PASS — reducedMotion=true, waterline="10px, 8px", stippled=0, hull={"opacity":"1","dasharray":"none"}, invisibleText=0. Both gates exited 0. HEAD b71b2a34e90aae397285f5dc35ead848b37fd28a. **CSS checksum:** 40b6a434624dbb530bd0bbb2bd002125acba1037 out/_next/static/chunks/1s2vcbm8xcik1.css — **matches T0 baseline byte-for-byte**. No rendered output changed. |
 
 ## Reconcile report
 
