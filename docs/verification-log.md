@@ -273,3 +273,103 @@ conflict outside the `owns` set.
 **Verdict:** PASSED (spawning) — frontmatter isolation honoured, worktree created,
 contract-format commit present, file correct on the worktree branch, main tree
 untouched. Merge procedure still unverified.
+
+---
+
+## A2b — Post-wavecheck worktree merge procedure
+
+**Date:** 2026-08-19
+**Host version:** `claude --version` → `2.1.235 (Claude Code)` — note this differs
+from A1/A2's `2.1.234`; the host updated between tests.
+**Git version:** 2.51.0
+
+**Method, and its limit — read this before the result.** The merge procedure
+(`plan-format.md` §Worktree merge procedure, steps 1–4) was executed
+**mechanically** against a throwaway repository at `/tmp/dd-a2b`, not by spawning
+live `drydock:executor-isolated` agents. Two reasons, both stated so the evidence
+is not overread:
+
+1. A2b covers the **merge**, and A2 already verified live worktree *spawning*.
+2. A2b requires merging into `main`. Running it in `drydock-repo` would leave test
+   merge commits in the project's real history.
+
+So worktrees were created with `git worktree add` and task commits authored
+directly in the contract's `drydock(<task-id>): …` format. This mirrors
+`self-audit.md`'s method for the audit logic — mechanical execution of the
+contract, not a live Claude Code run. **The procedure is verified; live
+agent-driven merging is not.** `drydock-repo` was confirmed untouched afterwards
+(`git status --porcelain` → 0 lines).
+
+### Part A — happy path: disjoint ownership, ascending merge
+
+Two worktrees off `main`, disjoint owned files, merged in ascending task-id order.
+
+```
+per-worktree diffs (the isolation-mode ownership audit mechanism)
+  A2B.1 changed: alpha.txt
+  A2B.2 changed: beta.txt
+merge A2B.1: CLEAN
+merge A2B.2: CLEAN
+integration smoke against the merged tree: SMOKE OK (exit 0)
+```
+
+Steps 1, 2 and 4 behave as specified. Both tasks' changes are present on `main`.
+
+### Part B — a rogue task whose edit collides
+
+`A2B.4` owns `alpha.txt` and, **by design**, also edits `shared.txt` — owned by
+sibling `A2B.3` — while reporting `deviations: none`.
+
+```
+A2B.3 changed: shared.txt
+A2B.4 changed: alpha.txt shared.txt      <- shared.txt is UNOWNED
+merge A2B.3: CLEAN
+merge A2B.4: CONFLICT
+  Auto-merging shared.txt
+  CONFLICT (content): Merge conflict in shared.txt
+  Automatic merge failed; fix conflicts and then commit the result.
+in-progress merge: yes (MERGE_HEAD present)
+conflicted paths: shared.txt      conflict marker lines: 3
+git merge --abort  -> main clean (0 dirty paths), retains A2B.3 only
+```
+
+Both defences hold. The ownership audit (procedure step 1's `wavecheck PASS`
+precondition) catches it **before** any merge is attempted. If that were skipped,
+the merge itself fails safely, and step 3's "never resolve inline" is satisfiable
+— `--abort` restores `main` with the compliant sibling's work intact.
+
+### Part C — a rogue task whose edit does NOT collide
+
+`A2B.5` owns `beta.txt` and, by design, also weakens `verify.sh` — a file **no
+sibling in the wave touches**.
+
+```
+A2B.5 changed: beta.txt verify.sh        <- verify.sh is UNOWNED
+merge A2B.5: CLEAN
+did the unowned edit reach main? YES — verify.sh was silently modified
+```
+
+**This is the finding.** A clean merge is **not** evidence of ownership
+compliance. Procedure step 2 reads "each merge is expected conflict-free —
+ownership is disjoint by construction. ANY conflict is a plan defect", which
+invites the inverse reading that conflict-freeness indicates correctness. It does
+not: a rogue edit only conflicts if a sibling happened to touch the same file.
+The **ownership audit is the only defence** against a non-colliding rogue edit,
+exactly as `self-audit.md` finding 2 established for combined-diff attribution in
+default mode.
+
+### Observations
+
+1. Steps 1–4 of the procedure execute correctly and need no change.
+2. Step 2's wording should be tightened: conflict is sufficient evidence of a
+   defect, but conflict-freeness is **not** evidence of compliance. The merge is a
+   backstop for collisions only.
+3. Per-worktree `git diff --name-only main` is a clean, sound ownership-audit
+   mechanism in isolation mode — it attributes changes per task with no
+   line-level inspection, which is the soundness problem default mode had.
+4. Worktrees holding commits are not auto-removed; `git worktree remove --force`
+   was required (consistent with A2's finding).
+
+**Verdict:** PASSED — the merge procedure executes as specified, and the BLOCKED
+path is reachable and recoverable. Verified mechanically, not agent-driven. One
+documented limitation: a clean merge does not imply ownership compliance.
