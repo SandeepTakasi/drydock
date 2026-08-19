@@ -391,6 +391,10 @@ need; both gates green; no consumer changed.
 | # | Task | What deviated | Why | Impact | Recorded |
 |---|------|---------------|-----|--------|----------|
 | 2 | T1.0.1 | **`--stroke-hair` / `--stroke-rule` / `--stroke-heavy` are not a Tailwind v4 theme namespace, so they emit no utilities.** Plans 003–005 must consume them as `var(--stroke-hair)` in CSS, not as `border-hair`-style classes | The planner specified three token names without checking them against Tailwind v4's namespace rules — only `--color-*`, `--font-*`, `--text-*` and the other documented namespaces generate utilities | None yet: caught before any consumer exists, and the tokens are correctly placed inside `@theme` so tree-shaking keeps the stylesheet byte-identical until referenced. **Would have cost plan 004 a repair wave** had a section task tried `border-hair` and found nothing. Added to F6's table for 003–005. Reconcile: a plan that freezes token names should state, per token, whether it yields a utility or a bare custom property |
+| 4 | T1.1.1 | `anchorReveal` and `heroReveal` animate `opacity`/`y`, **not** `clipPath` — so consumers need `data-reveal` and **not** `data-reveal-path` | Copying a neighbouring variant's attribute is the easy mistake, and `data-reveal-path` forces `stroke-dasharray: none` | Stated in both docblocks by the executor, unprompted. This is ADR 0001's pairing hazard reaching plan 002's new exports; plans 003–005 must not copy the attribute from an adjacent element |
+| 5 | T1.1.1 | `heroReveal` is bounded to **beats 0–8**: beat 9 would end at 2.10s, past the 2s hero ceiling | The per-beat cadence is `HERO_BEAT_BASE + i * HERO_BEAT_STEP + HERO_BEAT` = 0.4 + 0.15i + 0.35 | Documented in the export's docblock. Verified arithmetically by wavecheck: beat 8 lands at 1.95s, level with `heroSequence.label`. Plan 003 must not exceed beat 8 |
+| 6 | T1.1.1 | `useScroll` with a `target` ref logs a Framer warning when the ref is not yet attached on first render | Inherent to `useScroll({ target })` | Harmless and pre-existing, but **plan 004's six anchors will each hit it** if a ref is passed before mount. Recorded for that plan rather than guarded here, since a guard would assume a component shape this file deliberately does not know |
+| 7 | T1.1.1 | `DRIFT` is a single 16px constant for every consumer; per-layer parallax depth would need an amplitude argument, deliberately **not** added | Speculative generality — the file already carries two dead exports (`drawLine`, `revealClip`) from earlier speculation | Correct restraint. If plan 004 wants differentiated depth it must amend this plan's contract rather than find the knob already present |
 | 3 | T1.0.1 | The `! grep -qE "shadow\|…"` clause bans the bare substring `shadow`, so the file cannot contain the word even in a comment, and a zero-blur plane edge — which Decision 2 explicitly permits — must be written as `border`/`outline` rather than `box-shadow: inset` | A crude substring assertion cannot distinguish blur-0 from blur-8 | Accepted cost, and it worked: the executor phrased its rationale as "no diffuse depth effects" and used hairline borders. But the gate forces an implementation around itself, which is worth noting rather than pretending the constraint is free |
 | 1 | — (planner, caught pre-execution) | **Wave 1.0 was split into two serial waves (1.0 tokens, 1.1 motion); integration moved to 1.2.** Task `T1.0.2` renumbered to `T1.1.1` — legitimate, as it had not executed | The C3 repair added `npm run build` + a compiled-CSS checksum to both criteria. Run in parallel, the two tasks build into the same `site/out` and `site/.next`, so one task's checksum would be diffed against a stylesheet the other built — the shared-build-directory race plan 001 Decision 16 exists to forbid. **The pressure test could not have caught this: it reviewed the plan before the fix that introduced it** | None on output; caught before either task ran. Serializing costs almost nothing at two tasks and preserves both the build gate and the isolation rule. **Reconcile: a fix that adds a build step to a criterion must re-check the wave's parallelism** — the two constraints interact and nothing currently forces that check |
 
@@ -416,6 +420,36 @@ Deviations logged: 3 (0 discovered by wavecheck)
 
 **Verdict: PASS.** Wave 1.1 may start.
 
+
+### Wavecheck 1.1 — PASS — 2026-08-19
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `status: EXECUTING`. Wave 1.1 exists with one task. Wave 1.0 carries a PASS report. |
+| 2. Ownership | PASS | `497f4d3 drydock(T1.1.1)` → `site/lib/motion.ts` only. Tree clean. Touched none of `globals.css`, `components/`, `content/`, `app/` (0 matches). |
+| 3. Forbidden | PASS | **Zero `^-export` deletions** — no existing export removed. **`NO_MOTION` is byte-identical**, verified two ways: the block extracted from both commits diffs clean, and its old line (144) falls between every diff hunk (1–11, 31–36, 45–50, 97–102, 136–141, 182–184). The criterion's `pathLength` guard matches and returns false. The only `spring`/`bounce` hits are two comments *asserting their absence* (lines 39, 252). No JSX. |
+| 4. Acceptance | PASS | Criterion run verbatim → exit 0, including the anchored `^export (const\|function) <name>\b` loops for all thirteen exports, and the compiled-CSS checksum diff (trivially unchanged — this task edits TypeScript, as expected). Both project gates re-run green. |
+| 5. Deviation reconciliation | PASS | No deviations reported; six observations, four promoted to Deviation Log rows 4–7. **Every cadence claim independently recomputed rather than accepted:** `anchorReveal(5)` delay 0.50 at duration 0.45 (≤ 600ms ✓); `heroReveal(8)` ends at **1.95s**, exactly level with `heroSequence.label`, and `heroReveal(9)` would reach 2.10s — so the docblock's "beats 0–8" bound is correct, not approximate. |
+
+**The reduced-motion branch was verified by the executor at runtime, which no gate in
+this plan can do.** It transpiled the real module, rendered a probe through
+`react-dom/server`, and asserted the returned MotionValue: safe path returned 16
+(`DRIFT`), and a copy with only `useMotionSafe`'s body forced to `false` returned
+`get() === 0` and `getVelocity() === 0`. The orchestrator read the source
+independently and confirms the shape is correct — all four hooks called
+unconditionally in fixed order, only the *return* value branching:
+
+```ts
+const safe = useMotionSafe();
+const { scrollYProgress } = useScroll({ target: ref, offset: [...] });
+const drift = useTransform(scrollYProgress, [0, 1], [DRIFT, -DRIFT]);
+const still = useMotionValue(0);
+return safe ? drift : still;
+```
+
+Deviations logged: 7 (0 discovered by wavecheck)
+
+**Verdict: PASS.** Wave 1.2 (integration) may start.
 
 ## Progress log
 
