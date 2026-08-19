@@ -9,6 +9,7 @@
   /* Ground and structure */
   --color-dock: #061320;
   --color-panel: #0b2032;
+  --color-raised: #0b304a; /* third surface tier: dock -> panel -> raised */
   --color-line: #35688c;
 
   /* Ink */
@@ -37,6 +38,16 @@
   --text-title--line-height: 1.05;
   --text-sheet: clamp(2.75rem, 9vw, 6.5rem);
   --text-sheet--line-height: 0.92;
+  --text-hero: clamp(3.5rem, 12vw, 9rem); /* display step above sheet */
+  --text-hero--line-height: 0.88;
+  --text-hero--letter-spacing: -0.02em;
+
+  /* Stroke ramp. Depth is stacked planes and line weight only — no diffuse
+     depth effects anywhere in this design. A plane edge is a hairline border
+     or outline at zero spread. */
+  --stroke-hair: 1px; /* plane edges, grid rules */
+  --stroke-rule: 2px; /* section divisions, active state */
+  --stroke-heavy: 3px; /* primary outlines, emphasis */
 }
 
 /* Blueprint grid ground: 24px minor rules inside a 96px major module. */
