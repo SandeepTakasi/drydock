@@ -13,7 +13,9 @@ import type { SectionProps } from "@/lib/section";
  * is a real button that toggles the visibility of its own detail panel below
  * it. All six details stay in the static markup regardless of which rung is
  * open (hidden via CSS, never via conditional rendering) so the export
- * assertions and no-JS visitors both see the full content.
+ * assertions and screen readers see the full content. The closed state uses
+ * `hidden` (display: none), so the disclosure itself still requires
+ * JavaScript to open/close a rung.
  */
 export default function Lifecycle({ meta }: SectionProps) {
   const [openIndex, setOpenIndex] = useState(0);
