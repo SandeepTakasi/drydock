@@ -2,15 +2,48 @@
 /**
  * Browser measurement of the reduced-motion contract — the one gate that
  * catches the C1/C2/M1 regression class (a solid-instead-of-dashed
- * waterline, stippled linework, an invisible hull). All three were invisible
- * to source-text greps and to `npm run verify`; they only show up in a real
- * browser's computed styles under forced `prefers-reduced-motion: reduce`.
+ * waterline, stippled linework, an invisible hull), plus D1/D2, the
+ * scroll-linked-motion contract for `[data-drift]` elements (`useDriftY` in
+ * `lib/motion.ts`). All were invisible to source-text greps and to
+ * `npm run verify`; they only show up in a real browser's styles under (and,
+ * for D2, explicitly without) forced `prefers-reduced-motion: reduce`.
+ *
+ * D1/D2 read the INLINE transform (`el.style.transform`), not the computed
+ * one. `[data-reveal] { transform: none !important }` in `app/globals.css`
+ * beats an inline style in the computed value, and the drifting layer will
+ * carry `data-reveal` — so a computed check reads `none` whether or not
+ * `useDriftY` actually works. Measured in headless Chrome: two identical
+ * drifting `<g>`s gave `matrix(1, 0, 0, 1, 0, 12)` with `data-drift` alone
+ * and `none` with `data-drift data-reveal`.
+ *
+ * D1 (reduced motion): every `[data-drift]` element's inline transform must
+ * be empty/identity at two scroll positions — passes vacuously while no
+ * `[data-drift]` element exists yet (today's count is 0; the hero adds one
+ * in the next wave).
+ * D2 (motion allowed): a SECOND, unflagged Chrome must see that same
+ * element's inline transform differ across the same two scroll positions —
+ * without this, a `useDriftY` ref that never attaches pins `y` at a static
+ * offset, D1 is satisfied (reduced motion is exactly when nothing should
+ * move), and dead drift is indistinguishable from working drift.
+ *
+ * `DRIFT_FIXTURE=1` permanently and re-runnably proves D1 can fail: it
+ * injects one `[data-drift][data-reveal]` element with a non-identity inline
+ * transform (the masked case above) into every session, so a clean run
+ * passes and a flagged run fails naming D1.
+ *
+ * C1's waterline selector is hardened past document order
+ * (`svg path[data-reveal]`, which a new earlier `motion.path` could shadow)
+ * to `svg path[data-reveal][stroke-dasharray="10 8"]` — pinned on the exact
+ * dash value C1 already requires and that T1.2.1 is separately forbidden
+ * from changing, so it needs no new markup and cannot silently drift onto
+ * the wrong node.
  *
  * node:* built-ins only, plus Chrome driven over CDP via the global
  * WebSocket (Node 22). Deliberately NOT wired into `npm run verify` — that
  * gate stays hermetic and browser-free; this one needs a real Chrome.
  *
  *   cd site && node scripts/measure-reduced-motion.mjs
+ *   cd site && DRIFT_FIXTURE=1 node scripts/measure-reduced-motion.mjs   # must fail, naming D1
  *
  * Requires `npm run build` to have produced site/out/ first.
  */
@@ -27,6 +60,7 @@ const OUT_DIR = join(HERE, "..", "out");
 const CHROME_PATH =
   process.env.CHROME_PATH ??
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+const INJECT_FIXTURE = process.env.DRIFT_FIXTURE === "1";
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -83,9 +117,10 @@ async function serveOut(candidatePorts) {
 }
 
 // ---------------------------------------------------------------------------
-// Headless Chrome, forced reduced motion, its own throwaway profile.
+// Headless Chrome, its own throwaway profile. `forceReducedMotion` toggles
+// `--force-prefers-reduced-motion` — D2 needs a session WITHOUT it.
 // ---------------------------------------------------------------------------
-async function launchChrome(candidatePorts, profileDir) {
+async function launchChrome(candidatePorts, profileDir, forceReducedMotion) {
   let stderr = "";
   for (const port of candidatePorts) {
     const child = spawn(
@@ -93,7 +128,7 @@ async function launchChrome(candidatePorts, profileDir) {
       [
         "--headless=new",
         "--disable-gpu",
-        "--force-prefers-reduced-motion",
+        ...(forceReducedMotion ? ["--force-prefers-reduced-motion"] : []),
         `--user-data-dir=${profileDir}`,
         `--remote-debugging-port=${port}`,
         "--window-size=1280,2400",
@@ -192,9 +227,56 @@ class CDP {
 }
 
 // ---------------------------------------------------------------------------
-// Measurement
+// Drift fixture (Decision 7). Permanent, env-flagged, never removed: injects
+// one [data-drift][data-reveal] element whose inline transform is NOT
+// identity, reproducing the exact masked-under-reduced-motion case D1 exists
+// to catch (Decision 8) — so a clean run passes and a flagged run fails,
+// naming D1, every time wavecheck re-runs it.
 // ---------------------------------------------------------------------------
-async function measure(cdp) {
+async function injectDriftFixture(cdp) {
+  await cdp.evaluate(`(() => {
+    const el = document.createElement("div");
+    el.setAttribute("data-drift", "");
+    el.setAttribute("data-reveal", "");
+    el.style.position = "fixed";
+    el.style.top = "0";
+    el.style.left = "0";
+    el.style.width = "0";
+    el.style.height = "0";
+    el.style.overflow = "hidden";
+    el.style.transform = "translate(0px, 12px)";
+    document.body.appendChild(el);
+  })()`);
+}
+
+/** Inline (not computed) transform of every `[data-drift]` element, in DOM order. */
+async function captureDriftTransforms(cdp) {
+  return cdp.evaluate(
+    `Array.from(document.querySelectorAll("[data-drift]")).map((el) => el.style.transform)`
+  );
+}
+
+/** `matrix(1, 0, 0, 1, 0, 0)`, `translate(0px, 0px)`, `""`, `"none"` — all identity. */
+function isIdentityTransform(value) {
+  const v = (value ?? "").trim();
+  if (v === "" || v === "none") return true;
+  const matrix = v.match(/^matrix\(([^)]+)\)$/);
+  if (matrix) {
+    const n = matrix[1].split(",").map((x) => parseFloat(x));
+    return (
+      n.length === 6 && n[0] === 1 && n[1] === 0 && n[2] === 0 && n[3] === 1 && n[4] === 0 && n[5] === 0
+    );
+  }
+  const nums = v.match(/-?\d*\.?\d+/g);
+  return nums === null || nums.every((n) => parseFloat(n) === 0);
+}
+
+// ---------------------------------------------------------------------------
+// Measurement. `expectReducedMotion` selects the fatal control check (only
+// meaningful — and only asserted — for the forced-reduced-motion session);
+// the unflagged session folds its own matchMedia read into D2 instead.
+// ---------------------------------------------------------------------------
+async function measure(cdp, { expectReducedMotion, injectFixture }) {
   // Wait for the document to finish loading.
   const loadDeadline = Date.now() + 10000;
   let ready = false;
@@ -205,27 +287,36 @@ async function measure(cdp) {
   }
   if (!ready) throw new Error("page never reached document.readyState 'complete'");
 
-  // 3. Control first: reduced-motion emulation must actually be in effect,
-  // or every downstream assertion below would pass trivially.
+  if (injectFixture) await injectDriftFixture(cdp);
+
+  // Control: reduced-motion emulation must actually be in effect, or every
+  // downstream assertion for this session would pass trivially.
   const reducedMotion = await cdp.evaluate(
     "window.matchMedia('(prefers-reduced-motion: reduce)').matches"
   );
-  if (reducedMotion !== true) {
+  if (expectReducedMotion && reducedMotion !== true) {
     throw new Error(
       `control failed: matchMedia('(prefers-reduced-motion: reduce)').matches === ${reducedMotion}, ` +
         `expected true — reduced-motion emulation did not take effect, so no other assertion is meaningful`
     );
   }
 
-  // 4. Fire scroll-triggered reveals, then return to top and settle.
+  // Fire scroll-triggered reveals and drift, sampling [data-drift] inline
+  // transforms at two distinct scroll positions along the way (D1/D2).
   await cdp.evaluate("window.scrollTo(0, document.body.scrollHeight)");
   await new Promise((r) => setTimeout(r, 250));
+  const driftBottom = await captureDriftTransforms(cdp);
+
   await cdp.evaluate("window.scrollTo(0, 0)");
   await new Promise((r) => setTimeout(r, 400));
+  const driftTop = await captureDriftTransforms(cdp);
 
-  // 5. Read computed styles.
+  // Read computed (and, for the waterline hook, presentation-attribute) styles.
   const data = await cdp.evaluate(`(() => {
-    const waterlineEl = document.querySelector("svg path[data-reveal]");
+    const waterlineMatches = Array.from(
+      document.querySelectorAll('svg path[data-reveal][stroke-dasharray="10 8"]')
+    );
+    const waterlineEl = waterlineMatches.length === 1 ? waterlineMatches[0] : null;
     const waterlineDasharray = waterlineEl
       ? getComputedStyle(waterlineEl).strokeDasharray
       : null;
@@ -252,47 +343,107 @@ async function measure(cdp) {
       .filter((el) => getComputedStyle(el).opacity === "0")
       .map((el) => \`<\${el.tagName.toLowerCase()}> "\${el.textContent.trim().slice(0, 40)}"\`);
 
-    return { waterlineFound: !!waterlineEl, waterlineDasharray, stippled, hullFound: !!hullEl, hull, invisibleText };
+    return {
+      waterlineFound: !!waterlineEl,
+      waterlineMatchCount: waterlineMatches.length,
+      waterlineDasharray,
+      stippled,
+      hullFound: !!hullEl,
+      hull,
+      invisibleText,
+    };
   })()`);
 
-  return { reducedMotion, ...data };
+  return { reducedMotion, driftBottom, driftTop, ...data };
+}
+
+// ---------------------------------------------------------------------------
+// One full session: profile + Chrome + tab + measurement, cleaned up before
+// returning. Two of these run sequentially in main() — one forced-reduced,
+// one not (D2) — sharing the single static server.
+// ---------------------------------------------------------------------------
+async function runSession(serverPort, chromePorts, { forceReducedMotion, injectFixture }) {
+  let profileDir;
+  let chromeInfo;
+  let cdp;
+  try {
+    profileDir = await mkdtemp(join(tmpdir(), "drydock-chrome-"));
+    chromeInfo = await launchChrome(chromePorts, profileDir, forceReducedMotion);
+
+    const targetUrl = `http://127.0.0.1:${serverPort}/`;
+    const created = await fetch(
+      `http://127.0.0.1:${chromeInfo.port}/json/new?${encodeURIComponent(targetUrl)}`,
+      { method: "PUT" }
+    ).then((r) => r.json());
+
+    cdp = new CDP(created.webSocketDebuggerUrl);
+    await cdp.ready();
+
+    return await measure(cdp, { expectReducedMotion: forceReducedMotion, injectFixture });
+  } finally {
+    cdp?.close();
+    if (chromeInfo?.child) chromeInfo.child.kill("SIGKILL");
+    if (profileDir) await rm(profileDir, { recursive: true, force: true }).catch(() => {});
+  }
 }
 
 // ---------------------------------------------------------------------------
 // Assertions
 // ---------------------------------------------------------------------------
-function buildAssertions(m) {
+function buildAssertions(m1, m2) {
+  const d1Pass =
+    m1.driftBottom.every(isIdentityTransform) && m1.driftTop.every(isIdentityTransform);
+
+  const d2Pass =
+    m2.reducedMotion === false &&
+    (m2.driftBottom.length === 0 ||
+      m2.driftTop.every((t, i) => t !== m2.driftBottom[i]));
+
   return [
     {
       name: "control: prefers-reduced-motion emulation active",
-      pass: m.reducedMotion === true,
-      measured: m.reducedMotion,
+      pass: m1.reducedMotion === true,
+      measured: m1.reducedMotion,
       expected: true,
     },
     {
       name: "C1: hero waterline computes a two-value dash (10px, 8px)",
-      pass: m.waterlineFound && m.waterlineDasharray === "10px, 8px",
-      measured: m.waterlineFound ? m.waterlineDasharray : "(waterline element not found)",
+      pass: m1.waterlineFound && m1.waterlineDasharray === "10px, 8px",
+      measured: m1.waterlineFound
+        ? m1.waterlineDasharray
+        : `(expected exactly 1 match for svg path[data-reveal][stroke-dasharray="10 8"], found ${m1.waterlineMatchCount})`,
       expected: "10px, 8px",
     },
     {
       name: "C2: zero SVG elements compute stroke-dasharray 1px, 1px",
-      pass: m.stippled.length === 0,
-      measured: m.stippled.length === 0 ? "0" : `${m.stippled.length} (${m.stippled.join(", ")})`,
+      pass: m1.stippled.length === 0,
+      measured: m1.stippled.length === 0 ? "0" : `${m1.stippled.length} (${m1.stippled.join(", ")})`,
       expected: "0",
     },
     {
       name: "M1: [data-reveal-path] (hull) computes opacity 1, dasharray none",
-      pass: m.hullFound && m.hull.opacity === "1" && m.hull.dasharray === "none",
-      measured: m.hullFound ? JSON.stringify(m.hull) : "(hull element not found)",
+      pass: m1.hullFound && m1.hull.opacity === "1" && m1.hull.dasharray === "none",
+      measured: m1.hullFound ? JSON.stringify(m1.hull) : "(hull element not found)",
       expected: '{"opacity":"1","dasharray":"none"}',
     },
     {
       name: "zero text-bearing elements compute opacity 0",
-      pass: m.invisibleText.length === 0,
+      pass: m1.invisibleText.length === 0,
       measured:
-        m.invisibleText.length === 0 ? "0" : `${m.invisibleText.length} (${m.invisibleText.join("; ")})`,
+        m1.invisibleText.length === 0 ? "0" : `${m1.invisibleText.length} (${m1.invisibleText.join("; ")})`,
       expected: "0",
+    },
+    {
+      name: "D1: [data-drift] elements carry no inline drift transform under reduced motion",
+      pass: d1Pass,
+      measured: `count=${m1.driftBottom.length}, bottom=${JSON.stringify(m1.driftBottom)}, top=${JSON.stringify(m1.driftTop)}`,
+      expected: "every [data-drift] element's inline style.transform is empty/identity at both scroll positions (vacuous when count is 0)",
+    },
+    {
+      name: "D2: [data-drift] elements' inline transform changes across scroll positions when motion is allowed",
+      pass: d2Pass,
+      measured: `reducedMotion=${m2.reducedMotion}, count=${m2.driftBottom.length}, bottom=${JSON.stringify(m2.driftBottom)}, top=${JSON.stringify(m2.driftTop)}`,
+      expected: "reducedMotion=false and every [data-drift] element's style.transform differs between the two scroll positions (vacuous when count is 0)",
     },
   ];
 }
@@ -302,32 +453,32 @@ function buildAssertions(m) {
 // ---------------------------------------------------------------------------
 async function main() {
   const HTTP_PORTS = [4173, 4321, 4899, 5173, 8973];
-  const CHROME_PORTS = [9222, 9333];
+  const REDUCED_MOTION_CHROME_PORTS = [9222, 9333];
+  const MOTION_ALLOWED_CHROME_PORTS = [9422, 9533];
 
   let serverInfo;
-  let chromeInfo;
-  let profileDir;
-  let cdp;
 
   try {
     serverInfo = await serveOut(HTTP_PORTS);
     console.log(`measure-reduced-motion: serving out/ on http://127.0.0.1:${serverInfo.port}`);
 
-    profileDir = await mkdtemp(join(tmpdir(), "drydock-chrome-"));
-    chromeInfo = await launchChrome(CHROME_PORTS, profileDir);
-    console.log(`measure-reduced-motion: Chrome up on debug port ${chromeInfo.port}`);
+    const m1 = await runSession(serverInfo.port, REDUCED_MOTION_CHROME_PORTS, {
+      forceReducedMotion: true,
+      injectFixture: INJECT_FIXTURE,
+    });
+    console.log(
+      `measure-reduced-motion: reduced-motion session done — [data-drift] count=${m1.driftBottom.length}`
+    );
 
-    const targetUrl = `http://127.0.0.1:${serverInfo.port}/`;
-    const created = await fetch(
-      `http://127.0.0.1:${chromeInfo.port}/json/new?${encodeURIComponent(targetUrl)}`,
-      { method: "PUT" }
-    ).then((r) => r.json());
+    const m2 = await runSession(serverInfo.port, MOTION_ALLOWED_CHROME_PORTS, {
+      forceReducedMotion: false,
+      injectFixture: INJECT_FIXTURE,
+    });
+    console.log(
+      `measure-reduced-motion: motion-allowed session done — [data-drift] count=${m2.driftBottom.length}`
+    );
 
-    cdp = new CDP(created.webSocketDebuggerUrl);
-    await cdp.ready();
-
-    const measured = await measure(cdp);
-    const assertions = buildAssertions(measured);
+    const assertions = buildAssertions(m1, m2);
     const failed = assertions.filter((a) => !a.pass);
 
     if (failed.length > 0) {
@@ -341,17 +492,15 @@ async function main() {
     }
 
     console.log(
-      `measure-reduced-motion: PASS — reducedMotion=${measured.reducedMotion}, ` +
-        `waterline="${measured.waterlineDasharray}", stippled=${measured.stippled.length}, ` +
-        `hull=${JSON.stringify(measured.hull)}, invisibleText=${measured.invisibleText.length}`
+      `measure-reduced-motion: PASS — reducedMotion=${m1.reducedMotion}, ` +
+        `waterline="${m1.waterlineDasharray}", stippled=${m1.stippled.length}, ` +
+        `hull=${JSON.stringify(m1.hull)}, invisibleText=${m1.invisibleText.length}, ` +
+        `drift[reduced]=${m1.driftBottom.length}, drift[motion-allowed]=${m2.driftBottom.length}`
     );
   } catch (err) {
     console.error(`measure-reduced-motion: ERROR — ${err.message}`);
     process.exitCode = 1;
   } finally {
-    cdp?.close();
-    if (chromeInfo?.child) chromeInfo.child.kill("SIGKILL");
-    if (profileDir) await rm(profileDir, { recursive: true, force: true }).catch(() => {});
     if (serverInfo?.server) await new Promise((r) => serverInfo.server.close(r));
   }
 }
