@@ -1,7 +1,7 @@
 ---
 plan: 003-hero-revamp
 format_version: 2
-status: EXECUTING
+status: DONE
 isolation: none
 created: 2026-08-19
 approved_by: sandeep
@@ -192,6 +192,10 @@ the heading check uses a tag-stripping path with no space substitution.
 | 5 | Does the hero get new copy? | No. It works within the eight existing `hero` exports (F1) | planner | `content/copy.ts` is owned by no task here; a needed string is a blocker, reported as a deviation |
 
 ## 8. Open questions
+
+**At close:** Q1 deferred as recommended. **Q5 (Safari) closed as UNVERIFIED, not as
+passing** — the human gate ran in one browser only; carry it into plan 005's
+responsive/a11y sweep.
 
 | # | Question | Blocks | Recommended answer |
 |---|---|---|---|
@@ -659,6 +663,7 @@ Deviations logged: 1 (1 discovered by wavecheck)
 | 2026-08-19 | T1.R.1 | **REJECTED** — fresh-context quality review | 2 BLOCKING / 5 MAJOR / 3 observations. Both blockers are in `Hero.tsx` (T1.2.1's owned file) and both are drift-related; the harness, the copy contract, the token and the type step all hold. Full findings below. |
 | 2026-08-19 | — (orchestrator) | Both gates re-verified at HEAD `3a161e9`, post-1.4 | Re-run rather than inherited from T1.3.1, because wave 1.4 changed rendered output after that record. `assert-copy: PASS — … (14 literals, 4x executor, 1 h1, motion contract)`; `measure-reduced-motion: PASS — reducedMotion=true, waterline="10px, 8px", stippled=0, hull={"opacity":"1","dasharray":"none"}, invisibleText=0, drift[reduced]=0, drift[motion-allowed]=0`, **exit 0**. `Big Shoulders` font-override warning still present (expected, M5/deviation 7). Zero Chrome processes left behind by the harness — corroborates deviation 12's correction that the leak came from ad-hoc scripts, not the committed harness. **Export served for the human gate is the current one:** `out/index.html` 43,361 bytes, `data-drift` count 0. |
 | 2026-08-19 | — (orchestrator) | **Human browser gate: NOT YET PERFORMED — phase gate remains OPEN** | The human replied "sure go ahead" without having opened a browser, which is authorisation to proceed with bookkeeping, **not** a browser confirmation. Recording it as one would be an unlogged PASS of the kind deviation 2 was counted against A3 for. `status:` stays `EXECUTING`; the three items to carry into the gate are Q5 (Safari), M3 (35.7% empty viewBox band), and the unlogged line-contrast consequence (`--color-line` on raised: 2.285:1, was 3.129:1 on dock). |
+| 2026-08-19 | — | **Human browser gate PASSED — supersedes the row above; phase gate CLOSED** | sandeep confirmed in a browser against `http://127.0.0.1:5173/` (served root verified as the current `site/out`, 43,361 B, `data-drift` 0 — see deviation 14). **Accepted as-is, with all three carried items declined rather than unexamined:** M3's 35.7% empty viewBox band stands (deviation 6 / T1.R.1 re-run), the `--color-line`-on-raised drop to 2.285:1 stands (crosses WCAG 1.4.11's advisory 3:1, which does not bind here — `role="img"` + `aria-label`, and no project rule sets a line-contrast threshold), and **Q5 (Safari) remains UNVERIFIED** — not tested by anyone, degrades rather than breaks. Phase 1 exit state met: both gates green at `3a161e9`, wavecheck PASS on 1.0–1.4, T1.R.1 re-run APPROVED, human confirmation recorded. `status:` → `DONE`. |
 
 ### T1.R.1 — Fresh-context quality review of plan 003 — **REJECTED** — 2026-08-19
 
