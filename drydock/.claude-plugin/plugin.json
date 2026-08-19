@@ -6,7 +6,7 @@
   "author": {
     "name": "Sandeep / GeekyAnts"
   },
-  "license": "UNLICENSED",
+  "license": "MIT",
   "keywords": ["planning", "subagents", "parallel-execution", "verification", "spec-driven"],
   "userConfig": {
     "plans_dir": {

@@ -50,9 +50,10 @@ claude plugin install drydock --scope project
 Configure on enable (or `--config`): `plans_dir` (default `docs/plans`),
 `docs_targets` (default `CLAUDE.md,docs/decisions,docs/architecture.md`).
 
-Versioning: internal phase uses commit-SHA versioning (no `version` bump
-needed per change). Before any public release: adopt explicit semver, pick a
-license, and maintain CHANGELOG.md.
+Versioning: explicit semver from v0.4.0 (`CHANGELOG.md` maintained per release).
+Licensed MIT. Remaining before public release, per
+[compatibility](../docs/compatibility.md): A3 published with real numbers across
+several pilot plans, and A2b (worktree merge) verified.
 
 ## The spine
 
