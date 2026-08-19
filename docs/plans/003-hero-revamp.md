@@ -882,6 +882,210 @@ is the one element the display-scale revamp made smaller (M2). Fix R1 and R2 —
 `Hero.tsx` — and this is ready for a human's browser check.
 
 
+### T1.R.1 (re-run) — Re-review after wave 1.4 — **APPROVED** — 2026-08-19
+
+Second fresh-context run, no memory of the codebase beyond the round-1 verdict recorded above.
+Re-review only; §7 not re-litigated. Every claim below is tagged **[measured]** (I ran it in
+this session and read the output) or **[inferred]** (reasoning on top of a measurement), because
+deviations 3 and 7 were both a sound measurement paired with an unsound inference.
+
+Baseline for everything below: `rm -rf out .next && npx next build` — clean, 4/4 static pages,
+one pre-existing Turbopack warning about `Big Shoulders` fallback metrics. **[measured]**
+
+#### R1 / R2 — both closed
+
+- `data-drift` occurrences in `out/index.html`: **0** **[measured]**. The cradle group renders
+  `<g data-reveal="true" style="opacity:0">` with **no transform**, children at `M220 360`,
+  `M420 360`, `M620 360`, and the deckhouse at `x="420" y="185" width="120" height="40"`.
+  Nothing in the group is displaced from the dock floor (`y=360`) or the hull deck (`y=225`) at
+  rest or at any scroll position, because nothing writes to its transform at all. **[measured]**
+- The JS-off break is gone with it: there is no longer any element whose exported inline
+  transform needs restoring, so the mechanism gap that made R2 unfixable-by-CSS no longer has a
+  target. **[measured, from the same export]**
+
+#### Q2 — attribute pairing: correct, all 35 animated nodes
+
+Checked in the **built** output, not the source, and with an HTML parser rather than a grep, so
+the doubled RSC flight payload cannot inflate the count (script bodies are not parsed as tags).
+Across all three exported HTML files, every element carrying a reveal attribute, a `pathLength`,
+a dash attribute, a `clip-path`, or a framer-written inline style: **[measured]**
+
+| | count |
+|---|---|
+| `data-reveal-path` nodes | 1 — the hull, `pathLength="1"`, `stroke-dasharray="0 1"` |
+| `pathLength` nodes without `data-reveal-path` | 0 |
+| `data-reveal-path` nodes without `pathLength` | 0 |
+| nodes carrying **both** attributes | 0 |
+| animated nodes with **neither** | 0 |
+| bare `data-reveal` nodes | 34 |
+
+The one pairing ADR 0001 says a text gate cannot see is right: the waterline is
+`<path data-reveal="true" … stroke-dasharray="10 8" clip-path="inset(0 100% 0 0)">` — dashed by
+design, bare `data-reveal`, no `pathLength` — and the hull is the only `data-reveal-path`.
+Confirmed live rather than only structurally: under forced reduced motion the waterline's
+**computed** `stroke-dasharray` is `10px, 8px` and the hull's is `none` at `opacity 1`
+**[measured, harness C1 + M1]**.
+
+The waterline's `clip-path` ships as a **presentation attribute**, which is the one place an
+`!important` restore could plausibly fail to reach, so I measured both restore paths rather than
+reasoning about the cascade. Computed on the waterline node at 1440: **[measured]**
+
+| session | `clip-path` attribute in DOM | computed `clip-path` | opacity | computed dash | rendered width |
+|---|---|---|---|---|---|
+| forced reduced motion, JS on | `none` (framer rewrote it via `NO_MOTION`) | `none` | 1 | `10px, 8px` | 796.25px |
+| **JS execution disabled**, motion allowed | **`inset(0 100% 0 0)`** — untouched | **`none`** | 1 | `10px, 8px` | 796.25px |
+
+The second row is the decisive one and it exercises the `<noscript><style>` block alone: the
+hiding presentation attribute is still literally in the DOM, and the restore still wins, leaving
+the dashed waterline fully drawn at its authored dash across all 840 units. So the JS-off path is
+sound for the waterline in the same run that proves it for the hull — the R2 failure *class*, not
+just the specific `translateY(16px)` instance, is closed. Nothing here rests on inference.
+
+#### Q?? — the harness is real, and it proved it the hard way
+
+- Clean run: **PASS** — `reducedMotion=true, waterline="10px, 8px", stippled=0,
+  hull={"opacity":"1","dasharray":"none"}, invisibleText=0, drift[reduced]=0,
+  drift[motion-allowed]=0`. **[measured]**
+- `DRIFT_FIXTURE=1`: **FAIL (2/7)**, exit 1, naming D1 and D2, with the other five green.
+  **[measured]** So D1/D2 are vacuous on real content (count 0) and still demonstrably
+  fallible. The harness extension is not vacuous as a whole: C1, C2, M1 and the
+  invisible-text assertion all bind on live hero nodes, and the fixture keeps D1/D2 honest.
+- **New finding — a real fragility, and the gate caught it correctly.** My first three
+  invocations all died with `ERROR — control failed: matchMedia(...) === false`. Cause,
+  established by experiment: `launchChrome` accepts **any** `/json/version` responder on a
+  candidate port as its own child. The user's interactive Chrome holds `9222` permanently
+  (`lsof`: pid 729), so the harness always falls through to `9333` — where a **leaked headless
+  Chrome from wave 1.4's own draft-mark measuring script** (`--user-data-dir=…/dmark-OlJnou`,
+  `--window-size=1440,1000`, started 15:36 today) was still listening, launched *without*
+  `--force-prefers-reduced-motion`. The harness adopted it, so reduced-motion emulation was
+  never in effect. Killing that stale pid made the same command PASS on the next run.
+  **[measured — the kill is the controlled experiment]**
+  This is worth logging precisely because it is the good outcome: the control assertion refused
+  to report anything rather than passing five browser assertions vacuously against an
+  unflagged browser. A gate that cannot be silently fooled is what wave 1.1 was for. The
+  latent defect is only that adoption is possible at all; a PID check on the spawned child, or
+  ports unique per run, closes it. Not blocking, and not in any 003 task's `owns`.
+
+#### Q3 — draft-mark clearance: non-overlap survives every width, legibility does not
+
+`document.fonts.ready` awaited; `getBoundingClientRect` on the six `2M…12M` nodes; dpr 1.
+**[measured]**
+
+| viewport | SVG width | scale | gaps 2M→8M | **10M→12M gap** | mark glyph box |
+|---|---|---|---|---|---|
+| 1440 / 1920 | 910px | 0.948 | 7.583px | **1.911px** | 11.4 × 13px |
+| 768 | 620px | 0.646 | 5.167px | **1.292px** | 7.8 × 9px |
+| 375 | 275px | 0.287 | 7.583 → **2.292px** | **0.573px** | 3.4 × **4px** |
+
+1.911px at 1440 reproduces wavecheck's number exactly. Answering the question asked: the gap is
+a constant **2.016 viewBox units** for that pair, so non-overlap is scale-invariant and holds at
+every viewport **[measured at four, inferred for the continuum — it is arithmetic on a fixed
+viewBox]**. Is 1.9px *legible* at 1440? Yes — the marks read as six discrete labels, with the
+`10M`/`12M` pair visibly tighter than the four before it. It is the minimum that works, not
+comfortable: at the 8-unit pitch the other gaps use, that pair would need pitch 24, and the run
+would then collide with the cradle at `x=220`.
+
+At 375 the honest finding is not the gap, it is the type size. The whole annotation layer scales
+to ~2.9px em for the draft marks, ~3.2px for the keel labels and ~3.4px for the waterline label
+— **texture, not text**, at any clearance. **[measured]** I am explicitly *not* calling this a
+blocker: no information is lost, because every string in the drawing is decorative
+(`role="img"` + `aria-label` carries the drawing, and the thesis/headline/sub/badges are real
+DOM text at real sizes beside it), and a blueprint whose fine annotation becomes grain on a
+phone is a defensible reading of the genre rather than a bug. It does mean the drawing's "only
+fine detail" earns nothing below ~768px, which is context the human's browser gate should have.
+
+#### Q4 — `--color-raised` reads as a genuine third tier
+
+Computed from the live page: `--color-raised` = `rgb(11, 48, 74)`, page ground
+`rgb(6, 19, 32)`. **ΔL\* = 13.2, ratio 1.369:1** **[measured]**. That is a plainly visible
+plane change in the render, well past the +7.2 L\* / 1.21:1 pairing plan 002 justified the token
+on — so yes, on the pairing the hero actually uses, the token now earns its place. The caveat
+stands unchanged: the **panel → raised** pairing the ADR argued from still has no consumer, so
+what shipped validates the token, not the argument for it.
+
+#### Q5 — Safari and `var()` in SVG presentation attributes: **UNMEASURED**
+
+This is the one thing I could not verify and will not guess at. In Chrome the ramp resolves
+correctly — `stroke-width` computes 1px (floor, `--stroke-hair`), 2px (cradle/waterline,
+`--stroke-rule`) and 3px (hull, `--stroke-heavy`) while the hull's *attribute* is still the
+literal string `var(--stroke-heavy)` **[measured]**. I had no WebKit available to drive here, so
+I have no evidence either way about Safari.
+
+Stating the risk without inflating it: if a WebKit build does not substitute `var()` inside a
+presentation attribute, the declaration is invalid, `stroke-width` falls back to its initial
+value `1`, and all four weights flatten to hairlines — which deletes one of the hero's two
+stated depth mechanisms (the file header names exactly two: stacked planes and stroke weight).
+Content, contrast, a11y and the reduced-motion contract are all unaffected; it degrades rather
+than breaks. It is new in this diff, so it is not a solved problem you are re-worrying — it is
+an unverified one. **Verify on a real Safari before the phase gate closes.** If it does flatten,
+the fix is small and local: literal numbers on the attributes, or move the four strokes to CSS
+classes where `var()` is unambiguously supported.
+
+#### Q1 — modern *and* still an engineering drawing: yes
+
+Judged from renders at 375/768/1440/1920, motion allowed. **[measured renders, taste call mine]**
+
+With the drift gone the hero is not flat. What carries it is that the remaining motion is all
+*constructional*: linework fades up, the hull draws itself on with `pathLength`, the dashed
+primer waterline wipes in left-to-right behind a clip, and `WATERLINE -- STATUS: APPROVED
+(HUMAN-ONLY)` arrives last at 1.6s. That is a drawing being **issued**, not a page being
+decorated, and it is a better argument for the thesis than a scroll parallax ever was — the
+drift was the one beat that moved *for effect* rather than to say something, and its removal
+reads as an edit rather than a loss. Static is not the risk; the risk was always fidgetiness,
+and it is now absent.
+
+It is still unmistakably an engineering drawing: the sheet's hairline trim border, the grid, the
+bottom-right title block (`SHEET 1 OF 1` / `NOT TO SCALE` / `REV 0.4.1`), all-mono uppercase
+microtype, a single accent hue used only for the approval line. And it is modern: `Drydock` at
+display scale in Big Shoulders over the primer eyebrow is the strongest thing on the page.
+
+Two composition faults are visible in the render and remain unfixed by design — both already
+logged, neither re-litigated here, and I am **not** rejecting on them:
+
+- **M3 (deviation 6) confirmed by measurement, not just by eye:** the topmost ink in the SVG is
+  the deckhouse mast at `y=150`, i.e. **35.7% of the viewBox height is empty above the drawing**
+  at every viewport, with ink spanning only `y=150…385` of `0…420` — a 142px blank band at
+  1440. **[measured]** This is a `viewBox`/composition mismatch and, unlike M2, it lives inside
+  `Hero.tsx`, so a future repair task *could* own it without touching `globals.css`.
+- **M2 (deviation 5)** stands as logged.
+
+#### One new non-blocking finding the log does not yet carry
+
+The `bg-raised` board's contrast cost is wider than M5 recorded. M5 covered the primer waterline
+label (`6.54:1 → 4.77:1`; I recompute **4.775:1** from the live computed colours, inside plan
+002 Decision 5's pre-agreed `≥ 4.5` floor **[measured]**). But the **linework** moved too:
+`--color-line` `rgb(53, 104, 140)` against the raised board is **2.285:1**, down from
+**3.129:1** on the dock ground **[measured]** — i.e. the hull, cradle, dock floor and all
+annotation now sit below the 3:1 that WCAG 1.4.11 asks of graphical objects, where on the old
+ground they cleared it.
+
+Why this is a finding and not a blocker, stated so the inference is auditable: 1.4.11 scopes to
+objects "required to understand the content", and this drawing is not — `role="img"` plus
+`aria-label` conveys it, and the page's argument is carried in adjacent real text. I also found
+**no** documented line-contrast rule to violate: `grep` over `docs/*.md`, `docs/decisions/*.md`
+and `CLAUDE.md` turns up no contrast threshold for `--color-line` at all **[measured]**. So this
+crosses a WCAG advisory that does not bind here, and no project rule. It is the same *kind* of
+consequence as M5 and belongs beside it in the human's decision, not in a gate.
+
+#### Verdict: **APPROVED**
+
+Both round-1 blockers are closed at the mechanism level, not papered over — the removal deleted
+the mechanism rather than retuning its constants, so there is no residual at-rest displacement
+to re-measure and no JS-off state to restore. The pairing question no gate can answer is
+answered: 35 animated nodes, one `data-reveal-path`, and it is on the only `pathLength` element.
+The harness extension is real where it binds on live content and fallible where it is vacuous.
+
+On deviation 1's test — I am **not** rejecting, and the reasons I am not are worth recording:
+nothing I found is an unbuildable decision, an unfallible gate, or an assertion inert on its real
+target. The three axes round 1 rejected on are all clear. What is left is one unverified
+portability risk that degrades rather than breaks (Q5), one unlogged contrast consequence that
+crosses no binding rule, and two composition judgements (M2/M3) that are the human's to make
+with a browser in front of them — which is exactly where this plan says they belong.
+
+Ready for the human's browser gate. Two things to carry into it: **check Safari** (Q5), and look
+at the empty upper third (M3) on a real screen before deciding it is fine.
+
+
 ## Reconcile report
 
 *Deferred to plan 005 (plan 002 deviation 11), which reconciles 002–005 together.*
