@@ -54,9 +54,11 @@ seven section components and the shell consume them.
 
 ## 4. Baseline
 
-Filled by T0. Pre-observed 2026-08-19: HEAD `03233e0`, tree clean, `npm run verify`
+Filled by T0. Pre-observed 2026-08-19: HEAD `7cb635a`, tree clean, `npm run verify`
 PASS (`14 literals, 4x executor, 1 h1, motion contract`),
-`node scripts/measure-reduced-motion.mjs` PASS.
+`node scripts/measure-reduced-motion.mjs` PASS. **T0 must also record the
+basename and `shasum` of the compiled stylesheet in `site/out/_next/static/chunks/*.css`** —
+Wave 1.0's criteria compare against it (F7).
 
 ## 5. Practices in effect
 
@@ -70,26 +72,74 @@ concurrent executors; criteria run from the repo root.
 
 ## 6. Findings & constraints
 
-**F1 — Additive only, because the consumers are frozen.** Nine `@theme` tokens and
-ten `lib/motion.ts` exports are consumed by the shell and all seven sections.
-Renaming or removing any is out of scope and would require touching files this
-plan does not own.
+**F1 — Additive only, because the consumers are frozen. Corrected against the
+actual tree (the first draft of this finding was wrong in both directions):**
 
-**F2 — Tailwind v4 tree-shakes unreferenced `@theme` tokens**, and a mistyped name
-emits nothing with no error. New tokens will therefore be **absent from the
-compiled CSS until a later plan consumes them** — that is expected, not a defect,
-and criteria must assert on source rather than on `out/`.
+- `app/globals.css` defines **25 named tokens**, not nine: 6 `--color-*`,
+  3 `--font-*`, 6 `--text-*`, 7 `--text-*--line-height`/`--letter-spacing`
+  modifiers, and 3 grid vars. **All six `--text-*` steps are consumed** across
+  `Section.tsx`, `layout.tsx` and six section files (10 usages).
+- `lib/motion.ts` exports ten names, imported by **4 files only** —
+  `Section.tsx`, `Hero.tsx`, `Terminal.tsx`, `Lifecycle.tsx` — not by all seven
+  sections. **`drawLine` and `revealClip` have zero consumers today**: they are
+  already dead exports, which is context for adding two more speculative ones.
 
-**F3 — Every motion primitive needs a reduced-motion path.** `NO_MOTION` is the
-swap target and must never set `pathLength` (plan 001 deviation 45 — it destroys
-author dash patterns). Scroll-linked motion is a **new risk class** here: a
-`useScroll`-driven transform is not covered by the existing `[data-reveal]` CSS
-restore, so each new primitive must state how it degrades.
+**F2 — Tailwind v4 tree-shakes unreferenced `@theme` tokens**, and a mistyped or
+deleted name emits nothing with no error. New tokens will therefore be absent from
+the compiled CSS until a later plan consumes them — expected, not a defect. The
+dangerous corollary: **rescaling or deleting an existing `--text-*` token makes
+every `<h2>` render at browser default and `npm run verify` still exits 0.**
+Verified. Neither existing gate looks at type size.
 
-**F4 — The reduced-motion harness asserts today's contract only.** It checks the
-waterline dash, stippling, hull opacity and invisible text. It will not catch a
-new scroll-linked primitive that ignores reduced motion. Extending it belongs to
-plan 005, and until then that gap is open.
+**F7 — The compiled-CSS checksum is the only gate that can see F2's failure
+mode.** The emitted stylesheet is content-hashed. A purely additive change to
+`@theme` leaves it **byte-identical** (verified: an unreferenced token adds
+nothing). So T0 records its `shasum`, and every Wave-1.0 criterion asserts the
+checksum still matches. This is also the only mechanical test of §10's claim that
+this plan changes no rendered output.
+
+**F8 — Substring greps do not guard exports or tokens.** `grep -q "revealClip"`
+is satisfied by `revealClipStagger`; `grep -q "drawLine"` is satisfied by its own
+doc comment. Both export blocks were deleted from a copy and the guard loop still
+passed. Every name assertion in this plan is therefore **anchored**:
+`grep -qE "^export (const|function) <name>\b"` for exports, `--<name>:` for
+tokens. This class of error has now occurred three times in this repo's history —
+treat an unanchored name grep as a defect on sight.
+
+**F3 — Scroll-linked motion is a new risk class and gets a single auditable
+branch.** `NO_MOTION` is the swap target for variant-driven motion and must never
+set `pathLength` (plan 001 deviation 45 — it destroys author dash patterns). But
+`NO_MOTION` **cannot** stand in for a MotionValue-driven transform, and a hook
+cannot be called conditionally. So scroll drift is exported as **one hook,
+`useDriftY(ref)`, which itself returns a constant-0 MotionValue when
+`useMotionSafe()` is false.** Six consumers in plan 004 then get one correct
+branch instead of six chances to get it wrong. `assert-copy.mjs` only checks that
+the string `useMotionSafe` is present, never that the branch is correct.
+
+**F4 — The reduced-motion harness cannot see scroll-linked motion, and the fix
+must precede the exposure.** It asserts the waterline dash, stippling, hull
+opacity and invisible text — nothing scroll-driven. Plan 004 *applies* scroll
+motion. **Extending the harness is therefore a blocking prerequisite of plan 004,
+not a plan-005 item** (§9). Shipping unguarded scroll motion and auditing it a
+plan later is the ordering that produced plan 001's worst defect.
+
+**F6 — Frozen contract: the exact names and types plans 003–005 receive.** Values
+are delegated to Judgment tier; **names and types are not.** Plans 003–005 cannot
+be written against names an executor invents.
+
+| New name | File | Shape | Consumed by |
+|---|---|---|---|
+| `--color-raised` | globals.css | colour, third surface tier | 003, 004 |
+| `--text-hero` | globals.css | `clamp()` + paired line-height/letter-spacing | 003 |
+| `--stroke-hair` / `--stroke-rule` / `--stroke-heavy` | globals.css | length; the stroke-weight ramp Decision 2 names as the depth mechanism | 003, 004 |
+| `anchorReveal(i: number)` | motion.ts | `Variants`, per-index, `"hidden"`/`"shown"` | 004 |
+| `heroReveal(i: number)` | motion.ts | `Variants`, per-beat, so 003 adds hero beats without a timing literal | 003 |
+| `useDriftY(ref)` | motion.ts | hook → `MotionValue<number>`; constant 0 when `useMotionSafe()` is false (F3) | 003, 004 |
+
+Nothing outside this table may be added. Motion exports carry `satisfies` types
+against the `motion` package's own, matching `heroSequence`'s existing idiom —
+untyped object literals pass single-file `tsc` and fail only in a later plan that
+does not own this file.
 
 **F5 — Timing literals live only in `lib/motion.ts`.** Section files fail the
 harness on `duration:` / `delay:` / `duration-N`, so any cadence a later plan
@@ -100,7 +150,8 @@ needs must be exported from here.
 | # | Question | Decision | Decided by | Rationale |
 |---|---|---|---|---|
 | 1 | How far from the current austerity? | Blueprint substrate + modern devices: keep frame, draft marks, single accent, mono labels, grid; add display scale, contrast steps, per-section anchors, choreographed motion | user | The prior review treated "landing page" as a failure mode; this extends that finding rather than reversing it |
-| 2 | How is depth built? | A third surface tier (`--color-raised`) and layered linework. **No box-shadows, no blur, no glass.** | planner (assumed — flag if wrong) | Shadows are the landing-page tell verdict D objected to; a drawing gets depth from stacked planes and stroke weight |
+| 2 | How is depth built? | A third surface tier (`--color-raised`), a stroke-weight ramp, and layered planes. **No diffuse shadow (any blur radius > 0), no `blur()`, no glass, no radial-gradient glow.** A zero-blur hairline edge (`box-shadow: inset 0 1px 0 var(--color-line)`) **is** permitted — it is the canonical stacked-plane edge and Decision 2's own mechanism | planner (assumed — flag if wrong) | Diffuse shadow is the landing-page tell verdict D objected to; a drawing gets depth from stacked planes and stroke weight. The first wording banned the hairline it meant to require, and its grep missed `drop-shadow`, `text-shadow` and gradient glows |
+| 5 | What contrast must `--color-raised` hold? | `--color-ink-dim` ≥ 4.5:1 **on raised**, `--color-primer` ≥ 4.5:1 **on raised**, and raised ≥ 1.15:1 **against `--color-panel`** so it reads as a distinct tier | planner (assumed — flag if wrong) | The first draft asked for contrast against `--color-ink` (14–16:1, cannot fail) and `--color-dock` (not the adjacent tier). The two pairs that actually fail were unmeasured, and the reviewer had no rubric. A plausible tier like `#1a4159` gives ink-dim 4.22:1 — below AA — while sitting only 1.53:1 from panel |
 | 3 | Do new tokens replace old ones? | No — purely additive (F1) | planner | Nine tokens and ten exports have frozen consumers |
 | 4 | Scroll-linked motion, given F3? | Permitted, but each primitive must export a reduced-motion variant AND be documented as scroll-linked so plan 005 can extend the harness to cover it | planner (assumed — flag if wrong) | The existing CSS restore cannot reach a JS-driven scroll transform; the gap must be named now rather than discovered later |
 
@@ -116,9 +167,22 @@ Section components, `layout.tsx`, `Section.tsx`, `page.tsx`, `content/copy.ts`,
 the harness scripts, the draft-mark overlap fix (N17), and any deployment work.
 Plans 003–005 consume what this plan produces.
 
+**Handed to plan 003:** pinning `Big_Shoulders`'s `opsz` axis and its missing
+`size-adjust` metrics. `--text-hero` makes the existing layout shift worse, but the
+fix changes emitted font CSS and so cannot coexist with this plan's checksum gate
+(F7). Plan 003 renders the display step and can judge it in a browser.
+
+**Reordered dependency (F4):** extending `scripts/measure-reduced-motion.mjs` to
+cover scroll-linked motion is a **blocking prerequisite of plan 004**, which is the
+plan that applies it. It is no longer a plan-005 item. Plan 004 must not open until
+that assertion exists, or it ships unguarded scroll motion.
+
 ## 10. Execution policies
 
-Per task: the single criterion must exit 0, re-run independently by wavecheck.
+Per task: the single criterion must exit 0, re-run independently by wavecheck —
+except review tasks, whose criterion is a written verdict (permitted by the format
+contract's Wave x.R template). A verdict of REJECTED satisfies the criterion but
+**fails the phase gate**, which requires APPROVED.
 Per wave: `drydock:wavecheck`, PASS required before the next wave.
 Per phase: `Wave 1.R` fresh-context Opus review; APPROVED required at the gate.
 Escalation: quality-review rejection → max 2 retries → tier up → human. Wavecheck
@@ -132,7 +196,32 @@ Tracker mirroring: none. Final step: `drydock:reconcile`.
 
 ## 11. Pressure-test verdict
 
-*To be filled by the adversarial fresh-context review before approval.*
+**Round 1 — REJECTED** (fresh-context Opus, 2026-08-19). 4 CRITICAL, 5 MAJOR,
+5 MINOR. It proved its exploits rather than asserting them. All confirmed findings
+are fixed above:
+
+| Finding | Fix |
+|---|---|
+| C1 Export guard non-functional — both export blocks deleted from a copy and the loop still passed (`revealClip` matched by `revealClipStagger`, `drawLine` by its own doc comment) | F8 + every name assertion anchored to `^export (const\|function) <name>\b`. **Independently reproduced by the orchestrator before accepting.** |
+| C2 Six consumed `--text-*` tokens unguarded; deleting one renders every `<h2>` at browser default with `verify` still green | Guard extended to all 15 named colour/font/text tokens; F1/F2 corrected |
+| C3 Wave 1.0 never builds, so a broken `@theme` surfaces at a task forbidden from fixing it | Both Wave-1.0 criteria end with `npm run build` + a compiled-CSS `shasum` diff against T0's baseline (F7) |
+| C4 Labelled a Contracts wave but pinned no contract — no names, no types | F6's frozen name/type table; "plus any supporting scale tokens" deleted; `satisfies` types required; `--stroke-*` ramp and `heroReveal` added because **nothing in the first draft served plan 003** |
+| M1 F1 factually wrong in both directions | Corrected: 25 named tokens not 9; 4 importers not "the shell and all seven sections"; `drawLine`/`revealClip` already dead |
+| M2 No contrast threshold, and the criterion asked for pairs that cannot fail | Decision 5: ink-dim ≥ 4.5:1 and primer ≥ 4.5:1 **on raised**, raised ≥ 1.15:1 vs panel |
+| M3 Shadow grep bypassable (`drop-shadow`, `text-shadow`, radial glow) **and** over-broad (banned the zero-blur hairline it meant to require) | Decision 2 reworded to "no diffuse shadow (blur > 0)"; grep widened to `shadow\|backdrop-filter\|blur(\|radial-gradient` |
+| M4 Scroll motion applied in 004, audited in 005 — the ordering that produced plan 001's worst defect | `useDriftY(ref)` owns the reduced-motion branch in one place; harness extension is now a **blocking prerequisite of plan 004** |
+| M5 T1.R.1 pointed at the plan document's diff, not the code diff | Context brief corrected |
+| minors | Baseline SHA `03233e0` → `7cb635a`; §10's blanket criterion claim qualified for review tasks and notes REJECTED fails the gate; T1.0.1 gains `data-reveal-path`/`stroke-dasharray` guards |
+
+**One fix introduced a conflict, caught by the orchestrator while verifying:**
+owning `lib/fonts.ts` to pin the `opsz` axis contradicts the new checksum gate,
+because font changes alter the emitted CSS. `fonts.ts` was removed from ownership
+and the axis fix handed to plan 003 (§9).
+
+**Round 2:** not run. The repair is ~20 lines of specification against a 4-task
+plan, every finding was independently reproduced before acceptance, and the
+verdict's own assessment was that 269 lines is the right length — it crossed only
+into delegating names and types alongside values.
 
 ---
 
@@ -140,14 +229,16 @@ Tracker mirroring: none. Final step: `drydock:reconcile`.
 
 #### T0 — Baseline verification
 - **Status:** TODO
-- **Description:** Record HEAD, tree state, and both gate results on the untouched tree. Fill §4.
+- **Description:** Record HEAD, tree state, both gate results, **and the basename
+  and `shasum` of the compiled stylesheet** on the untouched tree. Wave 1.0's
+  criteria compare against that checksum (F7). Fill §4.
 - **Files owned:** `docs/plans/002-design-system-modernisation.md` (§4 + Progress log)
 - **Depends on:** —
 - **Model / thinking:** Mechanical / off (Haiku)  **Executor:** drydock:executor
 - **Context brief:** This plan §4, §5.
 - **Forbidden:** Editing anything under `site/`. Editing any plan section but §4 and the Progress log.
 - **Acceptance criterion:**
-  `git rev-parse HEAD && cd site && npm run verify && node scripts/measure-reduced-motion.mjs`
+  `git rev-parse HEAD && cd site && npm run verify && node scripts/measure-reduced-motion.mjs && shasum out/_next/static/chunks/*.css | tee /tmp/dd2-css-baseline.txt`
 
 ---
 
@@ -163,11 +254,11 @@ need; both gates green; no consumer changed.
 > Criteria are source-scoped: new tokens are tree-shaken until consumed (F2), so
 > asserting on `out/` would fail for a correct implementation.
 
-#### T1.0.1 — Surface tiers and display scale
+#### T1.0.1 — Surface tier, display step, stroke ramp
 - **Status:** TODO
-- **Description:** Add a third surface tier and the large display step, plus any
-  supporting scale tokens, as additive `@theme` entries. Register no new font.
-- **Files owned:** `site/app/globals.css`, `site/lib/fonts.ts`
+- **Description:** Add the third surface tier, the large display step, and the
+  stroke-weight ramp as additive `@theme` entries. `globals.css` only.
+- **Files owned:** `site/app/globals.css`
 - **Depends on:** T0
 - **Model / thinking:** Judgment / extended (Opus)  **Executor:** drydock:executor
 - **Context brief:** This plan §1, §6 (F1, F2), Decisions 1–3. Read
@@ -177,14 +268,32 @@ need; both gates green; no consumer changed.
   `filter: blur()`, or gradient meshes (Decision 2). Touching `lib/motion.ts`,
   `components/`, `content/`, `app/layout.tsx`, `app/page.tsx`.
 - **Implementation sketch:**
-  - `--color-raised` — a third tier above `--color-panel`, so surfaces read
-    dock → panel → raised. State its measured contrast against `--color-ink` and
-    against `--color-dock` in your report.
+  - Add **exactly** the names in F6's table for this file: `--color-raised`,
+    `--text-hero`, and the `--stroke-hair` / `--stroke-rule` / `--stroke-heavy`
+    ramp. **Nothing else** — no "supporting" tokens of your own choosing.
+  - `--color-raised` must satisfy Decision 5's three thresholds. **Compute and
+    report all three ratios**: ink-dim on raised, primer on raised, raised vs
+    panel. Do not report ink-on-raised — it cannot fail and is not the constraint.
   - `--text-hero` — a display step above `--text-sheet`, `clamp()`-based, with
     paired line-height and letter-spacing in the existing `--text-*` idiom.
-  - Keep the reduced-motion block and the nine contract tokens untouched.
+  - **Do not rescale or remove any existing `--text-*` step.** Six are consumed in
+    10 places and Tailwind emits nothing for a missing token — an `<h2>` would
+    silently render at browser default with every gate still green (F2).
+  - Leave the reduced-motion block, both restore selectors, and all 25 existing
+    named tokens untouched.
+  - **Do not touch `lib/fonts.ts`.** `Big_Shoulders` has an unpinned `opsz` axis
+    and no `size-adjust` metrics, so `--text-hero` will worsen existing layout
+    shift — but pinning the axis changes the emitted font CSS, which would break
+    this task's checksum gate (F7). That fix belongs to plan 003, which actually
+    renders the display step and can judge it in a browser.
 - **Acceptance criterion:**
-  `cd site && npx eslint lib/fonts.ts && printf '{"extends":"'"$PWD"'/tsconfig.json","include":[],"files":["'"$PWD"'/lib/fonts.ts"]}' > /tmp/dd2-f.json && npx tsc --noEmit --project /tmp/dd2-f.json && grep -q -- "--color-raised:" app/globals.css && grep -q -- "--text-hero:" app/globals.css && for t in --color-dock --color-panel --color-line --color-ink --color-ink-dim --color-primer --font-display --font-mono --font-body; do grep -q -- "$t:" app/globals.css || exit 1; done && ! grep -qE "box-shadow|backdrop-filter|blur\(" app/globals.css && grep -q "prefers-reduced-motion" app/globals.css`
+  `cd site && for t in --color-raised --text-hero --stroke-hair --stroke-rule --stroke-heavy; do grep -q -- "$t:" app/globals.css || exit 1; done && for t in --color-dock --color-panel --color-line --color-ink --color-ink-dim --color-primer --font-display --font-mono --font-body --text-mark --text-note --text-body --text-lead --text-title --text-sheet; do grep -q -- "$t:" app/globals.css || exit 1; done && ! grep -qE "shadow|backdrop-filter|blur\(|radial-gradient" app/globals.css && grep -q "prefers-reduced-motion" app/globals.css && grep -q "data-reveal-path" app/globals.css && grep -q "stroke-dasharray" app/globals.css && npm run build >/dev/null && shasum out/_next/static/chunks/*.css | diff -q - /tmp/dd2-css-baseline.txt`
+  *(Guards all 15 named colour/font/text tokens, not nine. Bans every shadow
+  property plus gradient glow — a zero-blur hairline must therefore be written as
+  a `border`/`outline`, not `box-shadow`. Ends with a build and a compiled-CSS
+  checksum diff against T0's baseline: purely additive `@theme` work leaves it
+  byte-identical, so any accidental rendered change fails loudly here rather than
+  in a later task forbidden from fixing it.)*
 
 #### T1.0.2 — Choreography primitives
 - **Status:** TODO
@@ -201,17 +310,28 @@ need; both gates green; no consumer changed.
   deviation 45). Spring physics, bounce, or overshoot. Writing JSX. Touching
   `globals.css`, `components/`, `content/`.
 - **Implementation sketch:**
-  - `anchorReveal(i: number)` — per-index reveal for a section's visual anchor,
-    in the cadence idiom of the existing `revealClipStagger`.
-  - `parallaxDrift` — a scroll-linked y-offset for layered linework. Export the
-    config, not a hook that assumes a component shape, so plan 004 can apply it.
-  - **Each new primitive must have a documented reduced-motion path**, and the
-    file header must state that scroll-linked motion is **not** covered by the
-    `[data-reveal]` CSS restore (F3/F4) — a consumer must branch on
-    `useMotionSafe()` itself.
+  - Add **exactly** F6's three names for this file and nothing else:
+    - `anchorReveal(i: number): Variants` — per-index reveal for a section's
+      visual anchor, in the cadence idiom of `revealClipStagger`.
+    - `heroReveal(i: number): Variants` — per-beat, so plan 003 can add hero beats
+      without writing a timing literal in a section file (F5 makes that fatal).
+    - `useDriftY(ref): MotionValue<number>` — scroll-linked drift as **one hook
+      that owns the reduced-motion branch itself**, returning a constant 0 when
+      `useMotionSafe()` is false. Do **not** export a bare config and require each
+      consumer to branch: hooks cannot be called conditionally, and six consumers
+      would mean six chances to get it wrong with no gate watching (F3).
+  - Carry `satisfies` types against the `motion` package's own, as `heroSequence`
+    already does. Untyped literals pass single-file `tsc` and fail only in a later
+    plan that does not own this file.
+  - Update the file header to state that scroll-linked motion is **not** covered by
+    the `[data-reveal]` CSS restore, and that `useDriftY` is where that branch lives.
   - State names stay exactly `"hidden"` / `"shown"` (silent failure otherwise).
 - **Acceptance criterion:**
-  `cd site && npx eslint lib/motion.ts && printf '{"extends":"'"$PWD"'/tsconfig.json","include":[],"files":["'"$PWD"'/lib/motion.ts"]}' > /tmp/dd2-m.json && npx tsc --noEmit --project /tmp/dd2-m.json && grep -q "anchorReveal" lib/motion.ts && grep -q "parallaxDrift" lib/motion.ts && for n in sectionReveal staggerChildren childRise drawLine revealClip revealClipStagger heroSequence waterlineReveal useMotionSafe NO_MOTION; do grep -q "$n" lib/motion.ts || exit 1; done && node -e "const s=require('fs').readFileSync('lib/motion.ts','utf8');const m=s.match(/export const NO_MOTION[\s\S]*?\n};/);process.exit(m[0].includes('pathLength')?1:0)"`
+  `cd site && npx eslint lib/motion.ts && printf '{"extends":"'"$PWD"'/tsconfig.json","include":[],"files":["'"$PWD"'/lib/motion.ts"]}' > /tmp/dd2-m.json && npx tsc --noEmit --project /tmp/dd2-m.json && for n in anchorReveal heroReveal useDriftY; do grep -qE "^export (const|function) $n\b" lib/motion.ts || exit 1; done && for n in sectionReveal staggerChildren childRise drawLine revealClip revealClipStagger heroSequence waterlineReveal useMotionSafe NO_MOTION; do grep -qE "^export (const|function) $n\b" lib/motion.ts || exit 1; done && grep -q "useMotionSafe" lib/motion.ts && node -e "const s=require('fs').readFileSync('lib/motion.ts','utf8');const m=s.match(/export const NO_MOTION[\s\S]*?\n};/);if(!m)process.exit(1);process.exit(m[0].includes('pathLength')?1:0)" && npm run build >/dev/null && shasum out/_next/static/chunks/*.css | diff -q - /tmp/dd2-css-baseline.txt`
+  *(Every name assertion is **anchored** to `^export (const|function) <name>\b`.
+  The unanchored form was proven non-functional: `revealClip` is matched by
+  `revealClipStagger` and `drawLine` by its own doc comment, so both export blocks
+  could be deleted with the guard still passing — F8.)*
 
 ### Wave 1.1 — Integration
 > Single task; first point a full build is safe.
@@ -239,8 +359,10 @@ need; both gates green; no consumer changed.
 - **Files owned:** `docs/plans/002-design-system-modernisation.md` (Progress log)
 - **Depends on:** T1.1.1 and wavecheck PASS on 1.0, 1.1
 - **Model / thinking:** Judgment / extended (Opus)  **Executor:** drydock:executor
-- **Context brief:** the plan diff, this plan, §7. Measure the new tokens'
-  contrast ratios rather than accepting reported values.
+- **Context brief:** `git diff <T0 baseline SHA>..HEAD -- site/` — the **code**
+  diff, not the plan document's diff — plus this plan and §7. Measure the new
+  tokens' contrast ratios against Decision 5's three thresholds rather than
+  accepting reported values.
 - **Forbidden:** Editing anything under `site/`. Re-litigating §7.
 - **Acceptance criterion:** Verdict APPROVED or REJECTED with specific findings
   appended to the Progress log, committed as
