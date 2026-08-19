@@ -11,6 +11,7 @@ export const display = Big_Shoulders({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-src-display",
+  axes: ["opsz"],
 });
 
 // Labels, code, draft marks. Not a variable font: weights must be listed.
