@@ -265,7 +265,7 @@ this is rejected again on the same axis, the plan is the problem, not the review
 the harness covers scroll-linked motion and has been observed failing; both gates
 green; a human has confirmed it in a browser.
 
-**Phase gate:** `cd site && npm run verify` exits 0; `node scripts/measure-reduced-motion.mjs` exits 0; wavecheck PASS on 1.0–1.3; T1.R.1 APPROVED; **human browser confirmation**; human approval.
+**Phase gate:** `cd site && npm run verify` exits 0; `node scripts/measure-reduced-motion.mjs` exits 0; wavecheck PASS on 1.0–1.4; **T1.R.1 re-run and APPROVED** (its first run REJECTED on R1/R2 — see the Progress log); **human browser confirmation**; human approval.
 
 ### Wave 1.0 — Font metrics
 > Single task. Lands before the display step so the larger type never ships on
@@ -437,6 +437,48 @@ green; a human has confirmed it in a browser.
 - **Acceptance criterion:**
   `cd site && npm run verify && node scripts/measure-reduced-motion.mjs`
 
+### Wave 1.4 — Repair: remove the drift
+> Added by human-authorised amendment (deviation 8) after T1.R.1 rejected on R1/R2.
+> Single task, single owned file. Also closes N17, open since plan 001.
+
+#### T1.4.1 — Remove the scroll drift and close the draft-mark overlap
+- **Status:** TODO
+- **Description:** Remove `useDriftY`/`data-drift` from the hero so the drawing's
+  construction joints hold, and fix the bow draft-mark pitch so `10M`/`12M` no
+  longer overlap.
+- **Files owned:** `site/components/sections/Hero.tsx`
+- **Depends on:** T1.R.1
+- **Model / thinking:** Standard / default (Sonnet)  **Executor:** drydock:executor
+- **Context brief:** T1.R.1's R1, R2 and M4 findings in the Progress log;
+  deviations 4, 6, 8. Read `site/components/sections/Hero.tsx`.
+- **Forbidden:** Touching any file but your own. Removing `text-hero`,
+  `heroReveal`, the `bg-raised` chips or board, or the `var(--stroke-*)` ramp —
+  those are what modernised the hero and they stay. Changing the waterline's
+  `strokeDasharray="10 8"` or its `data-reveal` (the harness's C1 selector depends
+  on both). Adding a second `<h1>`. Any timing literal. Adding a string to
+  `content/copy.ts`, which no task here owns — `hero.draftMarks` already holds all
+  six labels.
+- **Implementation sketch:**
+  - Delete the `useDriftY` import and call, the `board` ref if it becomes unused,
+    and the `data-drift` attribute. The interior `<motion.g>` may stay as a plain
+    group — the cradle blocks and deckhouse must render at their authored
+    coordinates, rigidly joined to the dock floor (`y=360`) and hull deck
+    (`y=225`).
+  - **N17:** the six bow draft marks are placed at `x = 140 + i*14` in 10px mono,
+    but `10M`/`12M` need ~18px and overlap by ~4 user units. Widen the pitch (or
+    reposition) so all six read cleanly. They are now the drawing's only fine
+    detail, so the overlap is more conspicuous than it was in plan 001.
+  - Leave the drawing's proportions otherwise alone. T1.R.1's M2/M3 (the board
+    shrank the drawing ~6.8% and is ~36% empty at the top) are judgement calls for
+    the human's browser gate, not this task's mandate.
+- **Acceptance criterion:**
+  `cd site && npx eslint components/sections/Hero.tsx --max-warnings 0 && printf '{"extends":"'"$PWD"'/tsconfig.json","include":[],"files":["'"$PWD"'/components/sections/Hero.tsx"]}' > /tmp/dd3-r.json && npx tsc --noEmit --project /tmp/dd3-r.json && ! grep -qF 'useDriftY' components/sections/Hero.tsx && ! grep -qF 'data-drift' components/sections/Hero.tsx && grep -qE 'className="[^"]*text-hero' components/sections/Hero.tsx && grep -qF 'heroReveal(' components/sections/Hero.tsx && grep -qF 'waterlineReveal' components/sections/Hero.tsx && grep -qF 'strokeDasharray="10 8"' components/sections/Hero.tsx && grep -qE '<h1[ >]' components/sections/Hero.tsx && grep -qF 'var(--stroke-' components/sections/Hero.tsx && grep -qF 'bg-raised' components/sections/Hero.tsx && npm run verify && node scripts/measure-reduced-motion.mjs 2>&1 | grep -q 'drift\[reduced\]=0'`
+  *(Asserts the drift is gone **and** that everything which modernised the hero
+  stays — a criterion that only checked removal could be satisfied by reverting the
+  whole wave. The final clause confirms the harness reports `drift[reduced]=0`, i.e.
+  D1/D2 are vacuous again by design, still proven fallible by their permanent
+  fixture.)*
+
 ### Wave 1.R — Quality review
 
 #### T1.R.1 — Fresh-context quality review
@@ -460,6 +502,11 @@ green; a human has confirmed it in a browser.
 
 | # | Task | What deviated | Why | Impact | Recorded |
 |---|------|---------------|-----|--------|----------|
+| 8 | — (human-authorised) | **Wave 1.4 added: remove the drift.** T1.R.1 rejected on R1/R2. The human chose removal over retargeting or amplifying it | Removal is one task in one owned file. Retargeting needs `globals.css` + `layout.tsx` (3 tasks, 2 files no task here owns); amplifying also reopens `lib/motion.ts`, a frozen contract 5 files consume | Keeps everything that actually modernised the hero — `text-hero`, beats 0–5, `bg-raised` chips and board, the stroke ramp — and drops the one device that damaged the drawing for ~2% differential. **R2 becomes moot** (no `data-drift` means nothing to restore). `useDriftY`, `anchorReveal` and `parallaxDrift`-class exports join `drawLine`/`revealClip` as unconsumed surface in `lib/motion.ts` — four dead exports now, which reconcile should weigh against plan 002's contract-first justification |
+| 7 | — (planner, second instance of deviation 3's shape) | **`axes: ["opsz"]` is inert at display size — the size §1 justified it by.** T1.R.1 measured 144px with `auto`, `none`, and forced `"opsz" 72`: all render **319.375px**. The font's default already sits at the axis max, so the axis only varies **below 72px** | Wavecheck 1.0 measured a +42,640-byte font growth and inferred "not a no-op". The bytes prove the axis is **served**; they do not prove it **changes** display rendering | **Same error shape as deviation 3, made by the orchestrator this time:** a correct measurement supporting a wrong inference. The headline does not look like scaled-up body type — it already didn't. T1.0.1's change is not harmful and not worth reverting, but §1's justification for it is false and the record now says so |
+| 6 | — (T1.R.1, within tolerance) | **The `bg-raised` drafting board cut internal contrast ~27%**: `--color-primer` on the waterline label falls **6.54:1 → 4.77:1**, a figure `layout.tsx` tracks | The board is a new surface tier under elements previously on `--color-dock` | **A regression inside a pre-agreed tolerance, not a violation.** Plan 002 Decision 5 set "primer ≥ 4.5:1 on raised" precisely so content could sit on raised; 4.77:1 meets it. Recorded rather than fixed, because removing the drift does not touch it and the board is what modernised the drawing. If it should be tighter, that is a `globals.css` change and a different plan |
+| 5 | — (T1.R.1) | **`--color-raised` is perceptible — but not in the case plan 002 argued.** The hero puts it on `--color-dock`, a **+13.2 L\*** step, unmistakable. Plan 002's review defended the **panel → raised** case (+7.2 L\*, 1.21:1) and that comparison **still has no consumer** | The first consumer chose a different pairing than the one the token was justified against | Plan 002's arithmetic checks out and its prediction holds for the case tested. The untested case remains untested — worth knowing before a later plan puts `raised` on `panel` assuming it was validated |
+| 4 | — (T1.R.1, blocking) | **R1: the drift pulled rigidly-joined geometry out of joint at rest, and bought ~2%.** At `scrollY=0` the `[data-drift]` group sits at `translateY(5.65px)`, so the cradle blocks (authored `M220 360`, flush with the non-drifting dock floor at `y=360`) and the deckhouse (`y=185 height=40`, bottom flush with the hull deck at `y=225`) render ~5.4 CSS px **below** the fixed geometry they are joined to — at load, before any scroll. Differential across the board's on-screen life is ~10.7px against ~512px of scroll; `DRIFT` never reaches ±16 until `scrollY≈1023`, long after the board has left. **R2: with JS off the drawing is permanently 16px broken** — the export ships `<g data-drift="true" style="transform:translateY(16px)">`, and both restore mechanisms key on `data-reveal`, which the drift group correctly lacks. Verified: `globals.css` and `layout.tsx` each contain **0** `data-drift` rules. Silent failure #11 | F5 predicted the rest offset (+5.9px vs +5.65 measured) and the planner wrote it off as "inherent and not a bug to chase" — correct about `useScroll`, wrong about the drawing, because nobody checked whether the drifting layer **touched** anything. R2 is plan 001 deviation 41's structural shape again: a restore net covering every mechanism except the newest | Both closed by removing the drift (deviation 8). **Not a repeat of round 1 — deviation 1's trigger is not met:** T1.R.1 independently re-verified all three round-1 axes and found the repairs hold (drift compiles in the wrapper shape; `DRIFT_FIXTURE=1` → `FAIL (2/7)` naming D1 while the clean run passes live at count 1; D1/D2 read `el.style.transform`, measured at +5.65px where the computed value is forced to `none`). The mechanism worked; the thing it protected was the wrong idea |
 | 3 | T1.3.1 | **A sound measurement paired with an unsound inference.** Its report states Hero.tsx "remains at 209 lines (baseline 209), confirming no extraneous changes". The count is correct, but the diff is **151 insertions and 151 deletions — 302 changed lines in a 209-line file**. The totals balance by coincidence; the file was substantially rewritten | Line count was treated as a proxy for change volume | None on the work, which is sound. Corrected here because the claim would otherwise mislead a later reader into thinking the hero was barely touched — and because "no extraneous changes" is exactly the kind of conclusion a reviewer might rely on rather than re-derive. **Wavecheck verified the ownership question directly instead:** one file, in-scope, nothing else touched |
 | 2 | — (orchestrator protocol violation) | **Wave 1.1 was opened with no recorded Wavecheck 1.0 PASS.** The orchestrator ran the substance of checks 2–4 on T1.0.1 before proceeding — ownership, the one-line diff, the criterion verbatim, the +42,640-byte font growth, the persisting warning — but never appended a report. Wavecheck 1.1's check 1 caught it; the 1.0 report above is retroactive and labelled as such | Verification was performed and treated as sufficient; writing the report was skipped as bookkeeping rather than recognised as the gate itself | **Counted against A3, not excused.** A3 measures whether the orchestrator invokes the gate between waves, and an unrecorded gate is indistinguishable from a skipped one to any later auditor. The ledger now records 1 unrecorded gate rather than reporting a clean 20/20 — a compliance ledger that only captures successes measures nothing. **Root cause worth reconciling:** the protocol says "invoke wavecheck, then proceed", and nothing distinguishes *performing the checks* from *recording that they passed*. The checks are re-runnable; the record is the only durable artifact |
 | 1 | — (human-authorised) | **Round-2 pressure test skipped**; approved after round 1's fixes | The human read §11 — including its own warning that this plan's three criticals were planner *reasoning* errors, the category a second round catches best — and chose to proceed | **Residual risk accepted and named:** every round-1 finding was reproduced before acceptance, but nobody with fresh eyes has examined the repaired plan. If T1.R.1 rejects on the same axis (an unbuildable decision, an unfallible gate, or an assertion inert on its real target), the plan is the problem rather than the review, and that is the signal to stop revising and reconsider the approach |
