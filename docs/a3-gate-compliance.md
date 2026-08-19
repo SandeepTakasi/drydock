@@ -25,9 +25,9 @@ without being asked to.
 
 | 002-design-system-modernisation | 3 | 3 | 3 | 0 | Waves 1.0, 1.1, 1.2. All PASS. Wave 1.0 was serialized from a planned parallel pair before execution (deviation 1), so the gate count reflects the executed shape, not the drafted one. |
 
-| 003-hero-revamp *(in progress)* | 4 so far | 4 | 3 | 0 | **1 gate performed but NOT RECORDED before the next wave opened** (wave 1.0 — see plan 003 deviation 2). Substance of the checks was run; the report was written retroactively after wavecheck 1.1 caught the omission. Counted here as invoked-but-unrecorded, not as clean. |
+| 003-hero-revamp *(in progress)* | 5 so far | 5 | 4 | 0 | **1 gate performed but NOT RECORDED before the next wave opened** (wave 1.0 — see plan 003 deviation 2). Substance of the checks was run; the report was written retroactively after wavecheck 1.1 caught the omission. Counted here as invoked-but-unrecorded, not as clean. Gate 1.4 is the repair wave's, invoked on a bare "continue" and **recorded at invocation rather than after the verdict**, which is deviation 2's corrective. |
 
-**Running total:** 21 of 21 gates invoked, 0 skipped, **1 unrecorded at the time the
+**Running total:** 22 of 22 gates invoked, 0 skipped, **1 unrecorded at the time the
 next wave opened**, across 3 plans.
 
 **Why the unrecorded gate is counted rather than excused.** An auditor reading a plan
