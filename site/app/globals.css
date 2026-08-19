@@ -115,6 +115,9 @@
     transform: none !important;
     clip-path: none !important;
     width: auto !important;
+  }
+
+  [data-reveal-path] {
     stroke-dasharray: none !important;
     stroke-dashoffset: 0 !important;
   }

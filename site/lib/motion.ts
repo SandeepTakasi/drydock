@@ -18,6 +18,15 @@ import { useReducedMotion, type Transition, type Variants } from "motion/react";
  *    override; the `[data-reveal] { …!important }` rule in `app/globals.css`
  *    is what force-restores those elements (F5a).
  *
+ *    Which attribute which variant needs: variants animating SVG
+ *    `pathLength` (`drawLine`, `heroSequence.hull`) require `data-reveal-path`
+ *    — that is the rule that restores `stroke-dasharray` / `stroke-dashoffset`
+ *    for dashed strokes. Every other variant (clip/opacity/transform,
+ *    including `waterlineReveal`) requires `data-reveal` only. Putting
+ *    `data-reveal-path` on a non-pathLength element, or `data-reveal` alone on
+ *    a dashed pathLength element, is wrong — get this from this file, not by
+ *    copying a neighboring component.
+ *
  * 3. Restraint: every reveal is <= 600ms, `heroSequence` totals <= 2s, easing is
  *    standard (`easeOut`) with no spring, bounce, or overshoot. This site reads
  *    as an engineering drawing.
@@ -35,6 +44,7 @@ const STAGGER = 0.08; // gap between staggered siblings
 const LINE_DRAW = 0.6; // SVG stroke draw
 const LINE_STEP = 0.09; // gap between transcript lines (the typing illusion)
 const LINE_REVEAL = 0.25; // per-transcript-line clip reveal
+const WATERLINE_DELAY = 1.0; // hero beat 3 — matches heroSequence.waterline's delay
 
 const t = (duration: number, delay = 0): Transition => ({
   duration,
@@ -86,6 +96,18 @@ export function revealClipStagger(i: number): Variants {
     shown: { ...CLIP_SHOWN, transition: t(LINE_REVEAL, i * LINE_STEP) },
   };
 }
+
+/**
+ * Clip reveal for the hero's dashed waterline overlay, carrying the same
+ * beat-3 delay as `heroSequence.waterline` (1.0s) so the two line up. Unlike
+ * `heroSequence.waterline` (which animates `pathLength` and needs
+ * `data-reveal-path`), this animates `clipPath`/`opacity` and needs
+ * `data-reveal` only.
+ */
+export const waterlineReveal: Variants = {
+  hidden: CLIP_HIDDEN,
+  shown: { ...CLIP_SHOWN, transition: t(REVEAL, WATERLINE_DELAY) },
+};
 
 /**
  * The hero's four-beat load sequence: linework fades in, the hull draws, the
