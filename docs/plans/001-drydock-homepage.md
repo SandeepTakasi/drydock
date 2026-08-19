@@ -1499,6 +1499,22 @@ restores — but **not** by loading the page with JavaScript disabled. That is a
 browser check, and it belongs on the human gate's list alongside the four items
 already there.
 
+### Wavecheck 2.4 — PASS — 2026-08-19
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `status: EXECUTING`. Wave 2.4 exists with one task (`T2.3.1`, id preserved across its wave move per deviation 44). Waves 1.0–1.6, 2.0–2.3 all carry PASS reports. |
+| 2. Ownership | PASS | `6c5cb6a drydock(T2.3.1)` → `docs/plans/001-drydock-homepage.md` only, one Progress-log row appended. **Zero files under `site/` touched** — the constraint that matters for an integration task, since a verifier that edits what it verifies is worthless. Tree clean. |
+| 3. Forbidden | PASS | Nothing under `site/` modified; no assertion "fixed"; only the Progress log edited. |
+| 4. Acceptance | PASS | `cd site && npm run verify` exit 0. All four stages green: `next build` (745ms), `tsc --noEmit` (1296ms), `eslint .`, `assert-copy`. Final line: `assert-copy: PASS — out/index.html (14 literals, 4x executor, 1 h1, motion contract)`. Re-run independently by the auditor with identical output. |
+| 5. Deviation reconciliation | PASS | No deviations. It correctly identified the Turbopack `yarn.lock` warning as pre-existing (deviation 8) rather than reporting it as new, and noted that its independent result matched the orchestrator's prior run exactly — the point of the task being independent execution rather than confirmation. |
+
+Deviations logged: 44 (13 discovered by wavecheck)
+
+**Verdict: PASS.** All nine Phase 2 implementation waves are complete and the
+assembled site passes the full gate. T2.R.1 (fresh-context quality review) may now
+run, then the Phase 2 human gate.
+
 **Auditor's note on the plugin, not the plan:** the wavecheck skill instructs
 "Append to the plan under §8". In a v2 plan §8 is *Open questions*; the format
 contract lists Wavecheck reports at position 14. This report was appended to the
