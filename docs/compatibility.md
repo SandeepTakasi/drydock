@@ -13,6 +13,14 @@ pilot, not a footnote.
 | A4 | `claude plugin validate --strict` | PASSED | 2026-08-18, including `disable-model-invocation` and `isolation` frontmatter. |
 | — | Contract logic (audit soundness, BLOCK path, attribution) | VERIFIED | Adversarial dry-run — see [self-audit.md](self-audit.md). Defect found and fixed in v0.3.0. |
 
-Public release criteria: A1 and A2 resolved to one-line compatibility notes;
-A3 published with real numbers; one example plan and one field case study in
-this docs folder.
+Public release criteria — **2 of 4 met**:
+
+- ✅ A1 and A2 resolved to one-line compatibility notes.
+- ✅ One example plan ([001-drydock-homepage](plans/001-drydock-homepage.md)) and
+  one field case study ([case-study-001-homepage](case-study-001-homepage.md)).
+- ❌ **A3 published with real numbers.** One pilot plan is not enough; the note
+  above says 5–10, and in that run the orchestrator knew it was being measured.
+- ❌ **A2b verified.** The worktree merge path has never been exercised.
+
+Licensed MIT as of v0.4.0. Remaining before public release is therefore evidence,
+not code.
