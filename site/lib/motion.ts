@@ -147,7 +147,6 @@ export const NO_MOTION: Variants = {
     x: 0,
     y: 0,
     clipPath: "none",
-    pathLength: 1,
     transition: { duration: 0 },
   },
   shown: {
@@ -155,7 +154,6 @@ export const NO_MOTION: Variants = {
     x: 0,
     y: 0,
     clipPath: "none",
-    pathLength: 1,
     transition: { duration: 0 },
   },
 };
