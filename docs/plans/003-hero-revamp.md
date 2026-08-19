@@ -528,6 +528,7 @@ only real proof at this point.
 | 2026-08-19 | — | **APPROVED by sandeep** | Round 2 skipped by human decision (deviation 1); status → EXECUTING |
 | 2026-08-19 | — | Round-1 pressure test REJECTED | 3 CRITICAL / 8 MAJOR / 6 MINOR. All confirmed findings fixed (§11). Three were errors in the planner's own reasoning, not its wording, and were independently reproduced before acceptance |
 | 2026-08-19 | T0 | Baseline recorded | SHA 2187c52, both gates green, Hero.tsx 209 lines, [data-drift] count 0 |
+| 2026-08-19 | T1.3.1 | Integration verification | **assert-copy final:** `assert-copy: PASS — /Users/takasivenkatasandeep/Desktop/drydock-repo/site/out/index.html (14 literals, 4x executor, 1 h1, motion contract)`. **measure-reduced-motion final:** `measure-reduced-motion: PASS — reducedMotion=true, waterline="10px, 8px", stippled=0, hull={"opacity":"1","dasharray":"none"}, invisibleText=0, drift[reduced]=1, drift[motion-allowed]=1`. **Both exited 0.** Metrics: Hero.tsx 209 lines (baseline 209), [data-drift] count 2. SHA: `213dfd5b9f9afb99337f3f83c3ee6f1e9e2697c2`. |
 
 ## Reconcile report
 
