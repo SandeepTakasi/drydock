@@ -37,10 +37,12 @@ The hero becomes the page's modern centrepiece using **only** the vocabulary pla
 engineering drawing — hull in a cradle, a **dashed** primer waterline carrying
 `APPROVED (HUMAN-ONLY)`, draft marks, keel labels, the page's only `<h1>` — inside
 the sheet frame, with hull-primer orange as the only accent. `Big_Shoulders`'s
-optical axis is pinned so the larger display step does not worsen layout shift.
-**And the reduced-motion harness is extended to cover scroll-linked motion before
-the hero introduces any.** Done means both gates green, the extended harness proven
-able to fail, and a human confirming it in a browser.
+`opsz` axis is served so auto optical sizing applies at display size — **this does
+not address layout shift**, which comes from missing `size-adjust` metrics and
+belongs to whoever owns `globals.css`. **And the reduced-motion harness is extended
+to cover scroll-linked motion in both directions before the hero introduces any.**
+Done means both gates green, the extended harness **proven able to fail by a
+permanently re-runnable fixture**, and a human confirming it in a browser.
 
 ## 2. Spec reference
 
@@ -87,21 +89,32 @@ because deleting it was forbidden. `drawLine` remains correct for the solid hull
 `pathLength`-animated elements carry `data-reveal-path`; clip/opacity/transform
 elements carry `data-reveal` only. **`heroReveal` animates `opacity`/`y`, so its
 consumers take `data-reveal`** — copying the attribute from the adjacent hull would
-strip the waterline's dash under reduced motion (plan 002 deviation 4). No gate can
-check this pairing; a human reads the diff.
+strip the waterline's dash under reduced motion (plan 002 deviation 4). **Correction to earlier plans: this pairing *is* mechanically checkable** — an
+anchored count of `data-reveal-path` occurrences pins the hull as the only
+`pathLength` element, and T1.2.1's criterion now does exactly that. Previous plans
+delegated it to a human's eyes unnecessarily.
 
 **F4 — `heroReveal` is bounded to beats 0–8.** Cadence is
 `0.4 + 0.15i + 0.35`; beat 8 ends at 1.95s, level with `heroSequence.label`, and
 beat 9 would reach 2.10s past the 2s hero ceiling (plan 002 deviation 5).
 
-**F5 — `useDriftY` degrades correctly but not instantly.** It returns a constant-0
-MotionValue when `useMotionSafe()` is false. Two known limits: `useMotionSafe()`
-returns `true` until hydration, so a reduced-motion visitor can get **one painted
-frame** of drift; and `useScroll({ target })` truncates its range at document
-edges, so a short element near the top can rest at a non-zero offset and never
-animate in. Both were measured by plan 002's review (notes R1, R2). Consequence for
-this plan: **the drift target belongs mid-document, not at the very top of the
-page** — which for a hero means drifting an interior layer, not the whole block.
+**F5 — `useDriftY` takes an HTMLElement ref, and every above-the-fold target rests
+off-zero. Both facts were wrong in the first draft.**
+
+- **Type constraint (verified `TS2345`):** `useDriftY(ref: RefObject<HTMLElement |
+  null>)`, and `UseScrollOptions.target` is the same. **An SVG ref does not
+  compile.** So the scroll *target* must be an HTML wrapper around the `<svg>`;
+  only the resulting MotionValue goes onto an interior `<motion.g style={{ y }}>`.
+  The plan must not conflate *what scroll progress is measured from* with *what
+  drift is applied to*.
+- **Rest offset — the first draft's rationale was inverted.** At rest,
+  `progress = (vh − top) / (eh + vh)`. Hero block (`top≈20, eh≈900`) → **y ≈
+  +1.3px**; a short interior layer (`top≈500, eh≈150`) → **y ≈ +5.9px**. The
+  interior layer rests *further* from its authored position, not closer. Any
+  above-the-fold target rests off-zero and can never reach `+DRIFT`; that is
+  inherent to `useScroll` and is not a reason to prefer one target over the other.
+- `useMotionSafe()` returns `true` until hydration, so a reduced-motion visitor can
+  get **one painted frame** of drift. Out of the harness's reach (F10).
 
 **F6 — `--stroke-*` yields no utilities.** Use `var(--stroke-hair)` in CSS or an
 arbitrary-value class; there is no `border-hair`. `--color-raised` and `--text-hero`
@@ -119,12 +132,35 @@ not animate (plan 002 deviation 8). Only `"hidden"` and `"shown"` are wired.
 builds of identical source differ (plan 002 deviation 9). The harness reads the
 served DOM; that is the right mechanism.
 
-**F10 — The harness must be extended before the hero uses drift, and must be
-proven able to fail.** It currently asserts the waterline dash, stippling, hull
-opacity and invisible text — nothing scroll-linked. A new assertion written before
-any consumer exists passes **vacuously**, so the task that writes it must also
-demonstrate a failing fixture. Plan 001's reduced-motion harness was only trusted
-after the defect was deliberately reintroduced and the gate watched failing.
+**F10 — The harness needs three things the first draft missed.** It currently
+asserts the waterline dash, stippling, hull opacity and invisible text — nothing
+scroll-linked. Extending it requires all of:
+
+1. **Read the inline style, not the computed value** (Decision 8). `[data-reveal] {
+   transform: none !important }` masks a computed check on the very element that
+   will drift.
+2. **A permanent env-flagged fixture** (Decision 7), because a pre-consumer
+   assertion passes vacuously and a removed fixture cannot be re-run by wavecheck.
+3. **A motion-*enabled* assertion.** The harness only launches Chrome with
+   `--force-prefers-reduced-motion`. If the ref never attaches, `useScroll`
+   progress stays 0, `y` pins at a static `+16px`, no error is raised, every gate
+   goes green — **and the reduced-motion assertion is satisfied, because reduced
+   motion is exactly when nothing should move.** Dead drift is indistinguishable
+   from working drift. A second Chrome *without* the flag, asserting the transform
+   **differs** between two scroll positions, is what makes the harness-before-hero
+   ordering worth anything.
+
+**Out of reach, acknowledged:** the one pre-hydration frame of drift (F5) happens
+before the settled state the harness measures. Neither this plan nor its harness
+covers it (Q1).
+
+**F11 — Splitting a pinned string across elements breaks the copy gate.**
+`assert-copy.mjs`'s `normalise()` replaces tags with a **space**, so
+`APPROVED (HUMAN-ONLY)` and `NOTHING SAILS UNTIL IT LEAVES THE DOCK` must survive
+as contiguous runs. The most common "modern" device —
+`thesis.split(" ").map(...)` for a per-word stagger — inserts tags mid-literal and
+fails `npm run verify` with an error about **copy**, not layout. The `<h1>` is safe:
+the heading check uses a tag-stripping path with no space substitution.
 
 ## 7. Decision Log
 
@@ -132,7 +168,10 @@ after the defect was deliberately reintroduced and the gate watched failing.
 |---|---|---|---|---|
 | 1 | Harness extension before or after the hero uses drift? | **Before** — Wave 1.1, ahead of the hero in Wave 1.2 | planner | Plan 002's M4: applying scroll motion in one plan and auditing it in the next is the ordering that produced plan 001's worst defect. Whoever introduces the risk extends the gate |
 | 2 | The new assertion is vacuous until a consumer exists. Accept that? | No — T1.1.1 must ship a **failing fixture** proving the assertion can fail | planner | An unfallible gate is worse than none; it manufactures confidence. Plan 001's harness was only trusted after a controlled reintroduction |
-| 3 | Where does drift apply, given F5's edge truncation? | An **interior layer** of the hero SVG (linework), not the hero block itself | planner (assumed — flag if wrong) | A block at the top of the document rests at a truncated offset and never animates in; an interior layer inside a mid-viewport SVG does not |
+| 3 | What is the scroll target, and what drifts? | **Target: an HTML wrapper `<div ref>` around the `<svg>`** (an SVG ref is a type error — F5). **Drifts: one interior `<motion.g data-drift style={{ y }}>` linework layer**, moving relative to static linework | planner, corrected after review | Parallax reads as depth only when one layer moves *relative to* others, so an interior layer is right — but **not** for the reason the first draft gave. That draft claimed the hero block rests at a worse offset; measured, the block rests at +1.3px and the interior layer at +5.9px, so the stated reason was inverted. The decision stands on relative motion alone |
+| 6 | What is the drift marker attribute? | **`data-drift`**, normatively — not an executor's choice | planner | T1.1.1 asserts it and T1.2.1's criterion hardcodes it; a "natural choice" left to an executor would fail a correct Wave 1.2 on a name mismatch |
+| 7 | The new harness assertion must survive wavecheck re-running it. How? | A **permanent, env-flagged fixture**: `DRIFT_FIXTURE=1` injects a drifting element. The criterion asserts **both** directions — clean run passes, flagged run fails naming the assertion | planner, after review | The first draft said "inject … then remove it", which makes failability un-re-runnable prose. §10 requires every criterion be re-runnable by wavecheck; a proof that no longer exists is not a proof |
+| 8 | What does the new assertion read? | **The inline style** (`el.style.transform`), not the computed value | planner, after review | `globals.css:124` sets `[data-reveal] { transform: none !important }` under reduced motion, and author `!important` beats inline style. The drifting layer will carry `data-reveal`, so a **computed** check reads `none` whether or not `useDriftY` works — a gate provably inert on its real target. Measured in headless Chrome |
 | 4 | `opsz` axis fix — this plan or later? | Here, Wave 1.0, before the display step lands | planner | Plan 002 handed it over precisely because `--text-hero` worsens the existing shift, and 002's checksum gate could not accommodate a font change |
 | 5 | Does the hero get new copy? | No. It works within the eight existing `hero` exports (F1) | planner | `content/copy.ts` is owned by no task here; a needed string is a blocker, reported as a deviation |
 
@@ -140,7 +179,7 @@ after the defect was deliberately reintroduced and the gate watched failing.
 
 | # | Question | Blocks | Recommended answer |
 |---|---|---|---|
-| Q1 | Should `useMotionSafe`'s one-frame pre-hydration window (F5) be fixed here? | Nothing — the drift is one interior layer and self-corrects sub-frame | Defer. The fix belongs in `lib/motion.ts`, owned by no task in this plan, and plan 002's review noted it is fixable without a hydration mismatch. Record it for whoever next owns that file |
+| Q1 | Should `useMotionSafe`'s one-frame pre-hydration window (F5) be fixed here? **Note the harness cannot observe it either** (F10) | Nothing — the drift is one interior layer and self-corrects sub-frame | Defer. The fix belongs in `lib/motion.ts`, owned by no task in this plan, and plan 002's review noted it is fixable without a hydration mismatch. Record it for whoever next owns that file |
 
 ## 9. Out of scope / follow-ups
 
@@ -162,7 +201,30 @@ deferred to plan 005 (plan 002 deviation 11).
 
 ## 11. Pressure-test verdict
 
-*To be filled by the adversarial fresh-context review before approval.*
+**Round 1 — REJECTED** (fresh-context Opus, 2026-08-19). 3 CRITICAL / 8 MAJOR /
+6 MINOR, nearly all verified empirically by the reviewer. **Three were errors in the
+planner's reasoning rather than its wording**, and each was independently reproduced
+before acceptance:
+
+| Finding | Fix |
+|---|---|
+| **C1** `useDriftY` takes `RefObject<HTMLElement>`; an SVG ref is `TS2345`, so Decision 3 was **unbuildable** and the fix lived in an unowned file → BLOCKED, plan 001's B1 shape. Reproduced: `error TS2345: RefObject<SVGGElement \| null> is not assignable…` | F5 + Decision 3 respecified: scroll target is an **HTML wrapper ref**; only the MotionValue reaches the interior `<motion.g>`. T1.2.1's forbidden list bars an SVG ref explicitly |
+| **C2** T1.1.1's criterion was satisfiable by a harness asserting nothing — `grep -q "data-drift"` matched a comment, the assertion tokens were unanchored substrings already present, and the harness passes vacuously today. Decision 2's fixture was enforced by nothing, and "inject then remove" made it un-re-runnable by wavecheck | Decision 7: permanent `DRIFT_FIXTURE=1` fixture. Criterion asserts **both** directions and anchors every label to `"C1:` form |
+| **C3** The assertion was **provably inert on its real target** — `globals.css:124` sets `[data-reveal] { transform: none !important }`, author `!important` beats inline style, and the drifting layer must carry `data-reveal`. Measured: `matrix(1,0,0,1,0,12)` with `data-drift` alone, `none` with both. A gate that fails on a fixture and does nothing in production. **Tenth silent-failure instance in this repo, and introduced by this plan** | Decision 8: assert the **inline** style. The fixture must itself carry `data-reveal` so it exercises the masking case rather than dodging it |
+| **M1** F5's rationale was **inverted** — measured, the hero block rests at +1.3px and a short interior layer at +5.9px, so the draft forbade the better option citing the metric on which it was better | F5 restated with the real arithmetic; Decision 3 now stands on relative motion alone, which is the true reason |
+| **M2** T1.2.1's criterion was satisfiable with **zero functional change** — four docblock words plus one dead import; `no-unused-vars` is severity 1 with no `--max-warnings 0`, and `noUnusedLocals` is off | Every name is now a call or an attribute; `--max-warnings 0` added |
+| **M3** C1's waterline selector is document-order-first, so a new earlier `motion.path` would make it measure the wrong node and fail on correct work in a file T1.2.1 cannot fix | T1.1.1 must harden the selector, and its forbidden list now says hardening ≠ weakening. T1.2.1 barred from changing the `10 8` dash |
+| **M4** `assert-copy`'s `normalise()` turns tags into spaces, so a per-word stagger on `thesis`/`sub` breaks a required literal and fails with an error about **copy** — and the draft's own sketch asked for staged beats there | F11 + explicit prohibition on splitting pinned strings |
+| **M5** `axes: ["opsz"]` **includes** an axis for variation; it pins nothing and adds no `size-adjust`, so §1's layout-shift claim was unachievable while the task title promised it | §1 corrected, task retitled, and the sketch states plainly that shift is not addressed |
+| **M6** Redundant second build, and `>/dev/null` discarded the font warning the task was told to report | Build dropped, redirect dropped, `opsz` grep anchored |
+| **M7** Nothing could distinguish **working drift from dead drift**: a ref that never attaches pins `y` at a static +16px, all gates green, and D1 is satisfied because reduced motion is exactly when nothing should move | F10.3 + assertion **D2**: a second Chrome *without* the flag asserting the transform differs across scroll positions |
+| **M8** The ordering was circular — a removed fixture leaves an assertion that has never failed and cannot be shown to fail | Broken by the permanent env-flagged fixture |
+| **m1–m6** marker name left to an executor while hardcoded downstream; F3 wrongly claimed the pairing was uncheckable; `heroReveal` + `style={{ y }}` on one element kills the scroll link; two criterion clauses duplicated `assert-copy`; harness cannot see the pre-hydration frame; `12vw` vs trim on narrow viewports | Decision 6 makes `data-drift` normative; an anchored `data-reveal-path` count replaces the "human reads the diff" claim; the rest folded into forbidden lists, F10 and T1.2.1's sketch |
+
+**Round 2:** not run. Every finding was reproduced before acceptance and the repair
+is specification, not redesign — but note this plan's criticals were **planner
+reasoning errors**, which is the category a second round is most likely to catch. If
+this is rejected again on the same axis, the plan is the problem, not the review.
 
 ---
 
@@ -193,11 +255,11 @@ green; a human has confirmed it in a browser.
 > Single task. Lands before the display step so the larger type never ships on
 > unpinned metrics.
 
-#### T1.0.1 — Pin the display face's optical axis
+#### T1.0.1 — Serve the display face's optical-size axis
 - **Status:** TODO
-- **Description:** Pin `Big_Shoulders`'s `opsz` axis so `--text-hero` renders at its
-  intended optical weight, and reduce the layout shift the missing `size-adjust`
-  metrics cause.
+- **Description:** Include `Big_Shoulders`'s `opsz` axis so automatic optical
+  sizing applies at display size. **This does not reduce layout shift** — that comes
+  from missing `size-adjust` metrics and is out of scope here.
 - **Files owned:** `site/lib/fonts.ts`
 - **Depends on:** T0
 - **Model / thinking:** Standard / default (Sonnet)  **Executor:** drydock:executor
@@ -206,13 +268,18 @@ green; a human has confirmed it in a browser.
 - **Forbidden:** Adding a new font family. Changing `IBM_Plex_Mono` or `Archivo`.
   Renaming any `--font-src-*` variable — `globals.css` maps them and is not owned
   here. Touching any other file.
-- **Implementation sketch:** add `axes: ["opsz"]` to the `Big_Shoulders` call so the
-  optical-size axis is served rather than defaulted at 14. Report whether the build's
-  `Failed to find font override values` warning changes — it may persist, since that
-  is about `size-adjust` metrics rather than axes, and if so say so plainly rather
-  than implying the shift is fixed.
+- **Implementation sketch:** add `axes: ["opsz"]` to the `Big_Shoulders` call.
+  Be precise about what this does: `axes` **includes** an axis so
+  `font-optical-sizing: auto` can vary it — it does **not** pin a value, and it adds
+  no `size-adjust` metrics. The `Failed to find font override values` warning will
+  almost certainly persist; **say so plainly and do not imply layout shift is
+  improved.** If you conclude the change has no observable effect at all, report that
+  as a deviation rather than shipping a no-op.
 - **Acceptance criterion:**
-  `cd site && npx eslint lib/fonts.ts && printf '{"extends":"'"$PWD"'/tsconfig.json","include":[],"files":["'"$PWD"'/lib/fonts.ts"]}' > /tmp/dd3-f.json && npx tsc --noEmit --project /tmp/dd3-f.json && grep -q "opsz" lib/fonts.ts && grep -q -- "--font-src-display" lib/fonts.ts && grep -q "IBM_Plex_Mono" lib/fonts.ts && grep -q "Archivo" lib/fonts.ts && npm run build >/dev/null && npm run verify >/dev/null`
+  `cd site && npx eslint lib/fonts.ts --max-warnings 0 && printf '{"extends":"'"$PWD"'/tsconfig.json","include":[],"files":["'"$PWD"'/lib/fonts.ts"]}' > /tmp/dd3-f.json && npx tsc --noEmit --project /tmp/dd3-f.json && grep -qE 'axes:\s*\[\s*"opsz"\s*\]' lib/fonts.ts && grep -q -- "--font-src-display" lib/fonts.ts && grep -q "IBM_Plex_Mono" lib/fonts.ts && grep -q "Archivo" lib/fonts.ts && npm run verify`
+  *(Anchored `axes: ["opsz"]` rather than the bare substring `opsz`, which a comment
+  satisfies. Redundant `npm run build` dropped — `npm run verify` builds already —
+  and `>/dev/null` dropped so the font warning the task must report stays visible.)*
 
 ### Wave 1.1 — Harness extension
 > Single task, and deliberately **ahead of** the hero. Whoever introduces a risk
@@ -220,31 +287,56 @@ green; a human has confirmed it in a browser.
 
 #### T1.1.1 — Extend the harness to cover scroll-linked motion
 - **Status:** TODO
-- **Description:** Add an assertion that scroll-linked transforms are inert under
-  reduced motion, and prove it can fail.
+- **Description:** Add **two** assertions — scroll-linked transforms inert under
+  reduced motion, and *live* when motion is allowed — read from the inline style, and
+  make failability permanent via an env-flagged fixture. Also harden the waterline
+  selector so the hero task cannot break C1 from a file it does not own.
 - **Files owned:** `site/scripts/measure-reduced-motion.mjs`
 - **Depends on:** T1.0.1
 - **Model / thinking:** Complex / extended (Sonnet)  **Executor:** drydock:executor
 - **Context brief:** This plan §1, F5, F10, Decisions 1–2. Read
   `site/scripts/measure-reduced-motion.mjs` and `useDriftY` in `site/lib/motion.ts`.
 - **Forbidden:** Weakening or removing any existing assertion (C1, C2, M1, the
-  invisible-text check, or the reduced-motion control). Adding a runtime dependency.
-  Wiring the harness into `npm run verify` — it needs Chrome and stays a separate
-  deliberate step. Touching `lib/motion.ts` or any component.
+  invisible-text check, the reduced-motion control). **Hardening C1's selector is
+  explicitly NOT weakening it** and is required — see the sketch. Adding a runtime
+  dependency. Wiring the harness into `npm run verify` — it needs Chrome and stays a
+  separate deliberate step. Touching `lib/motion.ts` or any component.
 - **Implementation sketch:**
-  - Under forced reduced motion, assert that every element carrying the drift
-    marker has **no scroll-induced transform** — i.e. its computed `transform` is
-    `none` or an identity matrix, and stays so across two scroll positions.
-  - The marker must be something a component can carry without inventing copy;
-    `data-drift` is the natural choice. State it in your report — the hero task
-    depends on the name.
-  - **Prove it can fail (Decision 2).** The assertion is vacuous until the hero
-    lands, so add a fixture: inject an element that drifts under reduced motion,
-    confirm the harness exits non-zero and names the assertion, then remove it. This
-    is the same method that made plan 001's harness trustworthy.
-  - Keep the existing per-assertion failure report shape.
+  - **The marker is `data-drift`** (Decision 6, normative — not your choice).
+  - **D1 — reduced motion:** assert every `[data-drift]` element's **inline**
+    `transform` (`el.style.transform` / its `style` attribute) is empty or identity,
+    at two scroll positions. **Read the inline value, not the computed one**
+    (Decision 8): `globals.css:124` sets `[data-reveal] { transform: none
+    !important }` under reduced motion, and the drifting layer will carry
+    `data-reveal` — so a computed check reads `none` whether or not `useDriftY`
+    works. Measured: two identical drifting `<g>`s gave `matrix(1,0,0,1,0,12)` with
+    `data-drift` alone and `none` with `data-drift data-reveal`.
+  - **D2 — motion allowed:** launch a second Chrome **without**
+    `--force-prefers-reduced-motion` and assert `[data-drift]`'s transform
+    **differs** between two scroll positions. Without this, a ref that never
+    attaches pins `y` at a static `+16px` with every gate green and D1 satisfied —
+    dead drift is indistinguishable from working drift (F10.3).
+  - **Report the `[data-drift]` element count** in both runs, so a selector that
+    matches nothing is visible rather than silently vacuous.
+  - **Permanent env-flagged fixture (Decision 7):** `DRIFT_FIXTURE=1` injects an
+    element that drifts under reduced motion **and carries `data-reveal`**, so the
+    fixture exercises the masking case rather than dodging it. Do **not** remove it —
+    wavecheck must be able to re-run the failure.
+  - **Harden C1's waterline selector.** It currently does
+    `querySelector("svg path[data-reveal]")` — document-order first, and exactly one
+    such element exists today. The revamped hero may add earlier `motion.path`
+    elements, which would make C1 measure the wrong node and fail on correct work in
+    a file T1.2.1 cannot fix. Pin it unambiguously (e.g. a stable id or attribute the
+    hero task is told to keep).
+  - Keep the existing per-assertion failure report shape and name the new ones
+    `D1:` / `D2:`.
 - **Acceptance criterion:**
-  `cd site && npx eslint scripts/measure-reduced-motion.mjs && node --check scripts/measure-reduced-motion.mjs && grep -q "data-drift" scripts/measure-reduced-motion.mjs && for a in "C1" "C2" "M1" "control"; do grep -q "$a" scripts/measure-reduced-motion.mjs || exit 1; done && node scripts/measure-reduced-motion.mjs`
+  `cd site && npx eslint scripts/measure-reduced-motion.mjs --max-warnings 0 && node --check scripts/measure-reduced-motion.mjs && for a in 'C1:' 'C2:' 'M1:' 'D1:' 'D2:' 'control:'; do grep -qF "\"$a" scripts/measure-reduced-motion.mjs || exit 1; done && grep -qE 'style\.transform|getAttribute\("style"\)' scripts/measure-reduced-motion.mjs && node scripts/measure-reduced-motion.mjs && ! DRIFT_FIXTURE=1 node scripts/measure-reduced-motion.mjs && DRIFT_FIXTURE=1 node scripts/measure-reduced-motion.mjs 2>&1 | grep -q "D1"`
+  *(Every assertion name is anchored to its quoted label `"C1:` etc — the first
+  draft's bare `grep -q "C1"` was satisfiable by a comment, the same defect class as
+  plan 002's C1. Requires the inline-style read. And asserts failability in **both**
+  directions: clean run exits 0, flagged run exits non-zero **and names D1** — so the
+  proof is permanent and re-runnable by wavecheck rather than prose.)*
 
 ### Wave 1.2 — The hero
 > Single task. The gate for its riskiest behaviour now exists and has been seen to
@@ -264,10 +356,24 @@ green; a human has confirmed it in a browser.
 - **Forbidden:** Hardcoding any copy, or adding a string to `content/copy.ts` —
   which this plan does not own (F1). `heroSequence.waterline` or `drawLine` on the
   waterline (F2). `data-reveal-path` on any clip/opacity-animated element (F3).
-  `heroReveal` beats above 8 (F4). Any timing literal — `duration:`, `delay:`,
-  `duration-N` all fail the copy harness. `min-h-screen`, `w-screen`, full-bleed
-  backgrounds (F7). A second accent colour. Diffuse shadow, blur, glass. Wrapping
-  itself in `<Section>` — Hero is exempt. Adding a second `<h1>`.
+  `heroReveal` beats above 8 (F4). Any timing literal. `min-h-screen`, `w-screen`,
+  full-bleed backgrounds (F7). A second accent colour. Diffuse shadow, blur, glass.
+  Wrapping itself in `<Section>` — Hero is exempt. Adding a second `<h1>`. **Plus
+  five added after review:**
+  - **Passing an SVG ref to `useDriftY`** — it takes `RefObject<HTMLElement | null>`
+    and an SVG ref is a `TS2345` error (F5).
+  - **Splitting `thesis`, `sub` or `waterlineLabel` per word or per character**
+    (e.g. `thesis.split(" ").map(...)`). Tag boundaries become spaces in
+    `assert-copy`'s normalisation and break a required literal (F11). Stagger whole
+    elements, never fragments of a pinned string.
+  - **Putting `heroReveal` and `style={{ y: drift }}` on the same element** —
+    `heroReveal` animates `y`, so the variant will `set` the same channel and
+    silently kill the scroll link after the entrance beat.
+  - **Changing the waterline's `strokeDasharray` away from `10 8`**, or introducing
+    any `1 1` dash — the harness's C1 and C2 assert both, and you cannot fix the
+    harness from here.
+  - Removing or renaming whatever stable hook T1.1.1 added to pin the waterline
+    selector.
 - **Implementation sketch:**
   - `hero.headline` stays the page's only `<h1>`, now at `text-hero`.
   - Keep the hull-in-cradle SVG, `drawLine` on the solid hull with
@@ -275,15 +381,32 @@ green; a human has confirmed it in a browser.
     `data-reveal` and its own `strokeDasharray`.
   - Use `heroReveal(i)` for the new staged beats — badges, thesis, sub, draft
     marks, keel labels — within beats 0–8.
-  - Apply `useDriftY` to an **interior linework layer** and mark it `data-drift`
-    (the name T1.1.1 asserts). Not the hero block: F5's edge truncation would leave
-    a top-of-document element resting at a non-zero offset.
+  - **Drift, in the only shape that compiles (F5, Decision 3):** put the scroll
+    target ref on an **HTML wrapper** — `const wrap = useRef<HTMLDivElement>(null)`
+    on a `<div>` around the `<svg>` — pass that to `useDriftY`, and apply only the
+    returned MotionValue to an interior layer:
+    `<motion.g data-drift style={{ y }}>`. An SVG ref does not typecheck. Keep
+    `data-drift` off any element that also takes a `heroReveal` variant.
+  - Note the target rests at a small non-zero offset because it is above the fold
+    (F5) — that is inherent and not a bug to chase.
   - Depth from `--color-raised` planes and the `--stroke-*` ramp via
     `var(--stroke-hair)` etc. — no `border-hair` class exists (F6).
   - Keep `hero.svgAriaLabel` on the `<svg role="img">`, and every string from
     `content/copy.ts`.
+  - `--text-hero` is `clamp(3.5rem, 12vw, 9rem)` with `-0.02em` tracking. At the
+    upper bound the headline is one short word inside `max-w-5xl`, so it fits — but
+    check a narrow viewport, since `12vw` plus the trim padding (F7) is the one place
+    horizontal overflow could appear.
 - **Acceptance criterion:**
-  `cd site && npx eslint components/sections/Hero.tsx && printf '{"extends":"'"$PWD"'/tsconfig.json","include":[],"files":["'"$PWD"'/components/sections/Hero.tsx"]}' > /tmp/dd3-h.json && npx tsc --noEmit --project /tmp/dd3-h.json && grep -q "text-hero" components/sections/Hero.tsx && grep -q "heroReveal" components/sections/Hero.tsx && grep -q "useDriftY" components/sections/Hero.tsx && grep -q "data-drift" components/sections/Hero.tsx && grep -q "waterlineReveal" components/sections/Hero.tsx && grep -q "<h1" components/sections/Hero.tsx && ! grep -qF "heroSequence.waterline" components/sections/Hero.tsx && ! grep -qE "(duration|delay):|duration-[0-9]|min-h-screen|w-screen" components/sections/Hero.tsx && npm run verify && node scripts/measure-reduced-motion.mjs`
+  `cd site && npx eslint components/sections/Hero.tsx --max-warnings 0 && printf '{"extends":"'"$PWD"'/tsconfig.json","include":[],"files":["'"$PWD"'/components/sections/Hero.tsx"]}' > /tmp/dd3-h.json && npx tsc --noEmit --project /tmp/dd3-h.json && grep -qE 'className="[^"]*text-hero' components/sections/Hero.tsx && grep -qF 'heroReveal(' components/sections/Hero.tsx && grep -qF 'useDriftY(' components/sections/Hero.tsx && grep -qE 'data-drift(\s|>|$)' components/sections/Hero.tsx && grep -qF 'waterlineReveal' components/sections/Hero.tsx && grep -qE '<h1[ >]' components/sections/Hero.tsx && [ "$(grep -c 'data-reveal-path' components/sections/Hero.tsx)" -le 2 ] && grep -qF '10 8' components/sections/Hero.tsx && ! grep -qE "min-h-screen|w-screen" components/sections/Hero.tsx && npm run verify && node scripts/measure-reduced-motion.mjs`
+  *(Rewritten after review: every name is now a **call** or an **attribute**, not a
+  bare substring a comment or dead import could satisfy — `--max-warnings 0` matters
+  because `no-unused-vars` is severity 1 and `noUnusedLocals` is off, so an unused
+  `useDriftY` import previously passed both eslint and tsc. `data-reveal-path` is
+  counted (≤2: one docblock, one attribute) which mechanically pins the hull as the
+  only `pathLength` element — F3 was wrong that no gate could check the pairing. The
+  duplicated `heroSequence.waterline` and timing-literal clauses were dropped: both
+  are already hard-failed by `assert-copy.mjs`, which this criterion runs.)*
 
 ### Wave 1.3 — Integration
 
@@ -331,7 +454,8 @@ green; a human has confirmed it in a browser.
 
 | Date | Task | Result | Notes |
 |------|------|--------|-------|
-| 2026-08-19 | — | Plan drafted | Carries ten inherited constraints from plans 001–002 as F1–F10; each traces to a defect already paid for |
+| 2026-08-19 | — | Plan drafted | Carries inherited constraints from plans 001–002 as F1–F11; each traces to a defect already paid for |
+| 2026-08-19 | — | Round-1 pressure test REJECTED | 3 CRITICAL / 8 MAJOR / 6 MINOR. All confirmed findings fixed (§11). Three were errors in the planner's own reasoning, not its wording, and were independently reproduced before acceptance |
 
 ## Reconcile report
 
