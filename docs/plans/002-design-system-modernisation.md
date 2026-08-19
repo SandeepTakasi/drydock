@@ -1,7 +1,7 @@
 ---
 plan: 002-design-system-modernisation
 format_version: 2
-status: EXECUTING
+status: DONE
 isolation: none
 created: 2026-08-19
 approved_by: sandeep
@@ -390,6 +390,7 @@ need; both gates green; no consumer changed.
 
 | # | Task | What deviated | Why | Impact | Recorded |
 |---|------|---------------|-----|--------|----------|
+| 11 | — (human-authorised) | **`drydock:reconcile` deferred to after plan 005 rather than run now**, as §10 specifies. Status set to `DONE`, not `RECONCILED` | This is the first of four plans covering one revamp. Running a full reconcile after each would be four ceremonies over one body of work, which is the disproportion plan 001's case study identified (2,069 plan lines for a 240-line artifact). The doc-worthy findings that plans 003–005 need **immediately** were applied directly instead — see the CLAUDE.md commit alongside this one | Deviation from this plan's own §10, recorded rather than silently skipped. Plan 005's closure runs one reconcile across 002–005 together. Deviations 1, 2, 8, 9, 10 are the reconcile inputs and are already written up in full here |
 | 2 | T1.0.1 | **`--stroke-hair` / `--stroke-rule` / `--stroke-heavy` are not a Tailwind v4 theme namespace, so they emit no utilities.** Plans 003–005 must consume them as `var(--stroke-hair)` in CSS, not as `border-hair`-style classes | The planner specified three token names without checking them against Tailwind v4's namespace rules — only `--color-*`, `--font-*`, `--text-*` and the other documented namespaces generate utilities | None yet: caught before any consumer exists, and the tokens are correctly placed inside `@theme` so tree-shaking keeps the stylesheet byte-identical until referenced. **Would have cost plan 004 a repair wave** had a section task tried `border-hair` and found nothing. Added to F6's table for 003–005. Reconcile: a plan that freezes token names should state, per token, whether it yields a utility or a bare custom property |
 | 4 | T1.1.1 | `anchorReveal` and `heroReveal` animate `opacity`/`y`, **not** `clipPath` — so consumers need `data-reveal` and **not** `data-reveal-path` | Copying a neighbouring variant's attribute is the easy mistake, and `data-reveal-path` forces `stroke-dasharray: none` | Stated in both docblocks by the executor, unprompted. This is ADR 0001's pairing hazard reaching plan 002's new exports; plans 003–005 must not copy the attribute from an adjacent element |
 | 5 | T1.1.1 | `heroReveal` is bounded to **beats 0–8**: beat 9 would end at 2.10s, past the 2s hero ceiling | The per-beat cadence is `HERO_BEAT_BASE + i * HERO_BEAT_STEP + HERO_BEAT` = 0.4 + 0.15i + 0.35 | Documented in the export's docblock. Verified arithmetically by wavecheck: beat 8 lands at 1.95s, level with `heroSequence.label`. Plan 003 must not exceed beat 8 |
@@ -482,6 +483,7 @@ Deviations logged: 7 (0 discovered by wavecheck)
 |------|------|--------|-------|
 | 2026-08-19 | — | Plan drafted | Lean by design: plan 001 ran 2,069 lines for a 240-line artifact, which its own case study flagged as disproportionate |
 | 2026-08-19 | — | Round-1 pressure test REJECTED | 4 CRITICAL / 5 MAJOR / 5 MINOR, all fixed (§11). Three findings indicted the planner and were independently reproduced before acceptance |
+| 2026-08-19 | — | **PHASE GATE PASSED — approved by sandeep** | All four conditions met, the first time in this repo: both gates exit 0, wavecheck PASS on 1.0/1.1/1.2, and **T1.R.1 APPROVED** — the first review approval here after four consecutive rejections. Status → DONE. Reconcile deferred to plan 005 (deviation 11) |
 | 2026-08-19 | — | **APPROVED by sandeep** | Round 2 not run — repair was ~20 lines of specification on a 4-task plan and every finding was reproduced. Status → EXECUTING |
 | 2026-08-19 | T0 | Baseline recorded | HEAD 9e6fadc..., CSS shasum 40b6a434... in 1s2vcbm8xcik1.css. Both gates green. |
 | 2026-08-19 | T1.2.1 | Integration verification PASS | **npm run verify:** assert-copy: PASS — /Users/takasivenkatasandeep/Desktop/drydock-repo/site/out/index.html (14 literals, 4x executor, 1 h1, motion contract). **measure-reduced-motion:** PASS — reducedMotion=true, waterline="10px, 8px", stippled=0, hull={"opacity":"1","dasharray":"none"}, invisibleText=0. Both gates exited 0. HEAD b71b2a34e90aae397285f5dc35ead848b37fd28a. **CSS checksum:** 40b6a434624dbb530bd0bbb2bd002125acba1037 out/_next/static/chunks/1s2vcbm8xcik1.css — **matches T0 baseline byte-for-byte**. No rendered output changed. |

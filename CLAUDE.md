@@ -57,6 +57,20 @@ To look at it: `cd site/out && python3 -m http.server 5173`.
   `~/yarn.lock`) and warns on every build. `turbopack.root` is unset.
 - `Big_Shoulders` has no `size-adjust` fallback metrics and an unpinned `opsz`
   axis — expect layout shift on the hero headline.
+- **A misspelled animation state name compiles clean.** `Variants` from
+  `motion/react` is an index-signature type, so `{ hidden: {…}, shwon: {…} }`
+  passes `tsc`, passes lint, passes every gate, and simply does not animate. Only
+  `"hidden"` and `"shown"` are wired up.
+- **`out/index.html` is not reproducible across builds.** Two builds of identical
+  source differ in a random build id. **Never checksum `index.html`** to detect a
+  change — `out/_next/static/chunks/*.css` is stable and is what the plan-002 gate
+  uses; comparing the emitted file-name set across the whole `out/` tree is
+  stronger still.
+- **Not every `@theme` token yields a utility.** `--color-*` and `--text-*` are
+  Tailwind v4 namespaces and generate classes (`bg-raised`, `text-hero`).
+  `--stroke-*` is not — those are bare custom properties, used as
+  `var(--stroke-hair)` in CSS. Tree-shaking retains them by name scan, so a
+  dynamically-built token name is the one thing that loses.
 
 ## Honesty rule for site copy
 
