@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "verify": "next build && tsc --noEmit && eslint . && node scripts/assert-copy.mjs"
   },
   "dependencies": {
     "motion": "^13.1.0",
