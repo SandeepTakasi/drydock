@@ -1645,6 +1645,27 @@ Deviations logged: 48 (17 discovered by wavecheck)
 it makes this browser measurement a repeatable script rather than a one-off, since
 no other gate in the plan can see this defect class.
 
+### Wavecheck 2.6 — PASS — 2026-08-19
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `status: EXECUTING`. Wave 2.6 exists with one task. All prior waves carry PASS reports. |
+| 2. Ownership | PASS | `6d4d783 drydock(T2.6.1)` → `site/scripts/measure-reduced-motion.mjs` (new) and the plan's Progress log only. Tree clean. |
+| 3. Forbidden | PASS | Zero runtime dependencies — `node:http`, `node:fs`, `node:path`, `node:child_process` and the global `WebSocket` only. Nothing under `site/` modified except the new script. **Not wired into `npm run verify`**, which stays hermetic and browser-free. Root `index.html` not read. |
+| 4. Acceptance | PASS | `node scripts/measure-reduced-motion.mjs` exits 0: `reducedMotion=true, waterline="10px, 8px", stippled=0, hull={"opacity":"1","dasharray":"none"}, invisibleText=0` — matching the reference values exactly. |
+| 5. Deviation reconciliation | PASS | No deviations. Its self-testing was unusually thorough: three passing runs, an induced port-exhaustion failure producing a one-line message rather than an `EADDRINUSE` stack trace, a *real* debug-port conflict from an unrelated pre-existing Chrome that exercised the fallback path for real, and `lsof`/`ps` checks confirming no leaked port or process after both success and failure — while correctly leaving the unrelated Chrome alone. |
+
+**The gate was proven failable, which the task itself could not do.** T2.6.1 honestly reported that the assertion-failure path was inspected but never exercised, because the current tree passes everything. The orchestrator closed that gap with a controlled experiment: reintroduce C1, rebuild, run the harness, revert.
+
+- **First attempt was a flawed experiment, not a flawed gate.** `pathLength: 1` was restored to `NO_MOTION.hidden` only; the harness PASSED. The element settles in the `shown` state, so a hidden-only defect never reaches the measured state — at most a single frame at duration 0. Benign blind spot, recorded rather than hidden.
+- **Faithful reproduction — both states, as the original defect had — and the gate failed correctly:** exit 1, `FAIL (2/5)`, with `C1: measured 1px, 1px, expected 10px, 8px` and `C2: measured 21 SVG elements at 1px, 1px, expected 0`, while the control stayed green and M1 correctly kept passing (a different fix). Reverted, rebuilt, and confirmed the harness and the full gate both green again with a clean tree.
+
+Deviations logged: 48 (17 discovered by wavecheck)
+
+**Verdict: PASS.** Phase 2's implementation, repair and verification waves are all
+complete. The defect class that survived twelve wavecheck passes now has a gate
+that has been observed to fail.
+
 **Auditor's note on the plugin, not the plan:** the wavecheck skill instructs
 "Append to the plan under §8". In a v2 plan §8 is *Open questions*; the format
 contract lists Wavecheck reports at position 14. This report was appended to the
