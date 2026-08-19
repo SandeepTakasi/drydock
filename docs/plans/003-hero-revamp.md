@@ -508,6 +508,18 @@ only real proof at this point.
 **Verdict: PASS.** Wave 1.2 may start.
 
 
+### Wavecheck 1.2 — PASS — 2026-08-19
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `status: EXECUTING`. Wave 1.2 exists. Waves 1.0 and 1.1 both carry PASS reports — 1.0's is retroactive and labelled (deviation 2). |
+| 2. Ownership | PASS | `3366a88 drydock(T1.2.1)` → `site/components/sections/Hero.tsx` only. Tree clean. |
+| 3. Forbidden | PASS | **Drift built in the only shape that compiles:** `const board = useRef<HTMLDivElement>(null); const y = useDriftY(board)`, with `<motion.g data-drift style={{ y }}>` receiving only the MotionValue — no SVG ref, so no `TS2345`. **`data-drift` shares no element with `heroReveal`**, so the variant cannot `set` `y` and kill the scroll link (verified at the JSX element, line 133; an earlier grep hit was a docblock). **C1's hook preserved:** exactly **one** path carries `strokeDasharray="10 8"`, so the harness's `svg path[data-reveal][stroke-dasharray="10 8"]` selector still matches uniquely. `data-reveal-path` count = **2** (one docblock, one attribute) — the hull remains the sole `pathLength` element. **Zero `.split(` calls**, so no pinned string is fragmented across tags. No `min-h-screen`/`w-screen`. No shadow, blur or glass. |
+| 4. Acceptance | PASS | Criterion run verbatim → exit 0. `npm run verify` PASS. **The decisive result: `measure-reduced-motion` PASS with `drift[reduced]=1, drift[motion-allowed]=1`.** D1 and D2 were vacuous at count 0 through two waves; adding the marker made them **live**, and both passed. D2 passing means the inline transform genuinely differs across scroll positions with motion allowed — so the ref attached and the drift is alive. That is the exact defect D2 was built to catch, and the reason the harness-before-hero ordering was worth insisting on. |
+| 5. Deviation reconciliation | PASS | No deviations; three observations, all sound. The most valuable was volunteered rather than asked for: an earlier draft gave the drafting-board wrapper its own late `heroReveal` beat, which would have multiplied its zero-starting opacity against the interior `heroSequence` and delayed the whole drawing until the panel's beat caught up. It identified that as a real regression rather than a stylistic choice, and left the wrapper unanimated. |
+
+**Verdict: PASS.** Wave 1.3 (integration) may start.
+
 ## Progress log
 
 | Date | Task | Result | Notes |
