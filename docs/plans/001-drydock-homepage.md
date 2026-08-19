@@ -1629,6 +1629,22 @@ Deviations logged: 44 (13 discovered by wavecheck)
 assembled site passes the full gate. T2.R.1 (fresh-context quality review) may now
 run, then the Phase 2 human gate.
 
+### Wavecheck 2.5 — PASS — 2026-08-19
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `status: EXECUTING`. Wave 2.5 exists with three tasks. All prior waves carry PASS reports. |
+| 2. Ownership | PASS | Three per-task commits, each one file, disjoint: `9243eac` → `lib/motion.ts`, `6986006` → `app/globals.css`, `0e5b22a` → `components/sections/Lifecycle.tsx`. Tree clean. No `index.lock` collision. |
+| 3. Forbidden | PASS | T2.5.1's diff is **exactly two deletions** (`pathLength: 1` from each `NO_MOTION` state) and nothing else; all ten `lib/motion.ts` exports intact; `pathLength` still present on `drawLine` and `heroSequence.hull`, which use it legitimately on solid strokes. T2.5.2 kept `[data-reveal]` at **zero** stroke declarations — the B5 guard held — and did not merge the two selectors. T2.5.3 preserved the true half of the comment, all six details in markup, `aria-expanded`, `aria-controls`, real buttons, and added no `useEffect`. No task touched a sibling's file; none read root `index.html`; none ran a project build inside the wave. |
+| 4. Acceptance | PASS | All three criteria run verbatim → exit 0, and the full gate still reports `assert-copy: PASS (14 literals, 4x executor, 1 h1, motion contract)`. **Critically, the fixes were then measured in headless Chrome under forced reduced motion — because greps are precisely what missed this defect class through twelve prior wavecheck passes.** Control confirmed first: `matchMedia('(prefers-reduced-motion: reduce)').matches === true`. Results: waterline computes **`10px, 8px`** (C1 closed — was `1px, 1px`, solid); **zero** elements compute `1px, 1px` (C2 closed — the cradle blocks and superstructure no longer stipple); hull computes **`opacity: 1`, `stroke-dasharray: none`** (M1 closed — was invisible on the CSS-only path); and **zero** text-bearing elements compute `opacity: 0`. |
+| 5. Deviation reconciliation | PASS | No deviations reported by any of the three. T2.5.1 confirmed the corollary it was asked to check before committing, and added a nuance worth keeping: `NO_MOTION`'s `opacity: 1` is applied by Framer as an inline style regardless of any CSS rule, so hull visibility under reduced motion **with JS** never depended on `pathLength: 1` — M1's defect was specific to the CSS-only path. T2.5.3 chose option (a), correcting the claim rather than rebuilding the disclosure, and justified it: §1 never required no-JS interaction, the blank-page defect is fixed elsewhere, and rewriting a verified-accessible widget carried more risk than the honesty fix warranted. It recorded that the underlying gap is now documented rather than removed. |
+
+Deviations logged: 48 (17 discovered by wavecheck)
+
+**Verdict: PASS.** C1, C2, M1 and M2 are closed and measured. Wave 2.6 may start —
+it makes this browser measurement a repeatable script rather than a one-off, since
+no other gate in the plan can see this defect class.
+
 **Auditor's note on the plugin, not the plan:** the wavecheck skill instructs
 "Append to the plan under §8". In a v2 plan §8 is *Open questions*; the format
 contract lists Wavecheck reports at position 14. This report was appended to the
