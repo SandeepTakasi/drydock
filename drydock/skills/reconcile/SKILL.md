@@ -19,6 +19,23 @@ outside those paths.
 A plan with all waves PASS. If any wave lacks a PASS report, refuse — reconcile
 on an unverified plan launders unaudited changes into the docs.
 
+**Testing Gate refusal.** If the plan's `## Testing Gate` section exists and is
+not `N/A — <reason>`, then before doing anything else:
+
+1. Read `.drydock/testing/<plan-id>/verdict.md` — that exact path, frozen by the
+   format contract and written by `drydock:seatrial`.
+2. **Missing** → refuse. The plan declared browser-verified cases and nothing
+   verified them; closing it would record a completion that did not happen.
+3. **Reads `NO-GO`** → refuse. Say which blocker cases failed.
+4. **Reads `GO-WITH-OVERRIDES`** → proceed only if the sheet records the override
+   for every failed major case, each naming the case, the reason, and who
+   decided. An override that names no decider is not an override.
+5. **Reads `GO`** → proceed.
+
+A refusal here is not a finding to be argued with: it means the plan is not
+finished. Report it and stop. Do not run the gate yourself — reconcile is a
+closer, not a verifier — and do not propose doc updates from an unverified plan.
+
 ## Process
 
 1. **Deviation synthesis.** Cluster the Deviation Log by root cause, not by
@@ -53,8 +70,10 @@ diff against what is actually there>
    content in full but mark it `addition`.
 
 5. **Close the plan.** Append the full report to the plan's **`## Reconcile report`**
-   section (position 16 in the format contract — NOT §9, which is *Out of scope /
-   follow-ups*), set status `RECONCILED`,
+   section (position 17 in the format contract — NOT §9, which is *Out of scope /
+   follow-ups*). Locate it by NAME, not by counting: this position moved from 16
+   to 17 when `## Testing Gate` was inserted at 11, and a report filed by ordinal
+   lands in the wrong section. Then set status `RECONCILED`,
    and summarize for the user: n proposals by target, top 3 by impact, and
    any planwright/executor feedback (cluster b/d) as bullet points they may
    fold into the skill files.
