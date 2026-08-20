@@ -47,15 +47,18 @@ export default function Install({ meta }: SectionProps) {
 
   return (
     <Section meta={meta}>
-      <div className="space-y-6">
+      <div className="border border-line bg-surface">
         {install.commands.map((cmd, i) => {
           const copied = copiedIndex === i;
           return (
             <div
               key={cmd}
-              className="flex flex-wrap items-center justify-between gap-3 border border-line bg-panel px-4 py-3"
+              className="flex flex-wrap items-center justify-between gap-3 border-line px-4 py-4 not-first:border-t sm:px-6"
             >
-              <code className="font-mono text-body text-ink break-all">
+              <code className="font-mono text-body break-all text-ink">
+                <span aria-hidden="true" className="mr-3 text-accent">
+                  $
+                </span>
                 {cmd}
               </code>
               <button
@@ -66,8 +69,10 @@ export default function Install({ meta }: SectionProps) {
                   setCopiedIndex(ok ? i : null);
                 }}
                 className={
-                  "shrink-0 border px-2 py-1 font-mono text-mark uppercase " +
-                  (copied ? "border-primer text-primer" : "border-line text-ink-dim")
+                  "shrink-0 border px-3 py-1 font-mono text-mark uppercase transition-colors " +
+                  (copied
+                    ? "border-pass text-pass"
+                    : "border-line text-ink-dim hover:border-line-strong hover:text-ink")
                 }
               >
                 {copied ? install.copiedLabel : install.copyLabel}
@@ -79,6 +84,12 @@ export default function Install({ meta }: SectionProps) {
           );
         })}
       </div>
+      <p className="mt-6 font-mono text-mark text-ink-dim uppercase">
+        {install.scopeNote}
+      </p>
+      <p className="mt-4 max-w-3xl text-note text-ink-dim">
+        {install.configNote}
+      </p>
     </Section>
   );
 }

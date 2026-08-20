@@ -3,61 +3,56 @@ import { evidence, site } from "@/content/copy";
 import type { EvidenceRow } from "@/content/copy";
 import type { SectionProps } from "@/lib/section";
 
+const TONE_CLASS = {
+  pass: "border-pass text-pass",
+  hold: "border-hold text-hold",
+} as const;
+
 /**
- * A single row of the schedule table: mono id, label, and the note that backs
- * it up. The contract-logic row's id is the literal "--" (a placeholder, not
- * a real id) and renders with no visible id rather than a stray dash.
+ * One matrix, every row carrying its own verdict pill, so the honest row reads
+ * as loudly as the passing ones. `docs/compatibility.md` is the source of
+ * truth for every status here; A3 must never render as PASSED.
+ *
+ * The contract-logic row's id is the literal "--" (a placeholder, not a real
+ * id) and renders with no visible id rather than a stray dash.
  */
-function Row({ row, accent }: { row: EvidenceRow; accent?: boolean }) {
+function Row({ row }: { row: EvidenceRow }) {
   return (
-    <div className="border-t border-line py-3 first:border-t-0 first:pt-0">
-      <div className="flex items-baseline gap-3">
-        {row.id !== "--" && (
-          <span
-            className={`font-mono text-mark ${accent ? "text-primer" : "text-ink-dim"}`}
-          >
-            {row.id}
-          </span>
-        )}
-        <span className="text-body">{row.label}</span>
+    <li className="bg-surface px-6 py-6 sm:px-8">
+      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-3">
+        <span className="min-w-8 font-mono text-mark text-ink-dim">
+          {row.id === "--" ? "" : row.id}
+        </span>
+        <h3 className="max-w-xl flex-1 text-body text-ink">{row.label}</h3>
+        <span
+          className={`border px-2 py-1 font-mono text-mark uppercase ${TONE_CLASS[row.tone]}`}
+        >
+          {row.status}
+        </span>
       </div>
-      <p className="mt-1 text-note text-ink-dim">{row.note}</p>
-    </div>
+      <p className="mt-4 max-w-3xl text-note text-ink-dim sm:ml-12">
+        {row.note}
+      </p>
+    </li>
   );
 }
 
 export default function Evidence({ meta }: SectionProps) {
   return (
     <Section meta={meta}>
-      <div className="space-y-6">
-        <div className="grid gap-8 md:grid-cols-2">
-          <div>
-            <h3 className="font-mono text-mark text-ink">
-              {evidence.verifiedHeading}
-            </h3>
-            <div className="mt-3">
-              {evidence.verified.map((row) => (
-                <Row key={row.label} row={row} />
-              ))}
-            </div>
-          </div>
-          <div>
-            <h3 className="font-mono text-mark text-primer">
-              {evidence.notVerifiedHeading}
-            </h3>
-            <div className="mt-3">
-              {evidence.notVerified.map((row) => (
-                <Row key={row.id} row={row} accent />
-              ))}
-            </div>
-          </div>
-        </div>
-        <p className="text-note text-ink-dim">
-          <a href={site.selfAuditHref} className="text-primer underline underline-offset-2">
-            {site.selfAuditLinkText}
-          </a>
-        </p>
-      </div>
+      <ul className="grid gap-px bg-line">
+        {evidence.rows.map((row) => (
+          <Row key={row.label} row={row} />
+        ))}
+      </ul>
+      <p className="mt-8">
+        <a
+          href={site.selfAuditHref}
+          className="font-mono text-mark text-accent uppercase underline underline-offset-4"
+        >
+          {site.selfAuditLinkText}
+        </a>
+      </p>
     </Section>
   );
 }

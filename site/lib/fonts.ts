@@ -1,20 +1,22 @@
-import { Archivo, Big_Shoulders, IBM_Plex_Mono } from "next/font/google";
+import { IBM_Plex_Mono, Inter } from "next/font/google";
 
 /**
  * Font source variables are deliberately named `--font-src-*`, NOT the same as
  * the `@theme` tokens in app/globals.css (`--font-display` etc). A theme token
  * defined as `var()` of its own name is self-referential and silently dropped.
+ *
+ * One sans family serves both the display and body tokens. Inter is a variable
+ * font with real `size-adjust` fallback metrics, which is why it replaced
+ * Big_Shoulders: that face had none, and an unpinned `opsz` axis, so the hero
+ * headline shifted on every load and every build printed a warning about it.
  */
-
-// Condensed industrial display face. Variable weight axis (100-900) -> no `weight`.
-export const display = Big_Shoulders({
+export const sans = Inter({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-src-display",
-  axes: ["opsz"],
+  variable: "--font-src-sans",
 });
 
-// Labels, code, draft marks. Not a variable font: weights must be listed.
+// Labels, code, transcripts. Not a variable font: weights must be listed.
 export const mono = IBM_Plex_Mono({
   subsets: ["latin"],
   display: "swap",
@@ -22,11 +24,5 @@ export const mono = IBM_Plex_Mono({
   variable: "--font-src-mono",
 });
 
-export const body = Archivo({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-src-body",
-});
-
 /** Convenience for the <html> className in app/layout.tsx. */
-export const fontVariables = `${display.variable} ${mono.variable} ${body.variable}`;
+export const fontVariables = `${sans.variable} ${mono.variable}`;

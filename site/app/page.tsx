@@ -8,8 +8,9 @@ import Terminal from "@/components/sections/Terminal";
 import { meta } from "@/content/copy";
 
 /**
- * Page composition. Every seam the seven Phase-2 section tasks need is wired
- * here already: this file is owned by no Phase-2 task and must not change again.
+ * Page composition. The order is the argument: the failure mode, then the
+ * mechanism, then the gate refusing a wave, then what is and is not verified,
+ * then install.
  *
  * `<Hero />` is unwrapped and takes no props — it is not a section shell.
  */
@@ -18,9 +19,9 @@ export default function Home() {
     <>
       <Hero />
       <Problem meta={meta.problem} />
-      <Evidence meta={meta.evidence} />
-      <Terminal meta={meta.terminal} />
       <Lifecycle meta={meta.lifecycle} />
+      <Terminal meta={meta.terminal} />
+      <Evidence meta={meta.evidence} />
       <Install meta={meta.install} />
       <Faq meta={meta.faq} />
     </>

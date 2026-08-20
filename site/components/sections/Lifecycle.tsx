@@ -1,80 +1,48 @@
-"use client";
-
-import { useState } from "react";
-import { motion } from "motion/react";
-
 import Section from "@/components/Section";
 import { lifecycle } from "@/content/copy";
-import { NO_MOTION, childRise, useMotionSafe } from "@/lib/motion";
 import type { SectionProps } from "@/lib/section";
 
 /**
- * The six pieces of the Drydock lifecycle as an interactive ladder: each rung
- * is a real button that toggles the visibility of its own detail panel below
- * it. All six details stay in the static markup regardless of which rung is
- * open (hidden via CSS, never via conditional rendering) so the export
- * assertions and screen readers see the full content. The closed state uses
- * `hidden` (display: none), so the disclosure itself still requires
- * JavaScript to open/close a rung.
+ * The six pieces as a flow strip plus a card grid. Every detail is always
+ * rendered: the old version hid five of six behind a disclosure that needed
+ * JavaScript to open, which cost a click per piece and bought nothing.
+ * No state, no motion, so this stays a server component.
  */
 export default function Lifecycle({ meta }: SectionProps) {
-  const [openIndex, setOpenIndex] = useState(0);
-  const safe = useMotionSafe();
-  const variants = safe ? childRise : NO_MOTION;
-
   return (
     <Section meta={meta}>
-      <ol className="space-y-6 border-l border-line pl-6">
-        {lifecycle.pieces.map((piece, i) => {
-          const open = openIndex === i;
-          const panelId = `lifecycle-detail-${piece.name}`;
-          return (
-            <li key={piece.name} className="relative">
-              <span
-                aria-hidden="true"
-                className={
-                  "absolute top-2 -left-[29px] h-2.5 w-2.5 rounded-full border " +
-                  (open
-                    ? "border-primer bg-primer"
-                    : "border-line bg-dock")
-                }
-              />
-              <button
-                type="button"
-                aria-expanded={open}
-                aria-controls={panelId}
-                onClick={() => setOpenIndex(open ? -1 : i)}
-                className={
-                  "flex w-full flex-wrap items-baseline gap-x-3 gap-y-1 text-left " +
-                  (open ? "text-primer" : "text-ink")
-                }
-              >
-                <span className="font-mono text-body">{piece.name}</span>
-                <span className="font-mono text-mark text-ink-dim uppercase">
-                  {piece.kind}
-                </span>
-                <span className="font-mono text-mark text-ink-dim">
-                  {piece.invocation}
-                </span>
-              </button>
-              <motion.div
-                id={panelId}
-                data-reveal
-                variants={variants}
-                initial="hidden"
-                animate={open ? "shown" : "hidden"}
-                aria-hidden={!open}
-                className={
-                  "mt-2 max-w-prose text-note text-ink-dim " +
-                  (open ? "" : "hidden")
-                }
-              >
-                <p>{piece.detail}</p>
-              </motion.div>
-            </li>
-          );
-        })}
+      <ol className="flex flex-wrap items-center gap-x-3 gap-y-2 font-mono text-mark uppercase">
+        {lifecycle.flow.map((step, i) => (
+          <li key={step} className="flex items-center gap-3">
+            {i > 0 && (
+              <span aria-hidden="true" className="text-line-strong">
+                /
+              </span>
+            )}
+            <span className={i === 3 ? "text-accent" : "text-ink-dim"}>
+              {step}
+            </span>
+          </li>
+        ))}
       </ol>
+      <p className="mt-4 text-note text-ink-dim">{lifecycle.loop}</p>
+
+      <ul className="mt-12 grid gap-px bg-line sm:grid-cols-2 lg:grid-cols-3">
+        {lifecycle.pieces.map((piece) => (
+          <li key={piece.name} className="bg-surface px-6 py-7">
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <h3 className="font-mono text-body text-ink">{piece.name}</h3>
+              <span className="border border-line px-2 py-0.5 font-mono text-mark text-ink-dim uppercase">
+                {piece.kind}
+              </span>
+            </div>
+            <p className="mt-2 font-mono text-mark text-accent">
+              {piece.invocation}
+            </p>
+            <p className="mt-4 text-note text-ink-dim">{piece.detail}</p>
+          </li>
+        ))}
+      </ul>
     </Section>
   );
 }

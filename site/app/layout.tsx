@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { sheet, site } from "@/content/copy";
+import { footer, nav, site } from "@/content/copy";
 import { fontVariables } from "@/lib/fonts";
 
 import "./globals.css";
@@ -17,17 +17,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={fontVariables}>
-      {/* Blueprint ground (background + ink + body face) is applied to <body>
-          by the base layer in globals.css. The padding is the sheet margin:
-          the trim line below is inset from the edge like a drawing's frame. */}
-      <body className="p-2 sm:p-4">
+    <html lang="en" className={`${fontVariables} scroll-smooth`}>
+      {/* Ground, ink and body face are applied to <body> by the base layer in
+          globals.css. No sheet margin: the page runs edge to edge and every
+          band constrains its own content instead. */}
+      <body>
         {/* Framer Motion writes the initial state as an inline style (e.g.
             style="opacity:0"), which only runs once JS hydrates. Without JS
             that inline style never gets replaced, so mirror globals.css's
             reduced-motion rule here, split the same way: [data-reveal-path]
             is the only selector that touches stroke-dasharray, because the
-            hero waterline (data-reveal only) is a dashed line by design. */}
+            gate line (data-reveal only) is a dashed stroke by design. */}
         <noscript>
           <style>{`
             [data-reveal] {
@@ -50,43 +50,68 @@ export default function RootLayout({
         {/* Skip link — first focusable element in the document. Parked off
             screen by a transform (not `sr-only`, whose `position: static`
             fights any positioning utility depending on stylesheet order) and
-            slid into view on focus, primer-on-dock at 6.54:1. */}
+            slid into view on focus. */}
         <a
           href="#content"
-          className="fixed top-4 left-4 z-50 -translate-y-24 border border-primer bg-dock px-4 py-2 font-mono text-mark text-primer uppercase transition-transform focus:translate-y-0"
+          className="fixed top-4 left-4 z-50 -translate-y-24 border border-accent bg-ground px-4 py-2 font-mono text-mark text-accent uppercase transition-transform focus:translate-y-0"
         >
           {site.skipLinkText}
         </a>
 
-        {/* The sheet: one hairline trim line around the whole drawing. */}
-        <div className="border border-line">
-          <header className="border-b border-line bg-panel/70 px-6 py-2 font-mono text-mark text-ink-dim uppercase">
-            {site.status}
-          </header>
+        <header className="sticky top-0 z-40 border-b border-line bg-ground">
+          <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-6 px-6 sm:px-10">
+            <a
+              href="#content"
+              className="font-display text-body font-semibold tracking-tight text-ink"
+            >
+              {site.wordmark}
+            </a>
+            <span className="hidden border border-line px-2 py-1 font-mono text-mark text-ink-dim uppercase sm:inline-block">
+              {site.status}
+            </span>
+            <nav className="ml-auto flex items-center gap-5">
+              {nav.map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  className="hidden font-mono text-mark text-ink-dim uppercase transition-colors hover:text-ink md:inline-block"
+                >
+                  {item.label}
+                </a>
+              ))}
+              <span className="font-mono text-mark text-accent uppercase">
+                v{site.version}
+              </span>
+            </nav>
+          </div>
+        </header>
 
-          <main id="content" tabIndex={-1}>{children}</main>
+        <main id="content" tabIndex={-1}>
+          {children}
+        </main>
 
-          {/* Title block. A real sheet carries it bottom-right in a ruled box:
-              two rows of three cells, project / title / sheet number over
-              scale / date / revision. No cell captions are rendered — every
-              on-page string must come from content/copy.ts, which holds no
-              caption strings, and the values are self-labelling
-              ("SHEET 1 OF 1", "NOT TO SCALE", "REV 0.3.1"). */}
-          <footer className="flex justify-end border-t border-line bg-panel/40 px-6 py-6">
-            <div className="w-full max-w-xl border border-line font-mono text-mark text-ink-dim uppercase">
-              <div className="grid grid-cols-3 divide-x divide-line">
-                <div className="px-3 py-2">{sheet.project}</div>
-                <div className="px-3 py-2">{sheet.title}</div>
-                <div className="px-3 py-2">{sheet.sheetNumber}</div>
-              </div>
-              <div className="grid grid-cols-3 divide-x divide-line border-t border-line">
-                <div className="px-3 py-2">{sheet.scale}</div>
-                <div className="px-3 py-2">{sheet.date}</div>
-                <div className="px-3 py-2">{sheet.revision}</div>
-              </div>
-            </div>
-          </footer>
-        </div>
+        <footer className="border-t border-line">
+          <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-10 sm:px-10 md:flex-row md:items-center md:justify-between">
+            <p className="max-w-sm text-note text-ink-dim">{footer.tagline}</p>
+            <ul className="flex flex-wrap gap-x-5 gap-y-2">
+              {footer.links.map((link) => (
+                <li key={link.href}>
+                  <a
+                    href={link.href}
+                    className="font-mono text-mark text-ink-dim uppercase transition-colors hover:text-accent"
+                  >
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+            <ul className="flex gap-x-4 font-mono text-mark text-ink-dim uppercase">
+              {footer.meta.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        </footer>
       </body>
     </html>
   );

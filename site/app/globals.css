@@ -1,102 +1,81 @@
 @import "tailwindcss";
 
 /* ─── Drydock design tokens ──────────────────────────────────────────────────
-   Naval engineering blueprint: deep harbor blue ground, blueprint linework,
-   hull-primer orange as the ONLY accent, draft-mark typography.
-   The nine tokens below are a contract — later tasks build against these names.
+   Instrument panel: near-black neutral ground, hairline structure, one violet
+   accent for wayfinding, and three semantic status colours because the product
+   is about PASS / BLOCK verdicts and must never spend the accent on them.
    ────────────────────────────────────────────────────────────────────────── */
 @theme {
-  /* Ground and structure */
-  --color-dock: #061320;
-  --color-panel: #0b2032;
-  --color-raised: #0b304a; /* third surface tier: dock -> panel -> raised */
-  --color-line: #35688c;
+  /* Ground and structure: ground -> surface */
+  --color-ground: #08090b;
+  --color-surface: #0e1013;
+  --color-line: #23272e;
+  --color-line-strong: #333941;
 
   /* Ink */
-  --color-ink: #e6eef5;
-  --color-ink-dim: #8ba5bb;
+  --color-ink: #f4f6f8;
+  --color-ink-dim: #98a2ae;
 
-  /* The one accent: hull primer */
-  --color-primer: #ff6a1f;
+  /* Wayfinding accent. Never used for a verdict. */
+  --color-accent: #8a7dff;
+
+  /* Verdict semantics */
+  --color-pass: #46d39a;
+  --color-hold: #f2b545;
+  --color-block: #ff6b6b;
 
   /* Typefaces (sources registered in lib/fonts.ts as --font-src-*) */
-  --font-display: var(--font-src-display), "Arial Narrow", sans-serif;
+  --font-display: var(--font-src-sans), system-ui, sans-serif;
+  --font-body: var(--font-src-sans), system-ui, sans-serif;
   --font-mono: var(--font-src-mono), ui-monospace, monospace;
-  --font-body: var(--font-src-body), system-ui, sans-serif;
 
-  /* Draft-mark type scale */
-  --text-mark: 0.6875rem; /* stencilled labels, sheet numbers */
-  --text-mark--line-height: 1.1;
-  --text-mark--letter-spacing: 0.18em;
-  --text-note: 0.8125rem; /* annotations */
-  --text-note--line-height: 1.5;
+  /* Type scale */
+  --text-mark: 0.6875rem; /* mono labels, pills, eyebrows */
+  --text-mark--line-height: 1.2;
+  --text-mark--letter-spacing: 0.12em;
+  --text-note: 0.8125rem;
+  --text-note--line-height: 1.6;
   --text-body: 1rem;
   --text-body--line-height: 1.65;
-  --text-lead: 1.25rem;
-  --text-lead--line-height: 1.5;
-  --text-title: clamp(1.75rem, 4vw, 2.75rem);
-  --text-title--line-height: 1.05;
-  --text-sheet: clamp(2.75rem, 9vw, 6.5rem);
-  --text-sheet--line-height: 0.92;
-  --text-hero: clamp(3.5rem, 12vw, 9rem); /* display step above sheet */
-  --text-hero--line-height: 0.88;
-  --text-hero--letter-spacing: -0.02em;
+  --text-lead: 1.125rem;
+  --text-lead--line-height: 1.6;
+  --text-promise: clamp(1.375rem, 2.6vw, 2rem);
+  --text-promise--line-height: 1.25;
+  --text-promise--letter-spacing: -0.015em;
+  --text-title: clamp(1.75rem, 3.6vw, 2.5rem);
+  --text-title--line-height: 1.1;
+  --text-title--letter-spacing: -0.02em;
+  --text-display: clamp(3.25rem, 10vw, 7rem);
+  --text-display--line-height: 0.92;
+  --text-display--letter-spacing: -0.04em;
 
-  /* Stroke ramp. Depth is stacked planes and line weight only — no diffuse
-     depth effects anywhere in this design. A plane edge is a hairline border
-     or outline at zero spread. */
-  --stroke-hair: 1px; /* plane edges, grid rules */
-  --stroke-rule: 2px; /* section divisions, active state */
-  --stroke-heavy: 3px; /* primary outlines, emphasis */
-}
-
-/* Blueprint grid ground: 24px minor rules inside a 96px major module. */
-:root {
-  --grid-minor: 24px;
-  --grid-major: 96px;
-  --blueprint-grid:
-    repeating-linear-gradient(
-      to right,
-      color-mix(in srgb, var(--color-line) 85%, transparent) 0 1px,
-      transparent 1px var(--grid-major)
-    ),
-    repeating-linear-gradient(
-      to bottom,
-      color-mix(in srgb, var(--color-line) 85%, transparent) 0 1px,
-      transparent 1px var(--grid-major)
-    ),
-    repeating-linear-gradient(
-      to right,
-      color-mix(in srgb, var(--color-line) 35%, transparent) 0 1px,
-      transparent 1px var(--grid-minor)
-    ),
-    repeating-linear-gradient(
-      to bottom,
-      color-mix(in srgb, var(--color-line) 35%, transparent) 0 1px,
-      transparent 1px var(--grid-minor)
-    );
-}
-
-@utility blueprint-grid {
-  background-image: var(--blueprint-grid);
+  /* The one stroke weight the hero rail and gate line use. */
+  --stroke-rule: 2px;
 }
 
 @layer base {
   body {
-    background-color: var(--color-dock);
-    background-image: var(--blueprint-grid);
+    background-color: var(--color-ground);
+    /* One very wide, very faint accent wash behind the hero. No shadows,
+       no glass, no blur anywhere else in the design. */
+    background-image: radial-gradient(
+      1100px 520px at 50% -8%,
+      color-mix(in srgb, var(--color-accent) 9%, transparent),
+      transparent 70%
+    );
+    background-repeat: no-repeat;
     color: var(--color-ink);
     font-family: var(--font-body);
     -webkit-font-smoothing: antialiased;
   }
 
   ::selection {
-    background-color: var(--color-primer);
-    color: var(--color-dock);
+    background-color: var(--color-accent);
+    color: var(--color-ground);
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-primer);
+    outline: 2px solid var(--color-accent);
     outline-offset: 2px;
   }
 }

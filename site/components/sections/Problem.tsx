@@ -5,22 +5,21 @@ import type { SectionProps } from "@/lib/section";
 export default function Problem({ meta }: SectionProps) {
   return (
     <Section meta={meta}>
-      <div className="space-y-6">
-        <p className="text-lead text-ink">{problem.lead}</p>
-        <div className="grid gap-6 border-t border-line pt-6 md:grid-cols-2 md:divide-x md:divide-line">
-          {problem.modes.map((mode) => (
-            <div key={mode.title} className="md:px-6 md:first:pl-0 md:last:pr-0">
-              <h3 className="font-mono text-mark text-ink uppercase">
-                {mode.title}
-              </h3>
-              <p className="mt-3 text-body text-ink-dim">{mode.body}</p>
+      <p className="max-w-3xl text-lead text-ink">{problem.lead}</p>
+      <ul className="mt-12 grid gap-px bg-line md:grid-cols-2">
+        {problem.modes.map((mode) => (
+          <li key={mode.title} className="bg-surface px-6 py-8 sm:px-8">
+            <div className="flex items-baseline gap-3 font-mono text-mark uppercase">
+              <span className="text-accent">{mode.index}</span>
+              <span className="text-ink">{mode.title}</span>
             </div>
-          ))}
-        </div>
-        <p className="border-t border-line pt-6 text-body text-ink-dim">
-          {problem.coda}
-        </p>
-      </div>
+            <p className="mt-5 text-body text-ink-dim">{mode.body}</p>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-12 max-w-3xl border-l-2 border-accent pl-6 text-body text-ink">
+        {problem.coda}
+      </p>
     </Section>
   );
 }

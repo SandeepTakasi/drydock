@@ -7,6 +7,10 @@
  * drydock/skills/wavecheck/SKILL.md, drydock/.claude-plugin/plugin.json.
  *
  * No metric, percentage or benchmark is invented here: none is published yet.
+ *
+ * Two conventions carried over from plan 001 (F11): no apostrophes and no
+ * em-dashes in any string. `scripts/assert-copy.mjs` normalises tags to
+ * spaces, so a required literal must never be split across markup.
  */
 
 import type { SectionMeta } from "@/lib/section";
@@ -18,9 +22,12 @@ export interface Piece {
   detail: string;
 }
 
+/** One row of the evidence matrix. `tone` picks the status pill colour. */
 export interface EvidenceRow {
   id: string;
   label: string;
+  status: string;
+  tone: "pass" | "hold";
   note: string;
 }
 
@@ -34,49 +41,39 @@ export interface FaqItem {
   a: string;
 }
 
-/** Title-block fields for the sheet frame the shell renders (Wave 1.5). */
-export interface Sheet {
-  project: string;
-  title: string;
-  sheetNumber: string;
-  revision: string;
-  scale: string;
-  date: string;
-}
-
 /** Section shells. Hero is exempt from SectionMeta and has no entry here. */
 export const meta: Record<
-  "problem" | "evidence" | "terminal" | "lifecycle" | "install" | "faq",
+  "problem" | "lifecycle" | "terminal" | "evidence" | "install" | "faq",
   SectionMeta
 > = {
   problem: {
     id: "problem",
-    draftMark: "DRAFT 2M -- THE PROBLEM",
+    eyebrow: "01 / THE PROBLEM",
     heading: "Parallel agents collide, and then they drift",
-  },
-  evidence: {
-    id: "evidence",
-    draftMark: "DRAFT 4M -- THE EVIDENCE",
-    heading: "What is verified, and what is not",
-  },
-  terminal: {
-    id: "terminal",
-    draftMark: "DRAFT 6M -- THE GATE",
-    heading: "A wave that does not pass",
   },
   lifecycle: {
     id: "lifecycle",
-    draftMark: "DRAFT 8M -- THE LIFECYCLE",
+    eyebrow: "02 / HOW IT WORKS",
     heading: "Six pieces, one contract",
+  },
+  terminal: {
+    id: "terminal",
+    eyebrow: "03 / THE GATE",
+    heading: "A wave that does not pass",
+  },
+  evidence: {
+    id: "evidence",
+    eyebrow: "04 / THE EVIDENCE",
+    heading: "What is verified, and what is not",
   },
   install: {
     id: "install",
-    draftMark: "DRAFT 10M -- INSTALL",
-    heading: "Install",
+    eyebrow: "05 / INSTALL",
+    heading: "Two commands",
   },
   faq: {
     id: "faq",
-    draftMark: "DRAFT 12M -- QUESTIONS",
+    eyebrow: "06 / QUESTIONS",
     heading: "Questions",
   },
 };
@@ -92,32 +89,57 @@ export const site = {
   selfAuditHref: "../docs/self-audit.md",
   selfAuditLinkText: "Read the self-audit",
   skipLinkText: "Skip to content",
+  wordmark: "Drydock",
 };
 
+/** Top-bar navigation. Every href is a section id rendered on this page. */
+export const nav: { href: string; label: string }[] = [
+  { href: "#problem", label: "Problem" },
+  { href: "#lifecycle", label: "How it works" },
+  { href: "#evidence", label: "Evidence" },
+  { href: "#install", label: "Install" },
+];
+
 export const hero = {
+  kicker: "CLAUDE CODE PLUGIN",
   headline: "Drydock",
+  promise:
+    "Subagents that cannot quietly rewrite each other, on a plan that is checked against the diff.",
   thesis: "NOTHING SAILS UNTIL IT LEAVES THE DOCK",
-  sub: "Plan-first parallel execution for Claude Code: a rigorous plan document as the source of truth, subagents executing it in parallel waves with disjoint file ownership, a conformance audit gating every wave, and a reconcile loop that feeds execution learnings back into your docs.",
-  waterlineLabel: "WATERLINE -- STATUS: APPROVED (HUMAN-ONLY)",
-  badges: [
-    "CLAUDE CODE PLUGIN",
-    `v${VERSION} -- INTERNAL PILOT`,
-    "FIELD BENCHMARKS: PENDING",
-  ],
-  svgAriaLabel:
-    "Line drawing of a hull resting in a dry-dock cradle, with the waterline labelled approved",
-  draftMarks: ["2M", "4M", "6M", "8M", "10M", "12M"],
-  keelLabels: ["WAVE 1.1", "WAVE 1.2", "WAVE 1.3"],
+  sub: "A plan document is the source of truth. Subagents execute it in parallel waves with disjoint file ownership. A conformance gate audits every wave against the actual diff, never against what the executors report.",
+  badges: [`v${VERSION} -- INTERNAL PILOT`, "MIT", "PLAN FORMAT v2"],
+  ctaPrimary: "Install it",
+  wave: {
+    label: "WAVE 1.1",
+    subLabel: "3 TASKS -- DISJOINT OWNERSHIP",
+    caption:
+      "Illustration, not a captured run: one wave, three tasks owning three separate files, one gate, one human approval.",
+    diagramAriaLabel:
+      "Three parallel task lanes converging into a single gate line below them",
+    ownsLabel: "OWNS",
+    tasks: [
+      { id: "T1.1.1", model: "haiku", owns: "content/copy.ts" },
+      { id: "T1.1.2", model: "sonnet", owns: "lib/motion.ts" },
+      { id: "T1.1.3", model: "opus", owns: "components/Hero.tsx" },
+    ],
+    gate: {
+      name: "wavecheck 1.1",
+      verdict: "PASS",
+      approval: "STATUS: APPROVED (HUMAN-ONLY)",
+    },
+  },
 };
 
 export const problem = {
   lead: "Running subagents in parallel has two failure modes, and the second one is the expensive one.",
   modes: [
     {
+      index: "01",
       title: "Collision",
       body: "Two subagents editing the same file collide. One write lands on top of the other and the loss is invisible until something downstream breaks.",
     },
     {
+      index: "02",
       title: "Drift",
       body: "Worse, they drift: green tests, a clean review, and a diff that quietly does things nobody asked for.",
     },
@@ -125,53 +147,63 @@ export const problem = {
   coda: "Drifted code is often good code. It just is not the code the plan specified, and nothing in a quality review is looking for that difference.",
 };
 
-export const evidence: {
-  verifiedHeading: string;
-  notVerifiedHeading: string;
-  verified: EvidenceRow[];
-  notVerified: EvidenceRow[];
-} = {
-  verifiedHeading: "VERIFIED",
-  notVerifiedHeading: "NOT YET VERIFIED",
-  verified: [
+export const evidence: { rows: EvidenceRow[] } = {
+  rows: [
     {
       id: "--",
       label: "Contract logic (audit soundness, BLOCK path, attribution)",
-      note: "VERIFIED. Adversarial dry-run: the ownership audit caught a rogue executor that edited a sibling task file and reported no deviations, while every test stayed green. The same dry-run exposed a real attribution defect, fixed in v0.3.0.",
+      status: "VERIFIED",
+      tone: "pass",
+      note: "Adversarial dry-run: the ownership audit caught a rogue executor that edited a sibling task file and reported no deviations, while every test stayed green. The same dry-run exposed a real attribution defect, fixed in v0.3.0.",
     },
     {
       id: "A1",
       label:
         "Per-task model override at spawn (param vs agent frontmatter precedence)",
-      note: "PASSED, 2026-08-18, host 2.1.234. The spawn param beat the agent frontmatter across 4 spawns in 2 independent runs. Evidence is agent self-report against a frontmatter control. Still untested: agent-teams mode, which Drydock does not use.",
+      status: "PASSED",
+      tone: "pass",
+      note: "2026-08-18, host 2.1.234. The spawn param beat the agent frontmatter across 4 spawns in 2 independent runs. Evidence is agent self-report against a frontmatter control. Still untested: agent-teams mode, which Drydock does not use.",
     },
     {
       id: "A2",
       label: "isolation: worktree agent spawning",
-      note: "PASSED, 2026-08-18, host 2.1.234, git 2.51.0. Worktree created on its own branch, checkpoint commit in contract format touching only the owned file, main tree left unmerged. A worktree holding changes is not auto-removed: cleanup is the orchestrator job.",
+      status: "PASSED",
+      tone: "pass",
+      note: "2026-08-18, host 2.1.234, git 2.51.0. Worktree created on its own branch, checkpoint commit in contract format touching only the owned file, main tree left unmerged. A worktree holding changes is not auto-removed: cleanup is the orchestrator job.",
     },
     {
       id: "A2b",
       label: "Post-wavecheck worktree merge procedure",
-      note: "PASSED, 2026-08-19. Disjoint worktrees merge conflict-free in task-id order and the integration smoke passes; a rogue edit colliding with a sibling conflicts, and aborting restores the target branch with the compliant work intact. Verified mechanically rather than agent-driven. One limitation, measured: a clean merge is not evidence of ownership compliance, because a non-colliding unowned edit merges silently. The ownership audit is the only defence there.",
+      status: "PASSED",
+      tone: "pass",
+      note: "2026-08-19. Disjoint worktrees merge conflict-free in task-id order and the integration smoke passes; a rogue edit colliding with a sibling conflicts, and aborting restores the target branch with the compliant work intact. Verified mechanically rather than agent-driven. One limitation, measured: a clean merge is not evidence of ownership compliance, because a non-colliding unowned edit merges silently. The ownership audit is the only defence there.",
     },
     {
       id: "A4",
       label: "claude plugin validate --strict",
-      note: "PASSED, 2026-08-18, including the disable-model-invocation and isolation frontmatter.",
+      status: "PASSED",
+      tone: "pass",
+      note: "2026-08-18, including the disable-model-invocation and isolation frontmatter.",
     },
-  ],
-  notVerified: [
     {
       id: "A3",
       label:
         "Orchestrator gate compliance (wavecheck invoked unprompted between waves)",
-      note: "PUBLISHED, not passed. 22 of 22 wave gates invoked and 0 skipped across 3 pilot plans, 21 of 22 recorded before the next wave opened. Every session counted knew it was being observed, so read that as a ceiling, not a rate. The sample is 3 plans against the 5 to 10 this row asks for, and measurement closed there deliberately: more observed runs raise the count without changing what it means.",
+      status: "PUBLISHED, NOT PASSED",
+      tone: "hold",
+      note: "22 of 22 wave gates invoked and 0 skipped across 3 pilot plans, 21 of 22 recorded before the next wave opened. Every session counted knew it was being observed, so read that as a ceiling, not a rate. The sample is 3 plans against the 5 to 10 this row asks for, and measurement closed there deliberately: more observed runs raise the count without changing what it means.",
     },
   ],
 };
 
-export const terminal: { caption: string; lines: TerminalLine[] } = {
+export const terminal: {
+  caption: string;
+  label: string;
+  verdict: string;
+  lines: TerminalLine[];
+} = {
+  label: "drydock:wavecheck",
+  verdict: "BLOCK",
   caption:
     "An illustration, not a captured session: what wavecheck reports for the 2026-08-18 adversarial dry-run described in docs/self-audit.md.",
   lines: [
@@ -199,7 +231,9 @@ export const terminal: { caption: string; lines: TerminalLine[] } = {
   ],
 };
 
-export const lifecycle: { pieces: Piece[] } = {
+export const lifecycle: { flow: string[]; loop: string; pieces: Piece[] } = {
+  flow: ["planwright", "human approves", "execute waves", "wavecheck", "reconcile"],
+  loop: "on BLOCK: /drydock:replan or a human decision. No retries.",
   pieces: [
     {
       name: "planwright",
@@ -210,22 +244,22 @@ export const lifecycle: { pieces: Piece[] } = {
     },
     {
       name: "executor",
-      kind: "agents",
-      invocation: "spawned per task by the orchestrating session",
+      kind: "agent",
+      invocation: "spawned per task",
       detail:
         "Executes exactly one task block and writes only the files that task owns.",
     },
     {
       name: "executor-isolated",
-      kind: "agents",
-      invocation: "spawned per task by the orchestrating session",
+      kind: "agent",
+      invocation: "spawned per task",
       detail:
         "The same contract inside its own git worktree, so same-wave tasks cannot collide on disk.",
     },
     {
       name: "wavecheck",
       kind: "skill",
-      invocation: "named as a blocking gate inside every plan",
+      invocation: "blocking gate inside every plan",
       detail:
         "Audits the finished wave against the plan, using the actual diff: ownership, forbidden lists, acceptance criteria, deviations. PASS or BLOCK.",
     },
@@ -248,14 +282,19 @@ export const lifecycle: { pieces: Piece[] } = {
 
 export const install: {
   commands: string[];
+  scopeNote: string;
+  configNote: string;
   copyLabel: string;
   copyAriaLabel: string;
   copiedLabel: string;
 } = {
   commands: [
-    "/plugin marketplace add <org>/drydock",
+    "/plugin marketplace add TakasiVenkataSandeep-08/drydock",
     "/plugin install drydock@drydock",
   ],
+  scopeNote: "Add --scope project to share it with your team.",
+  configNote:
+    "Configured on enable: where plans live (default docs/plans) and which docs reconcile may propose changes to. Then run /drydock:planwright on something small.",
   copyLabel: "Copy",
   copyAriaLabel: "Copy install command to clipboard",
   copiedLabel: "Copied",
@@ -284,11 +323,17 @@ export const faq: FaqItem[] = [
   },
 ];
 
-export const sheet: Sheet = {
-  project: "DRYDOCK",
-  title: "GENERAL ARRANGEMENT",
-  sheetNumber: "SHEET 1 OF 1",
-  revision: `REV ${VERSION}`,
-  scale: "NOT TO SCALE",
-  date: "2026-08-18",
+export const footer: {
+  tagline: string;
+  meta: string[];
+  links: { href: string; label: string }[];
+} = {
+  tagline: "Nothing sails until it leaves the dock.",
+  meta: [`v${VERSION}`, "MIT", "2026-08-19"],
+  links: [
+    { href: "../docs/self-audit.md", label: "Self-audit" },
+    { href: "../docs/compatibility.md", label: "Compatibility" },
+    { href: "../drydock/README.md", label: "Plugin README" },
+    { href: "../docs/plans/001-drydock-homepage.md", label: "Example plan" },
+  ],
 };

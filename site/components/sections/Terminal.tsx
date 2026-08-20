@@ -9,8 +9,8 @@ import type { SectionProps } from "@/lib/section";
 
 const TONE_CLASS = {
   dim: "text-ink-dim",
-  pass: "text-ink",
-  block: "text-primer",
+  pass: "text-pass",
+  block: "text-block",
 } as const;
 
 /**
@@ -18,17 +18,21 @@ const TONE_CLASS = {
  * `terminal.caption` and docs/self-audit.md) — an illustration, never a
  * captured session. All twelve lines are server-rendered up front; each is
  * only ever revealed via its own clip, in sequence via `revealClipStagger`,
- * never typed character by character. The panel is a framed inset, not a
- * chrome window.
+ * never typed character by character.
  */
 export default function Terminal({ meta }: SectionProps) {
   const safe = useMotionSafe();
 
   return (
     <Section meta={meta}>
-      <div className="space-y-6">
-        <p className="text-note text-ink-dim">{terminal.caption}</p>
-        <div className="overflow-x-auto border border-line bg-panel p-4 md:p-6">
+      <div className="border border-line bg-surface">
+        <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 font-mono text-mark uppercase sm:px-6">
+          <span className="text-ink-dim">{terminal.label}</span>
+          <span className="border border-block px-2 py-1 text-block">
+            {terminal.verdict}
+          </span>
+        </div>
+        <div className="overflow-x-auto px-4 py-5 sm:px-6">
           <motion.pre
             initial="hidden"
             whileInView="shown"
@@ -48,6 +52,9 @@ export default function Terminal({ meta }: SectionProps) {
           </motion.pre>
         </div>
       </div>
+      <p className="mt-4 max-w-3xl text-note text-ink-dim">
+        {terminal.caption}
+      </p>
     </Section>
   );
 }

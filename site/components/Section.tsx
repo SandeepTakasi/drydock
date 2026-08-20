@@ -6,7 +6,7 @@ import { NO_MOTION, sectionReveal, useMotionSafe } from "@/lib/motion";
 import type { SectionShellProps } from "@/lib/section";
 
 /**
- * The shared section shell: draft mark, heading, children, and the site's ONLY
+ * The shared section shell: eyebrow, heading, children, and the site's ONLY
  * scroll reveal. Section components render their own `<Section meta={meta}>`
  * root and must not reimplement the reveal.
  *
@@ -14,7 +14,7 @@ import type { SectionShellProps } from "@/lib/section";
  * in app/globals.css can force-restore Framer's inline `opacity: 0`.
  *
  * Spacing contract: the shell owns the gap between the `<h2>` and `children`
- * (`mt-8` on the wrapper below). Sections pass their body content with no
+ * (`mt-10` on the wrapper below). Sections pass their body content with no
  * leading margin of their own.
  */
 export default function Section({ meta, children }: SectionShellProps) {
@@ -28,15 +28,19 @@ export default function Section({ meta, children }: SectionShellProps) {
       initial="hidden"
       whileInView="shown"
       viewport={{ once: true, amount: 0.2 }}
-      className="mx-auto w-full max-w-5xl scroll-mt-12 border-t border-line px-6 py-20"
+      className="border-t border-line"
     >
-      <p className="font-mono text-mark text-primer uppercase">
-        {meta.draftMark}
-      </p>
-      <h2 className="mt-4 font-display text-title">{meta.heading}</h2>
-      {/* The heading-to-body gap is pinned HERE, once, as `mt-8`. Section
-          components must not add their own top margin to their first child. */}
-      <div className="mt-8">{children}</div>
+      <div className="mx-auto w-full max-w-6xl scroll-mt-24 px-6 py-20 sm:px-10 sm:py-24">
+        <p className="font-mono text-mark text-accent uppercase">
+          {meta.eyebrow}
+        </p>
+        <h2 className="mt-5 max-w-3xl font-display text-title text-ink">
+          {meta.heading}
+        </h2>
+        {/* The heading-to-body gap is pinned HERE, once, as `mt-10`. Section
+            components must not add their own top margin to their first child. */}
+        <div className="mt-10">{children}</div>
+      </div>
     </motion.section>
   );
 }
