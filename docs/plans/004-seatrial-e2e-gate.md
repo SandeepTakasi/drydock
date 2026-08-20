@@ -1,7 +1,7 @@
 ---
 plan: 004-seatrial-e2e-gate
 format_version: 2
-status: BLOCKED
+status: EXECUTING
 isolation: none
 created: 2026-08-20
 approved_by: sandeep
@@ -150,6 +150,7 @@ not a failure.
 | 6 | Is seatrial model-invocable? | Yes — same posture as wavecheck. Not `disable-model-invocation`. | planner (assumed — flag if wrong) | It is named as a gate inside plan documents, so the orchestrating session must be able to reach it unprompted. `replan` is human-only because auto-replanning mutates plans; running a read-only verification gate carries no such risk. Consumed by T1.1.5. |
 | 7 | Skill name | `seatrial` | planner (assumed — flag if wrong) | A sea trial is what a ship undergoes after it leaves the drydock: the metaphor already had this slot open. Consumed by T1.1.5, T1.2.1, T1.2.2, T1.2.3. |
 | 8 | Where do evidence artifacts live, and are they committed? | `.drydock/testing/<plan-id>/<case-id>/`; `.drydock/` gitignored; the dated **record** of a run is committed to `docs/verification-log.md`, the **artifacts** are not, and committing artifacts requires asking. | planner (assumed — flag if wrong) | Screenshots and video in git history bloat a public repo permanently. The record is what a later session needs; the artifacts are for the QA handoff at the time. This also gives Phase 2's tasks a tracked file to commit, which the checkpointing rule requires. Consumed by T1.0.1, T1.1.5, T1.2.4, T2.1.1. |
+| 12 | Wavechecks 2.0 and 2.1 both BLOCKed: `5a32ac9` staged the plan document alongside T2.0.1's only owned file. Repair task, replan, or accept? | **Accept the breach as benign, and close the hole so it cannot recur.** The plan-document hunk of `5a32ac9` is recorded as orchestrator bookkeeping — frontmatter `status`, deviations 8 and 9, Q1's closure — and explicitly **not** part of T2.0.1's owned diff. No repair task, no history rewrite. Paired with the checkpointing rule in §10, restated below to forbid the mixture outright, and both wavechecks re-run afterwards. | user | The breach is real and the audit was right to stop on it, but nothing downstream rests on it: T2.0.1's owned file is correct, no sibling task's file was touched, and the criterion passes on its own. A repair task would rewrite what two auditors already recorded and buy nothing. The durable fix is an invariant rather than a remediation — a spawned `drydock:executor` gets "stage ONLY owned files" for free, and this breach exists precisely because deviation 1 put a human hand where that executor should have been. Prefer making the failure impossible over recording how often it happens. Consumed by §10's checkpointing rule and by the wavecheck re-runs. |
 | 11 | Wave 1.R REJECTED on R1 (frozen path vs `evidence_dir`). Make the config authoritative, or drop the config? | Drop `evidence_dir`; the evidence root stays the literal frozen path. `e2e_dir` is unaffected. Applied as repair Wave 1.3 across the three files that reference the key. | user | Decision 8 froze the path so seatrial and reconcile could not drift apart; a relocatable root reintroduces precisely that drift, and R1 is the proof — seatrial had already split into two forms within one file. One key removed beats three files restated, and the same narrow-don't-widen reasoning as Decision 10. Consumed by T1.3.1, T1.3.2, T1.3.3. |
 | 10 | Wavecheck 1.1 BLOCKed on deviation 6 (`PARTIAL` undefined in the contract). Widen the contract or narrow the skill? | Narrow the skill: delete `PARTIAL`, and make a subset run a HALT that writes no sheet. Applied via the contract's replaced-task mechanism — `T1.1.5` struck through, `T1.1.5r1` added to wave 1.1. | user | One file and one owner instead of two, no contract change, and it is the more consistent design: the gate rule already says a case that cannot be run is "neither a PASS nor a skip". A partial suite is the same shape of thing — not a verdict. Widening a deliberately closed enumeration to accommodate a convenience is how the closed set stops meaning anything. Consumed by T1.1.5r1. |
 | 9 | Does the adversarial pressure-test run as a subagent? | No — performed inline by the planner with files re-opened from disk, because this session is instructed not to spawn agents. Recorded as a substitution, not a skip. | planner (assumed — flag if wrong) | Planwright permits the inline fallback but the loss of fresh eyes is real and is stated in §12 rather than hidden. |
@@ -189,7 +190,13 @@ Escalation: quality-review rejection → max 2 retries with feedback injected �
 tier up → human. Wavecheck BLOCK on ownership or unlogged deviation → no
 retries → `/drydock:replan` or human decision.
 Checkpointing: one commit per task, `drydock(<task-id>): <task name>`, staged to
-owned files only, committed the moment the criterion passes.
+owned files only, committed the moment the criterion passes. **A checkpoint
+commit carries the task's owned files and nothing else — plan bookkeeping
+(frontmatter `status`, Decision Log, Deviation Log, progress log, open-question
+closures) never rides along in it, and goes in a separate `plan(<id>): …`
+commit.** A spawned executor gets this for free; it is stated because
+`5a32ac9` broke it by hand (Decision 12, deviation 13), and every other task
+commit in this plan's history honours it.
 Human gates: Phase 1 boundary (read the diff), Phase 2 boundary (read
 `verdict.md` and sign the go/no-go).
 Tracker mirroring: none. Final step: `drydock:reconcile`.
