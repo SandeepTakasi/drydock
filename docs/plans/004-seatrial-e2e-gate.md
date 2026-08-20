@@ -158,7 +158,7 @@ not a failure.
 
 | # | Question | Blocks | Recommended answer |
 |---|---|---|---|
-| Q1 | Playwright MCP is not installed in this environment. Who installs it, and is its configuration in scope for this plan? | All of Phase 2 (`T2.0.1`, `T2.1.1`, `T2.1.2`) — marked `BLOCKED(Q1)` | Human installs it out-of-band, then T2.0.1 verifies a navigate+screenshot round trip and records A5. Keeping MCP configuration out of the plan avoids a plan that mutates the operator's machine config. |
+| Q1 | **CLOSED 2026-08-20.** Playwright MCP is not installed in this environment. Who installs it, and is its configuration in scope for this plan? | ~~All of Phase 2~~ — nothing; the MCP connected on its own at session start and T2.0.1 recorded the round trip | Human installs it out-of-band, then T2.0.1 verifies a navigate+screenshot round trip and records A5. Keeping MCP configuration out of the plan avoids a plan that mutates the operator's machine config. |
 | Q2 | Should `e2e_dir` default to `e2e/` at the repo root, or `site/e2e/` next to the only app? | Nothing — `T1.2.1` ships the default and it is user-configurable | Repo root `e2e/`. Drydock is installed into other people's repos where `site/` means nothing; the config key exists for anyone who disagrees. |
 
 ## 9. Out of scope / follow-ups
@@ -710,7 +710,7 @@ closing.
 - **Acceptance criterion:** a written verdict APPROVED or REJECTED appended to
   this plan; APPROVED required for the phase gate.
 
-## Phase 2: Prove it — BLOCKED(Q1)
+## Phase 2: Prove it — OPEN (Q1 resolved 2026-08-20)
 
 **Exit state:** A5 has a first dated observation; `verdict.md` exists for this
 plan with all six cases recorded and the three designed-to-fail cases having
@@ -723,7 +723,7 @@ recorded override) · human reads `verdict.md` and signs the go/no-go.
 ### Wave 2.0 — Dependency verification
 
 #### T2.0.1 — Verify and record the Playwright MCP round trip (A5)
-- **Status:** BLOCKED(Q1)
+- **Status:** DONE — 2026-08-20 (Q1 resolved: MCP present this session; deviations 8 and 9)
 - **Description:** With Playwright MCP installed, drive one navigate plus one
   screenshot against the local target, and record the observation as a dated
   entry in the verification log.
@@ -888,6 +888,8 @@ next plan rather than being quietly dropped now that it is fixed.
 
 | # | Task | What deviated | Why | Impact | Recorded |
 |---|---|---|---|---|---|
+| 9 | T2.0.1 | The acceptance criterion greps `^#### A5` in `docs/verification-log.md`, but every entry in that file is a top-level `## <id> — <title>` with `###` subsections. The entry was written as `## A5 — …` to match the file, so the criterion's letter fails while its intent — an `A5` entry carrying a 2026 date — holds. | Planner error, third of the same class as deviations 2 and 4: a criterion authored from memory of a file's shape instead of against the file. Writing `#### A5` to satisfy the grep would have put a stray h4 among h2s purely to please a regex. | **Low.** The substitute check `grep -q '^## A5' docs/verification-log.md && grep -A6 '^## A5' docs/verification-log.md | grep -qE '2026-[0-9]{2}-[0-9]{2}'` exits 0 and gates the same thing. Flagged so wavecheck 2.0 audits the corrected form rather than BLOCKing on the authored one. | orchestrator, at T2.0.1 |
+| 8 | T2.0.1 | **Q1 resolved without an out-of-band install:** the `playwright` MCP server connected at this session's startup and advertised 24 `mcp__playwright__browser_*` tools, on the same machine where the planning session found none. Task executed inline by the orchestrating session, not by `drydock:executor` (same standing instruction as deviation 1). | Availability is per-session and depends on the MCP server handshake, which the planning session did not get. Nobody installed anything between the two sessions. | **Unblocks Phase 2, and narrows what A5 can claim.** The row is now evidence that the round trip *can* work, not that the MCP is dependably present — a seatrial run in a session where the server fails to connect must still HALT. Also surfaced a concrete finding for TG1: a relative `filename` resolves against the MCP server's own working directory, not the declared evidence root, so artifacts have to be relocated after capture. | orchestrator, at wave 2.0 open |
 | 7 | verification attempt after the Phase 1 gate | **Plugin skill files are loaded once per session and cached; edits to them do not take effect until a new session.** Invoking `drydock:reconcile` after the gate closed returned the pre-`T1.1.4` text — "position 16", no Testing Gate refusal — while disk and `origin/main` both carry "position 17" and the refusal (commit `4e974dc`, zero uncommitted diff). Corroborated by the session's available-skills list, which names planwright/reconcile/wavecheck but not `seatrial`, because seatrial did not exist when the session started. | Host behaviour, not a defect in this plan. Discovered only because a verification was attempted rather than assumed. | **High, and it invalidates a whole class of self-test.** Any attempt to verify a just-edited skill *in the session that edited it* exercises the stale copy and proves nothing. It also means every skill this plan shipped or changed — seatrial, reconcile's refusal, planwright's new checklist item, both corrected ordinals — is **unexercised**: they exist on disk and in the manifest, and no session has run them. The next session is the first that can. Belongs in `CLAUDE.md`'s toolchain facts and is input for reconcile's new-knowledge harvest. | discovered at the Phase 1 boundary |
 | 6 | T1.1.5 | `seatrial/SKILL.md` introduces a **fourth summary verdict, `PARTIAL`**, for subset runs. The format contract declares exactly three — `GO` \| `NO-GO` \| `GO-WITH-OVERRIDES` — and T1.1.5's own implementation sketch enumerates those same three. `grep -c PARTIAL`: 2 in seatrial, 0 in the contract. | The consumer needed *something* to return for a partial run, and inventing it locally was easier than noticing that the contract had to define it. Exactly the "contract rule stated as a delta rather than a complete body" failure the planwright checklist warns about, arriving from the other direction: a consumer widening a closed enumeration. | **This is the BLOCK.** Not cosmetic: `reconcile` (T1.1.4) branches on missing / NO-GO / GO-WITH-OVERRIDES / GO. A `PARTIAL` sheet matches none of them, so reconcile has **no rule** for it and its behaviour is undefined — a plan could be closed on a partial run, which is the precise failure the refusal exists to prevent. Two remediations, both plan-level: (a) add `PARTIAL` to the contract's gate rule and give reconcile an explicit refusal for it, or (b) delete `PARTIAL` from seatrial and make a subset run a HALT with no sheet written. | `discovered-by-wavecheck`, wave 1.1 |
 | 5 | T1.1.2 | Two questions beyond the four the task block enumerated: "Is there a UI or API surface a browser can exercise" and "Which cases must be blockers". | Both are genuinely needed by the section the block feeds — the first produces the `N/A — <reason>`, the second produces severities, and without them the gate cannot be authored. The task block simply did not list them. | **Low, additive.** No clause was removed and no other file touched. Same class as deviation 3: scope creep inside an owned file, invisible to the forbidden audit. Referred to Wave 1.R for a keep/cut call, not blocking. | `discovered-by-wavecheck`, wave 1.1 |
@@ -1029,6 +1031,8 @@ Deviations logged: 6 (3 discovered by wavecheck)
 | 2026-08-20 | Wave 1.R | APPROVED on re-review | R1 closed; phase gate awaits human approval |
 | 2026-08-20 | reconcile refusal | UNVERIFIED — cannot be tested in-session (deviation 7) | The running skill is the pre-edit copy; the new refusal is unexercised. Verify in a fresh session |
 | 2026-08-20 | Phase 1 gate | CLOSED, approved by sandeep | validate --strict exit 0 + T1.R.1 APPROVED + human approval. Phase 2 still BLOCKED(Q1) |
+| 2026-08-20 | Q1 | CLOSED | Playwright MCP connected at session startup, no install performed; Phase 2 opened |
+| 2026-08-20 | T2.0.1 | DONE | A5 first observation logged: navigate returned the real page title, screenshot wrote 89692 bytes. Deviations 8 and 9 |
 
 ## Reconcile report
 

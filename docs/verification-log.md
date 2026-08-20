@@ -470,3 +470,96 @@ itself plan. That is the only experiment that converts this row to PASSED.
 **Verdict:** PUBLISHED — **not PASSED.** 22 of 22 observed gates invoked, 0 skipped,
 21 of 22 recorded before the next wave opened, across 3 plans. Real numbers, published;
 an upper bound from self-observed runs, not a compliance rate. Measurement closed.
+
+---
+
+## A5 — Playwright MCP availability and browser-drive round trip
+
+**Date:** 2026-08-20
+**Host version:** `claude --version` → `2.1.237 (Claude Code)`
+**Parent session model:** Opus 5 (1M context) — `claude-opus-5[1m]`
+**Repo SHA at run time:** `29bc6fc`
+
+**Context:** the planning session for [plan 004](plans/004-seatrial-e2e-gate.md)
+found no browser tools at all, which is why Phase 2 of that plan was
+`BLOCKED(Q1)`. In this session the `playwright` MCP server connected at startup
+and advertised 24 `mcp__playwright__browser_*` tools. This entry records the
+first observed round trip. Executed inline by the orchestrating session rather
+than by `drydock:executor` (deviation 8).
+
+### Target
+
+```
+mkdir -p /tmp/dd && ln -sfn "$PWD/site/out" /tmp/dd/drydock
+cd /tmp/dd && python3 -m http.server 5173
+curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5173/drydock/   # → 200
+```
+
+### Step 1 — navigate
+
+Spawn parameters: `mcp__playwright__browser_navigate` with
+`{"url": "http://127.0.0.1:5173/drydock/"}`.
+
+Raw result, verbatim:
+
+```
+### Ran Playwright code
+await page.goto('http://127.0.0.1:5173/drydock/');
+### Page
+- Page URL: http://127.0.0.1:5173/drydock/
+- Page Title: Drydock -- plan-first parallel execution for Claude Code
+### Snapshot
+- [Snapshot](.playwright-mcp/page-2026-08-20T17-19-13-779Z.yml)
+```
+
+The returned page title matches the exported `<title>`, so the navigation
+reached the served export and not a cached or error page.
+
+### Step 2 — screenshot
+
+Spawn parameters: `mcp__playwright__browser_take_screenshot` with
+`{"scale": "css", "filename": "a5-roundtrip.png"}`.
+
+Raw result, verbatim:
+
+```
+### Result
+- [Screenshot of viewport](./a5-roundtrip.png)
+### Ran Playwright code
+await page.screenshot({
+  path: './a5-roundtrip.png',
+  scale: 'css',
+  type: 'png'
+});
+```
+
+Artifact on disk: 89692 bytes, PNG. **Written to the session working directory
+(`~/a5-roundtrip.png`), not to the path implied by a relative filename.** Moved
+afterwards to `.drydock/testing/004-seatrial-e2e-gate/A5/a5-roundtrip.png`
+(gitignored per Decision 8, so the file is evidence for this run and is not
+committed).
+
+### Observations
+
+1. The round trip works: navigate returned live page state and screenshot
+   produced a non-empty PNG. This is the first observation of A5 in any session.
+2. A relative `filename` resolved against the MCP server's own working
+   directory, not the evidence root. Any skill that declares an evidence path
+   must relocate artifacts after capture, or pass an absolute path — a
+   `filename` alone does not place the file. This bears directly on plan 004's
+   TG1, whose evidence clause fails when evidence lands outside the declared
+   path.
+3. Availability is per-session and depends on the MCP server connecting. It was
+   absent in the planning session and present here, on the same machine. A5 is
+   therefore evidence that the round trip *can* work, not that it is reliably
+   present.
+
+### Not tested
+
+Click, form fill, video capture, network-request recording, `browser_evaluate`,
+and multi-tab handling. Only navigate and screenshot were exercised. Plan 004's
+Testing Gate exercises the rest.
+
+**Verdict:** OBSERVED — one navigate + screenshot round trip succeeded against
+the local static export on 2026-08-20. Whether one round trip justifies moving
+the A5 row off `PENDING` is a human decision on this evidence, per plan 004 §9.
