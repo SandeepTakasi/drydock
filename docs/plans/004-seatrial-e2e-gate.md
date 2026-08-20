@@ -1,7 +1,7 @@
 ---
 plan: 004-seatrial-e2e-gate
 format_version: 2
-status: EXECUTING
+status: BLOCKED
 isolation: none
 created: 2026-08-20
 approved_by: sandeep
@@ -421,7 +421,7 @@ APPROVED · human reads the diff and approves.
 > contract; none reads another task's output.
 
 #### T1.1.1 — Teach planwright to interview for and author the Testing Gate
-- **Status:** TODO
+- **Status:** DONE
 - **Description:** Add the Testing Gate to planwright's workflow: step 1
   interviews for testable acceptance criteria and the app's base URL and auth
   approach; step 6 writes the section for any plan touching a UI or API surface;
@@ -438,7 +438,7 @@ APPROVED · human reads the diff and approves.
 - **Acceptance criterion:** `bash -c 'f=drydock/skills/planwright/SKILL.md; grep -q "Testing Gate" "$f" && grep -q "seatrial" "$f" && grep -qE "N/A" "$f"'` exits 0.
 
 #### T1.1.2 — Add the E2E question block to the practices interview
-- **Status:** TODO
+- **Status:** DONE
 - **Description:** Extend the question bank with the questions seatrial needs
   answered at plan time: base URL per environment, auth approach for test runs,
   evidence retention expectations, and whether generated spec files are wanted.
@@ -457,7 +457,7 @@ APPROVED · human reads the diff and approves.
   the task ran.)*
 
 #### T1.1.3 — Correct wavecheck's stale section position
-- **Status:** TODO
+- **Status:** DONE
 - **Description:** Wavecheck instructs appending its report at "position 14";
   after the renumbering, Wavecheck reports are position 15. Update the prose.
 - **Files owned:** `drydock/skills/wavecheck/SKILL.md`
@@ -470,7 +470,7 @@ APPROVED · human reads the diff and approves.
 - **Acceptance criterion:** `bash -c 'f=drydock/skills/wavecheck/SKILL.md; grep -q "position 15" "$f" && ! grep -q "position 14" "$f"'` exits 0.
 
 #### T1.1.4 — Reconcile: correct its position and add the verdict refusal
-- **Status:** TODO
+- **Status:** DONE
 - **Description:** Update reconcile's "position 16" to 17, and add the refusal:
   if the plan has a Testing Gate section that is not `N/A`, reconcile refuses to
   set `RECONCILED` unless the verdict sheet exists and reads GO or
@@ -487,7 +487,7 @@ APPROVED · human reads the diff and approves.
 - **Acceptance criterion:** `bash -c 'f=drydock/skills/reconcile/SKILL.md; grep -q "position 17" "$f" && ! grep -q "position 16" "$f" && grep -q "\.drydock/testing/<plan-id>/verdict\.md" "$f" && grep -q "NO-GO" "$f"'` exits 0.
 
 #### T1.1.5 — Author the `seatrial` skill
-- **Status:** TODO
+- **Status:** DONE
 - **Description:** Write `drydock/skills/seatrial/SKILL.md`: the preflight
   halts, per-case execution through Playwright MCP with no improvisation,
   evidence capture per declared type, spec generation, and the verdict sheet.
@@ -701,6 +701,8 @@ recorded override) · human reads `verdict.md` and signs the go/no-go.
 
 | # | Task | What deviated | Why | Impact | Recorded |
 |---|---|---|---|---|---|
+| 6 | T1.1.5 | `seatrial/SKILL.md` introduces a **fourth summary verdict, `PARTIAL`**, for subset runs. The format contract declares exactly three — `GO` \| `NO-GO` \| `GO-WITH-OVERRIDES` — and T1.1.5's own implementation sketch enumerates those same three. `grep -c PARTIAL`: 2 in seatrial, 0 in the contract. | The consumer needed *something* to return for a partial run, and inventing it locally was easier than noticing that the contract had to define it. Exactly the "contract rule stated as a delta rather than a complete body" failure the planwright checklist warns about, arriving from the other direction: a consumer widening a closed enumeration. | **This is the BLOCK.** Not cosmetic: `reconcile` (T1.1.4) branches on missing / NO-GO / GO-WITH-OVERRIDES / GO. A `PARTIAL` sheet matches none of them, so reconcile has **no rule** for it and its behaviour is undefined — a plan could be closed on a partial run, which is the precise failure the refusal exists to prevent. Two remediations, both plan-level: (a) add `PARTIAL` to the contract's gate rule and give reconcile an explicit refusal for it, or (b) delete `PARTIAL` from seatrial and make a subset run a HALT with no sheet written. | `discovered-by-wavecheck`, wave 1.1 |
+| 5 | T1.1.2 | Two questions beyond the four the task block enumerated: "Is there a UI or API surface a browser can exercise" and "Which cases must be blockers". | Both are genuinely needed by the section the block feeds — the first produces the `N/A — <reason>`, the second produces severities, and without them the gate cannot be authored. The task block simply did not list them. | **Low, additive.** No clause was removed and no other file touched. Same class as deviation 3: scope creep inside an owned file, invisible to the forbidden audit. Referred to Wave 1.R for a keep/cut call, not blocking. | `discovered-by-wavecheck`, wave 1.1 |
 | 4 | T1.1.2 | The task's acceptance criterion required `grep -qi "E2E"` on a file that already contained "unit / integration / e2e?" at line 18. That clause was satisfied before the task began, so only the `base url` clause bound. Criterion replaced with three clauses each verified absent first. | Planner error of exactly the class this plan's own self-review checklist names — "if a criterion's clauses were already satisfied by earlier tasks before this task began, it gates nothing". The checklist item was written and then not applied to a Mechanical-tier criterion. | **Low.** The binding clause would still have caught a no-op task. But a half-inert criterion invites a task to satisfy the inert half; the corrected form cannot be passed without the new content existing. Worth noting that both criterion defects so far (deviations 2 and 4) are in Mechanical-tier tasks, where the criterion got the least attention. | orchestrator, at wave 1.1 |
 | 3 | T1.0.1 | The new `## Testing Gate` contract section contains four subsections the task block never asked for: the designed-to-fail **inversion rule**, the **verdict sheet** description, the **over-claim clause**, and a **Staleness** subsection. The task's description and implementation sketch enumerate only the per-case schema, the gate rule, the N/A escape, and the frozen paths. | Three are defensible as completing the gate rule or the frozen-path requirement (a designed-to-fail case is ambiguous without the inversion; the verdict path *is* one of the frozen strings; the over-claim clause is a stated plan constraint). **Staleness is not** — it is a distinct concern the task never mentioned, added because T1.1.5's brief needs it. | **Not a BLOCK.** No ownership violation, nothing on the forbidden list, criterion green. But it is scope creep inside an owned file, which the forbidden audit cannot catch, and the honest label is a deviation rather than a judgement call. Handed to Wave 1.R: decide whether Staleness belongs in the format contract or only in `seatrial/SKILL.md`, and move it if the latter. | `discovered-by-wavecheck`, wave 1.0 |
 | 2 | T0 | T0's acceptance criterion was unpassable as authored: it piped `wc -l` into `grep -qx 1`, and BSD `wc` left-pads the count to `"       1"`, which `-x` (whole-line match) can never equal `1`. Criterion corrected in place to `[ "$(… \| tr -d ' ')" = 1 ]`. | Planner error, written on Linux `wc` habits and never dry-run against this platform before the plan was presented. The plan's own checklist asks whether a criterion can FAIL; it does not ask whether it can PASS. | **Low on the repo, real on the process.** All three underlying facts were true and separately verified (both gates exit 0; all three plans are `format_version: 2`), so no wrong conclusion was drawn and no file was changed to accommodate it. Two process failures worth keeping: (a) T0's commit was made before the combined criterion was confirmed green, which the executor contract forbids — the commit stands but T0 was not DONE until the corrected criterion passed; (b) the whole plan was audited for the same idiom afterwards, finding no other instance (`grep -c` does not pad; T1.2.3's `awk` form is padding-safe). | orchestrator, at T0 |
@@ -735,6 +737,41 @@ is confirmed live.
 Deviations logged: 3 (1 discovered by wavecheck)
 
 **Verdict: PASS.** Wave 1.1 may start.
+
+### Wavecheck 1.1 — BLOCK — 2026-08-20
+
+| Check | Result | Evidence |
+|---|---|---|
+| 1. Plan integrity | PASS | `status: EXECUTING`; wave 1.1 declares 5 tasks; wave 1.0 has a PASS report, so no gate was skipped. |
+| 2. Ownership audit | PASS | Five per-task commits, each audited with `git show --name-only`. Every task's changed set equals its `owns` entry exactly, compared programmatically: T1.1.1→`planwright/SKILL.md`, T1.1.2→`practices-interview.md`, T1.1.3→`wavecheck/SKILL.md`, T1.1.4→`reconcile/SKILL.md`, T1.1.5→`seatrial/SKILL.md`. No file appears in two commits. `git status --porcelain` → 0 lines. |
+| 3. Forbidden audit | PASS | T1.1.1: neither `plan-format.md` nor `practices-interview.md` appears in its commit; the `N/A — <reason>` escape survives (2 occurrences). T1.1.2: one `manual confirmation gates` occurrence, i.e. cross-referenced not duplicated. T1.1.3: **initially flagged, dismissed on inspection** — the only `Testing Gate` string in `wavecheck/SKILL.md` sits inside the sentence explaining why the ordinal moved from 14 to 15; no imperative, no duty assigned, so the forbidden item "gains no Testing Gate duty" holds. T1.1.4: refusal explicitly exempts `N/A — <reason>`; verdict path is byte-identical to the contract's (`diff` of the extracted strings is empty). T1.1.5: forbidden list checked clause by clause — no-fallback, no-improvisation, no-dependency, no-CI-ready-claim and the over-claim clause are all present. Wave-wide: 0 added lines matching `PreToolUse\|PostToolUse\|settings.json`. |
+| 4. Acceptance audit | PASS | All five criteria executed, not taken on report: exit 0, 0, 0, 0, 0. T1.1.5's includes `claude plugin validate ./drydock --strict`, which passes with the new skill directory present. |
+| 5. Deviation reconciliation | **BLOCK** | Two deviations discovered and logged here: **5** (T1.1.2, two extra interview questions — additive, not blocking) and **6** (T1.1.5 invented a fourth verdict value `PARTIAL` that the format contract does not define). Deviation 6 is the BLOCK: `reconcile` branches on four states and `PARTIAL` is none of them, so a partial run reaches reconcile with undefined behaviour and could close a plan that was never fully verified. |
+
+**Which task, which file, what is wrong.** `T1.1.5`,
+`drydock/skills/seatrial/SKILL.md`: the summary-verdict enumeration is wider than
+the contract's. `grep -c PARTIAL` → 2 in the skill, 0 in
+`plan-format.md`, whose gate rule closes the set at `GO | NO-GO |
+GO-WITH-OVERRIDES`.
+
+**Minimal remediation options — no executor retries, per the escalation policy
+(this is a contract breach, not a quality miss):**
+- **(a) Targeted fix task appended to this wave.** Either add `PARTIAL` to the
+  contract's gate rule *and* give reconcile an explicit refusal for it (two
+  files, two owners, so two tasks), or delete `PARTIAL` from seatrial and make a
+  subset run a HALT that writes no sheet (one file, one task). The second is the
+  smaller diff and needs no contract change.
+- **(b) `/drydock:replan`** if the human judges that subset runs deserve
+  first-class support in the contract, which is a design change rather than a
+  repair.
+- **(c) Human decision.**
+
+Nothing was fixed by this audit. An auditor who edits the code under audit is no
+auditor.
+
+Deviations logged: 6 (3 discovered by wavecheck)
+
+**Verdict: BLOCK.** Wave 1.2 must not start. Plan status set to `BLOCKED`.
 
 ## Progress log
 
