@@ -638,7 +638,7 @@ APPROVED · human reads the diff and approves.
 > file has one owner, so the three tasks are disjoint and parallel.
 
 #### T1.3.1 — Remove `evidence_dir` from the plugin manifest
-- **Status:** TODO
+- **Status:** DONE
 - **Description:** Delete the `evidence_dir` entry from `userConfig`. `e2e_dir`,
   `plans_dir` and `docs_targets` are untouched.
 - **Files owned:** `drydock/.claude-plugin/plugin.json`
@@ -651,7 +651,7 @@ APPROVED · human reads the diff and approves.
 - **Acceptance criterion:** `bash -c 'claude plugin validate ./drydock --strict && python3 -c "import json;u=json.load(open(\"drydock/.claude-plugin/plugin.json\"))[\"userConfig\"];assert \"evidence_dir\" not in u;assert \"e2e_dir\" in u;assert \"plans_dir\" in u;assert \"docs_targets\" in u"'` exits 0.
 
 #### T1.3.2 — Seatrial: use the frozen literal evidence root throughout
-- **Status:** TODO
+- **Status:** DONE
 - **Description:** Replace both `<evidence_dir>` placeholders with the frozen
   literal `.drydock/testing/…` form, and drop `evidence_dir` from the skill's
   path-config sentence so it names only `e2e_dir`. One form for the evidence root
@@ -670,7 +670,7 @@ APPROVED · human reads the diff and approves.
 - **Acceptance criterion:** `bash -c 'f=drydock/skills/seatrial/SKILL.md; ! grep -q "evidence_dir" "$f" && ! grep -q PARTIAL "$f" && [ "$(grep -c "\.drydock/testing/" "$f")" -ge 3 ] && grep -q "e2e_dir" "$f" && claude plugin validate ./drydock --strict'` exits 0.
 
 #### T1.3.3 — Changelog: correct the config-key line
-- **Status:** TODO
+- **Status:** DONE
 - **Description:** The 0.5.0 entry says `plugin.json` gains `e2e_dir` and
   `evidence_dir`. Only `e2e_dir` ships. Correct the line and record why the
   second key was dropped, in the entry's existing style of tracing changes to
@@ -687,7 +687,7 @@ APPROVED · human reads the diff and approves.
 ### Wave 1.R — Quality review
 
 #### T1.R.1 — Fresh-context quality review of Phase 1
-- **Status:** DONE — verdict REJECTED (see *Wave 1.R verdict* above)
+- **Status:** DONE — REJECTED on R1, then APPROVED on re-review after Wave 1.3 (both verdicts recorded above)
 - **Description:** Review the Phase 1 diff for correctness, house-style
   consistency across the five skill files, and over-claim in the new prose.
   Conformance was already audited by wavecheck.
@@ -851,6 +851,31 @@ would leave planwright unable to author a compliant section.
 **Verdict: REJECTED on R1.** The phase gate requires APPROVED, so Phase 1 is not
 closed. Nothing was fixed by this review.
 
+## Wave 1.R verdict — re-review after Wave 1.3 — APPROVED — 2026-08-20
+
+**R1 closed, re-tested rather than assumed.** The evidence root is now stated one
+way in every artifact: grepping all three consumer files for either form yields
+only `.drydock/testing/`, with zero `<evidence_dir>` placeholders remaining; the
+verdict path resolves to exactly **1 distinct string** across
+`plan-format.md`, `seatrial/SKILL.md` and `reconcile/SKILL.md`; and
+`evidence_dir` appears in **0** files anywhere under `drydock/`. The
+contradiction between a frozen path and a relocatable root no longer exists,
+because the relocatable root no longer exists.
+
+The three earlier judgements stand unchanged: deviation 3 KEEP, deviation 5 KEEP,
+and everything under *What else was checked, and held* re-verified after the
+repair — five refusals intact in seatrial, no hook in any file, both ordinals
+corrected and both told to locate by name, and the changelog still stating plainly
+that the gate has never run and A5 is PENDING.
+
+**Residual risk, stated rather than buried.** This remains a self-review
+(deviation 1). R1 was a plan-level contradiction that a fresh reviewer should
+have caught at plan time and I found only at the phase boundary — which is
+evidence about this substitution's cost, and belongs in reconcile's input for the
+next plan rather than being quietly dropped now that it is fixed.
+
+**Verdict: APPROVED.** The phase gate's remaining requirement is human approval.
+
 ## Deviation Log
 
 | # | Task | What deviated | Why | Impact | Recorded |
@@ -967,11 +992,32 @@ Deviations logged: 6 (3 discovered by wavecheck)
 
 **Verdict: PASS.** Wave 1.R may start.
 
+### Wavecheck 1.3 — PASS — 2026-08-20
+
+| Check | Result | Evidence |
+|---|---|---|
+| 1. Plan integrity | PASS | `status: EXECUTING`; wave 1.3 declares 3 tasks; three prior PASS reports (1.0, 1.1 re-audit, 1.2). |
+| 2. Ownership audit | PASS | Three per-task commits, each set equal to its `owns` entry: `plugin.json`, `seatrial/SKILL.md`, `CHANGELOG.md`. Duplicates within the wave: 0. All three paths were owned in earlier waves (1.2, 1.1, 1.2 respectively) — legal sequential handoff, since the contract permits a file owned in wave N to be owned again in a later wave. `git status --porcelain` → 0. |
+| 3. Forbidden audit | PASS | T1.3.1: `userConfig` retains exactly `docs_targets`, `e2e_dir`, `plans_dir`; `version` still `0.5.0`; no `icon`. T1.3.2: all five refusals present (5/5), zero `PARTIAL`, zero stray `<evidence_dir>` placeholders, `e2e_dir` still named. T1.3.3: 0 diff lines touching any entry other than 0.5.0; 0 matches for claiming the gate ran or A5 passed. |
+| 4. Acceptance audit | PASS | Three criteria executed: exit 0, 0, 0. Two of them include `claude plugin validate ./drydock --strict`. |
+| 5. Deviation reconciliation | PASS | No new deviation. The two explanatory clauses added (why the root is not configurable; why the key was dropped) fall inside the tasks' stated descriptions rather than beyond them. |
+
+Deviations logged: 6 (3 discovered by wavecheck)
+
+**Verdict: PASS.** Wave 1.R may re-run.
+
 ## Progress log
 
 | Date | Task | Result | Notes |
 |---|---|---|---|
 | 2026-08-20 | — | plan drafted, status DRAFT | Four decisions taken by user before drafting; inline pressure-test found 6 defects, all fixed |
+| 2026-08-20 | T0 | DONE | Both gates green at `7f934ba`; criterion was unpassable as authored (deviation 2) |
+| 2026-08-20 | Wave 1.0 | wavecheck PASS | Contract list contiguous 1–17; deviation 3 discovered by the audit |
+| 2026-08-20 | Wave 1.1 | wavecheck BLOCK → re-audit PASS | Deviation 6 (`PARTIAL` undefined in the contract); remediated by T1.1.5r1 per Decision 10 |
+| 2026-08-20 | Wave 1.2 | wavecheck PASS | Packaging; A5 registered PENDING |
+| 2026-08-20 | Wave 1.R | REJECTED on R1 | Frozen evidence path contradicted the `evidence_dir` config key |
+| 2026-08-20 | Wave 1.3 | wavecheck PASS | Repair per Decision 11; `evidence_dir` dropped across three files |
+| 2026-08-20 | Wave 1.R | APPROVED on re-review | R1 closed; phase gate awaits human approval |
 
 ## Reconcile report
 
