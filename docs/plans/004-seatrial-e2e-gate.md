@@ -1,7 +1,7 @@
 ---
 plan: 004-seatrial-e2e-gate
 format_version: 2
-status: BLOCKED
+status: EXECUTING
 isolation: none
 created: 2026-08-20
 approved_by: sandeep
@@ -150,6 +150,7 @@ not a failure.
 | 6 | Is seatrial model-invocable? | Yes — same posture as wavecheck. Not `disable-model-invocation`. | planner (assumed — flag if wrong) | It is named as a gate inside plan documents, so the orchestrating session must be able to reach it unprompted. `replan` is human-only because auto-replanning mutates plans; running a read-only verification gate carries no such risk. Consumed by T1.1.5. |
 | 7 | Skill name | `seatrial` | planner (assumed — flag if wrong) | A sea trial is what a ship undergoes after it leaves the drydock: the metaphor already had this slot open. Consumed by T1.1.5, T1.2.1, T1.2.2, T1.2.3. |
 | 8 | Where do evidence artifacts live, and are they committed? | `.drydock/testing/<plan-id>/<case-id>/`; `.drydock/` gitignored; the dated **record** of a run is committed to `docs/verification-log.md`, the **artifacts** are not, and committing artifacts requires asking. | planner (assumed — flag if wrong) | Screenshots and video in git history bloat a public repo permanently. The record is what a later session needs; the artifacts are for the QA handoff at the time. This also gives Phase 2's tasks a tracked file to commit, which the checkpointing rule requires. Consumed by T1.0.1, T1.1.5, T1.2.4, T2.1.1. |
+| 10 | Wavecheck 1.1 BLOCKed on deviation 6 (`PARTIAL` undefined in the contract). Widen the contract or narrow the skill? | Narrow the skill: delete `PARTIAL`, and make a subset run a HALT that writes no sheet. Applied via the contract's replaced-task mechanism — `T1.1.5` struck through, `T1.1.5r1` added to wave 1.1. | user | One file and one owner instead of two, no contract change, and it is the more consistent design: the gate rule already says a case that cannot be run is "neither a PASS nor a skip". A partial suite is the same shape of thing — not a verdict. Widening a deliberately closed enumeration to accommodate a convenience is how the closed set stops meaning anything. Consumed by T1.1.5r1. |
 | 9 | Does the adversarial pressure-test run as a subagent? | No — performed inline by the planner with files re-opened from disk, because this session is instructed not to spawn agents. Recorded as a substitution, not a skip. | planner (assumed — flag if wrong) | Planwright permits the inline fallback but the loss of fresh eyes is real and is stated in §12 rather than hidden. |
 
 ## 8. Open questions
@@ -486,8 +487,12 @@ APPROVED · human reads the diff and approves.
   inventing a different verdict path than the frozen one.
 - **Acceptance criterion:** `bash -c 'f=drydock/skills/reconcile/SKILL.md; grep -q "position 17" "$f" && ! grep -q "position 16" "$f" && grep -q "\.drydock/testing/<plan-id>/verdict\.md" "$f" && grep -q "NO-GO" "$f"'` exits 0.
 
-#### T1.1.5 — Author the `seatrial` skill
-- **Status:** DONE
+#### ~~T1.1.5 — Author the `seatrial` skill~~ — SUPERSEDED by T1.1.5r1
+- **Status:** SUPERSEDED (commit `38b05ca` stands as history; its `PARTIAL`
+  verdict value was rejected by wavecheck 1.1 as deviation 6). Task id retired,
+  never reused. Ownership of `drydock/skills/seatrial/SKILL.md` in wave 1.1
+  transfers to `T1.1.5r1`, so the wave's *active* ownership sets stay disjoint.
+- **Original status when audited:** DONE
 - **Description:** Write `drydock/skills/seatrial/SKILL.md`: the preflight
   halts, per-case execution through Playwright MCP with no improvisation,
   evidence capture per declared type, spec generation, and the verdict sheet.
@@ -528,6 +533,26 @@ APPROVED · human reads the diff and approves.
   browser verdict is evidence about tested paths, never proof that other
   defects are absent.
 - **Acceptance criterion:** `bash -c 'f=drydock/skills/seatrial/SKILL.md; test -f "$f" && grep -q "^name: seatrial" "$f" && ! grep -q "disable-model-invocation" "$f" && grep -q "step not executable" "$f" && grep -q "GENERATED, NOT EXECUTED" "$f" && grep -q "GO-WITH-OVERRIDES" "$f" && grep -q "\.drydock/testing/<plan-id>/verdict\.md" "$f" && claude plugin validate ./drydock --strict'` exits 0.
+
+#### T1.1.5r1 — Remove `PARTIAL`; a subset run HALTs and writes no sheet
+- **Status:** TODO
+- **Description:** Replaces T1.1.5. Delete the `PARTIAL` summary verdict, and
+  specify that running a subset of cases is a diagnostic that writes no verdict
+  sheet at all: a gate run is every case or a HALT. Everything else T1.1.5
+  produced stands unchanged.
+- **Files owned:** `drydock/skills/seatrial/SKILL.md`
+- **Depends on:** T1.1.5 (supersedes it), Decision 10
+- **Model / thinking:** Standard / default · **Executor:** drydock:executor
+- **Context brief:** `drydock/skills/seatrial/SKILL.md` as committed at
+  `38b05ca`; the format contract's gate rule, which closes the verdict set at
+  `GO | NO-GO | GO-WITH-OVERRIDES`; wavecheck 1.1's BLOCK report; Decision 10.
+  Note the reasoning the decision rests on — the contract already treats a case
+  that cannot run as neither a pass nor a skip, and a partial suite is the same
+  shape of thing.
+- **Forbidden:** adding any verdict value the contract does not define; changing
+  the contract itself (not owned here); weakening any other refusal in the
+  skill; introducing a hook.
+- **Acceptance criterion:** `bash -c 'f=drydock/skills/seatrial/SKILL.md; ! grep -q PARTIAL "$f" && grep -q "writes no verdict sheet" "$f" && grep -q "step not executable" "$f" && grep -q "GENERATED, NOT EXECUTED" "$f" && grep -q "GO-WITH-OVERRIDES" "$f" && grep -q "\.drydock/testing/<plan-id>/verdict\.md" "$f" && claude plugin validate ./drydock --strict'` exits 0.
 
 ### Wave 1.2 — Packaging
 
