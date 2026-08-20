@@ -11,9 +11,10 @@ docs. The plan is the source of truth from first question to final doc diff.
 ## The lifecycle
 
 ```
-planwright ──► [human approves] ──► execute waves ──► wavecheck ──► ... ──► reconcile
-                                         ▲                │
-                                         └── /replan ◄────┘ (on BLOCK or drift)
+planwright ──► [human approves] ──► execute waves ──► wavecheck ──► seatrial ──► reconcile
+                                         ▲                │              │
+                                         └── /replan ◄────┴──────────────┘
+                                             (on BLOCK, drift, or NO-GO)
 ```
 
 | Piece | Kind | Invocation |
@@ -21,6 +22,7 @@ planwright ──► [human approves] ──► execute waves ──► wavechec
 | `planwright` | skill | model or `/drydock:planwright` |
 | `executor` / `executor-isolated` | agents | spawned per task by the orchestrating session |
 | `wavecheck` | skill | named as a blocking gate inside every plan |
+| `seatrial` | skill | model, or `/drydock:seatrial` — after the final wave |
 | `replan` | skill | **human-only** (`disable-model-invocation`) |
 | `reconcile` | skill | final step of every plan |
 
@@ -34,6 +36,13 @@ planwright ──► [human approves] ──► execute waves ──► wavechec
   never own the same file; optionally enforced by git worktrees
   (`isolation: worktree` in the plan header).
 - **Per-task model right-sizing lives in the plan**, not in global config.
+- **The Testing Gate is written before the code.** A plan touching a UI or API
+  surface carries its end-to-end cases from the start, with declared evidence
+  types and severities; `seatrial` drives them through a real browser afterwards
+  and emits a go/no-go sheet for QA. A gate written after implementation tests
+  what was built rather than what was asked for. The sheet says what it is worth:
+  evidence about the paths tested at one commit in one browser, never proof that
+  other defects are absent.
 - **Reconcile closes the loop.** Deviations and failed assumptions become
   proposed diffs to CLAUDE.md / ADRs / architecture docs — proposed, never
   auto-applied.
