@@ -560,7 +560,7 @@ APPROVED · human reads the diff and approves.
 > 1.1 actually landed.
 
 #### T1.2.1 — Bump to 0.5.0 and add the path config keys
-- **Status:** TODO
+- **Status:** DONE
 - **Description:** Set `version` to `0.5.0` and add `userConfig` entries
   `e2e_dir` (default `e2e`) and `evidence_dir` (default `.drydock/testing`),
   following the existing `plans_dir` shape.
@@ -574,7 +574,7 @@ APPROVED · human reads the diff and approves.
 - **Acceptance criterion:** `bash -c 'claude plugin validate ./drydock --strict && python3 -c "import json;d=json.load(open(\"drydock/.claude-plugin/plugin.json\"));assert d[\"version\"]==\"0.5.0\";assert \"e2e_dir\" in d[\"userConfig\"];assert \"evidence_dir\" in d[\"userConfig\"]"'` exits 0.
 
 #### T1.2.2 — Changelog entry for 0.5.0
-- **Status:** TODO
+- **Status:** DONE
 - **Description:** Add the 0.5.0 entry in the established style: what changed,
   traced to why, plus a "deliberately NOT changed" list, and state explicitly
   that `format_version` stays 2 and why.
@@ -589,7 +589,7 @@ APPROVED · human reads the diff and approves.
 - **Acceptance criterion:** `bash -c 'f=drydock/CHANGELOG.md; grep -q "^## 0.5.0" "$f" && grep -q "seatrial" "$f" && grep -q "format_version" "$f"'` exits 0.
 
 #### T1.2.3 — README: lifecycle diagram and piece table
-- **Status:** TODO
+- **Status:** DONE
 - **Description:** Add seatrial to the lifecycle diagram and to the
   piece/kind/invocation table, and note the Testing Gate in "What makes it
   different".
@@ -603,7 +603,7 @@ APPROVED · human reads the diff and approves.
 - **Acceptance criterion:** `bash -c 'f=drydock/README.md; grep -c seatrial "$f" | awk "{exit !(\$1>=2)}"'` exits 0.
 
 #### T1.2.4 — Gitignore the evidence root
-- **Status:** TODO
+- **Status:** DONE
 - **Description:** Add `.drydock/` to the repo `.gitignore` so evidence
   artifacts are untracked by default.
 - **Files owned:** `.gitignore`
@@ -615,7 +615,7 @@ APPROVED · human reads the diff and approves.
 - **Acceptance criterion:** `bash -c 'grep -qx "\.drydock/" .gitignore && git check-ignore -q .drydock/testing/x/y.png'` exits 0.
 
 #### T1.2.5 — Register A5 as a PENDING compatibility row
-- **Status:** TODO
+- **Status:** DONE
 - **Description:** Add row A5 — Playwright MCP availability and browser-drive
   round trip — as PENDING, with the note that Phase 2 of this plan is the
   intended first evidence.
@@ -632,7 +632,7 @@ APPROVED · human reads the diff and approves.
 ### Wave 1.R — Quality review
 
 #### T1.R.1 — Fresh-context quality review of Phase 1
-- **Status:** TODO
+- **Status:** DONE — verdict REJECTED (see *Wave 1.R verdict* above)
 - **Description:** Review the Phase 1 diff for correctness, house-style
   consistency across the five skill files, and over-claim in the new prose.
   Conformance was already audited by wavecheck.
@@ -721,6 +721,80 @@ recorded override) · human reads `verdict.md` and signs the go/no-go.
   Decision Log.
 - **Acceptance criterion:** a written verdict APPROVED or REJECTED appended to
   this plan; APPROVED required for the phase gate.
+
+## Wave 1.R verdict — REJECTED — 2026-08-20
+
+**Reviewer:** the orchestrating session, inline. Per deviation 1 this is a
+self-review, and the loss is not cosmetic: the whole point of Wave x.R is a
+reader who did not write the diff. Everything below was found by re-opening
+files and grepping, not by recalling intent — but a genuinely fresh reviewer
+would likely find more, and this verdict should be read as a floor, not a
+ceiling.
+
+### Finding R1 — the frozen evidence path and the `evidence_dir` config key contradict each other. **Blocking.**
+
+Measured across the four artifacts:
+
+| File | Form used |
+|---|---|
+| `plan-format.md` | literal `.drydock/testing/<plan-id>/<case-id>/`, described as "frozen, not a suggestion" |
+| `plan-format.md` | literal `.drydock/testing/<plan-id>/verdict.md` |
+| `seatrial/SKILL.md` | `<evidence_dir>/<plan-id>/<case-id>/` for evidence — **but** the literal `.drydock/testing/<plan-id>/verdict.md` for the sheet |
+| `reconcile/SKILL.md` | literal `.drydock/testing/<plan-id>/verdict.md` |
+| `plugin.json` | `evidence_dir`, default `.drydock/testing`, **user-overridable** |
+
+A config key that can relocate the root cannot coexist with a contract calling
+that root frozen. With `evidence_dir` set to anything else, seatrial writes
+evidence under the configured root while writing the sheet to the hardcoded one,
+so the sheet's evidence links point into a tree the sheet does not live in — and
+seatrial is internally inconsistent, using both forms in one file.
+
+This is the same class of defect as the `PARTIAL` BLOCK: two artifacts
+disagreeing about one contract. It originates in the plan, not in execution —
+Decision 8 froze a literal path and T1.2.1's description separately called for a
+config key, and no checklist item asked whether those two instructions were
+compatible.
+
+**Two remediations, and this is a plan-level choice rather than a repair:**
+- **(i) Make the config authoritative.** The contract and both consumers state
+  `<evidence_dir>/<plan-id>/…`, with the default noted. Three files, three
+  owners, three tasks.
+- **(ii) Drop `evidence_dir` and keep the literal frozen path.** One file, one
+  task. Decision 8 froze the path precisely so seatrial and reconcile could not
+  drift; a configurable root reintroduces the drift that freezing removed.
+  `e2e_dir` is unaffected — nothing but seatrial reads it.
+
+### Deviation 3 — `Staleness` in the contract: **KEEP.**
+
+Referred here by wavecheck 1.0 as scope creep. On review it is in scope: the
+format contract already carries cross-consumer procedures (the orchestrator
+contract, the per-wave staleness check, the worktree merge procedure), so a gate
+staleness rule sits with its peers rather than intruding. It appears in both the
+contract and seatrial's preflight, which is what the "complete rule body in both
+places it appears" checklist item asks for, not duplication to be trimmed.
+
+### Deviation 5 — two extra interview questions: **KEEP.**
+
+Both are load-bearing rather than additive. "Is there a UI or API surface" is
+what produces the `N/A — <reason>` the contract requires, and "which cases must
+be blockers" is what produces the severity every case requires. Cutting them
+would leave planwright unable to author a compliant section.
+
+### What else was checked, and held
+
+- Plan 004's own §11 conforms to the schema the contract now defines: all five
+  header fields present, all six cases carry all required fields, and exactly the
+  two designed-to-fail cases declare their inversion.
+- `wavecheck/SKILL.md` gained no Testing Gate duty — its only mention of the
+  section is inside the sentence explaining the moved ordinal.
+- Both stale ordinals corrected, and both consumers now say to locate their
+  section by name rather than by counting.
+- No hook, in any file: 0 added lines matching `PreToolUse\|PostToolUse`.
+- The changelog states plainly that the gate has never been executed and that A5
+  is PENDING.
+
+**Verdict: REJECTED on R1.** The phase gate requires APPROVED, so Phase 1 is not
+closed. Nothing was fixed by this review.
 
 ## Deviation Log
 
@@ -823,6 +897,20 @@ author of the diff.
 Deviations logged: 6 (3 discovered by wavecheck)
 
 **Verdict: PASS.** Wave 1.2 may start.
+
+### Wavecheck 1.2 — PASS — 2026-08-20
+
+| Check | Result | Evidence |
+|---|---|---|
+| 1. Plan integrity | PASS | `status: EXECUTING`; wave 1.2 declares 5 tasks; two prior PASS reports present (1.0, and 1.1's re-audit). |
+| 2. Ownership audit | PASS | Five per-task commits; each changed set equals its `owns` entry exactly (`plugin.json`, `CHANGELOG.md`, `README.md`, `.gitignore`, `docs/compatibility.md`). Duplicate paths across the wave's commits: 0. `git status --porcelain` → 0 lines. |
+| 3. Forbidden audit | PASS | T1.2.1: no `icon` key; top-level `description`/`keywords`/`name`/`author`/`license` compared field-by-field against `7f934ba` and unchanged — only `version` and `userConfig` differ (the 4 diff lines an earlier grep flagged were nested keys inside the two new config entries, not the top-level fields). T1.2.2: 0 matches for claiming the gate ran or A5 passed, and it carries an explicit "Not verified, and not claimed to be" paragraph. T1.2.3: 0 matches for `guarantee\|proves the app\|ensures correctness`. T1.2.4: neither `docs/` nor `drydock/` is ignored. T1.2.5: A5's row yields exactly one status token, `PENDING`; 0 diff lines touch rows A1–A4 or the release-criteria list. |
+| 4. Acceptance audit | PASS | All five executed: exit 0, 0, 0, 0, 0. |
+| 5. Deviation reconciliation | PASS | Deviations 1–6 logged, 3 discovered by wavecheck. No new deviation found in the wave's 5-file diff. |
+
+Deviations logged: 6 (3 discovered by wavecheck)
+
+**Verdict: PASS.** Wave 1.R may start.
 
 ## Progress log
 
