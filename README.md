@@ -7,16 +7,22 @@ the source of truth, subagents executing it in parallel waves with disjoint
 file ownership, a conformance audit gating every wave, and a reconcile loop
 that feeds execution learnings back into your docs.
 
-**Status: internal pilot (v0.3.0).** No field benchmarks yet — on purpose.
-What exists today is an adversarial [self-audit](docs/self-audit.md) of the
-auditor itself (it caught a lying executor while all tests were green, and
-exposed + fixed a defect in our own attribution design), plus an honest
+**Status: internal pilot (v0.4.1).** Three plans have been planned, executed
+and gated with it — see the [case study](docs/case-study-001-homepage.md) and
+[docs/plans/](docs/plans/). Gate compliance is measured, not asserted: 22 of 22
+wave gates invoked, 0 skipped, across those 3 plans — but every session knew it
+was observed, so that is a ceiling rather than a rate, and it is published as
+PUBLISHED, **not** PASSED. Behind it: an adversarial
+[self-audit](docs/self-audit.md) of the auditor itself (it caught a lying
+executor while all tests were green, and exposed + fixed a defect in our own
+attribution design) and an honest
 [compatibility checklist](docs/compatibility.md) of what's verified vs pending.
 
-Homepage: `index.html` · Plugin: [`drydock/`](drydock/) ·
+Homepage: <https://takasivenkatasandeep-08.github.io/drydock/> ·
+Plugin: [`drydock/`](drydock/) ·
 Lifecycle, pieces, and philosophy: [`drydock/README.md`](drydock/README.md)
 
 ```
-/plugin marketplace add <org>/drydock
+/plugin marketplace add TakasiVenkataSandeep-08/drydock
 /plugin install drydock@drydock
 ```

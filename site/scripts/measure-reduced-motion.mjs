@@ -77,10 +77,19 @@ const MIME = {
 // Static server over out/, on the first free port from a short candidate
 // list. EADDRINUSE is caught and moved past rather than left to crash.
 // ---------------------------------------------------------------------------
+/** Must match `basePath` in next.config.ts. Empty string means domain root. */
+const BASE_PATH = "/drydock";
+
 async function serveOut(candidatePorts) {
   const server = createServer(async (req, res) => {
     try {
       let path = new URL(req.url, "http://localhost").pathname;
+      // `next.config.ts` sets a `basePath` for the GitHub Pages project site,
+      // so the export asks for `/drydock/_next/…`. Serve out/ as if mounted
+      // there; harmless when BASE_PATH is empty, since nothing requests it.
+      if (BASE_PATH && (path === BASE_PATH || path.startsWith(`${BASE_PATH}/`))) {
+        path = path.slice(BASE_PATH.length) || "/";
+      }
       if (path.endsWith("/")) path += "index.html";
       let file = join(OUT_DIR, path);
       let body;

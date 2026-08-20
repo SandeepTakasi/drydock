@@ -47,3 +47,14 @@ child of any `<g>` it touches.
 - Any change to `NO_MOTION`, either restore block, or an element's reveal
   attribute **must** be verified by running that script. It has a demonstrated
   failure mode; a passing text gate proves nothing here.
+
+## Update — 2026-08-20
+
+The contract is unchanged and still enforced by `[data-reveal]` /
+`[data-reveal-path]` in `app/globals.css`, the `<noscript>` mirror in
+`app/layout.tsx`, and C1/M1 in `scripts/measure-reduced-motion.mjs`. Only the
+two elements it governs were renamed by the hero redesign: the hull is now the
+**convergence rail** (solid, `pathLength`-drawn, `data-reveal-path`) and the
+waterline is now the **gate line** (dashed `10 8`, revealed by clip/opacity,
+`data-reveal`). Both cases the ADR describes are still present, in the same hero,
+for the same reason.

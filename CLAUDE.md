@@ -2,14 +2,22 @@
 
 Two deliverables live here: the **plugin** in `drydock/`, and the **homepage**.
 
-## Two homepages exist. This is deliberate, not a mistake.
+## One homepage: `site/`
 
-- `index.html` — hand-written single-file site at the repo root, no build step.
-- `site/` — Next.js static export, built by plan 001.
+The hand-written root `index.html` was retired when the site went live
+(ADR 0003). To recover it, find the deleting commit rather than guessing a
+depth: `git log --diff-filter=D --format=%H -- index.html`, then
+`git show <sha>^:index.html`.
 
-They are visually different by decision (plan 001, Decision 1: design fresh, do
-not port). Neither has been retired. **Deployment is unresolved** — there is no
-git remote, so no `basePath` was ever chosen (plan 001, Q2/Q3).
+**Deployment is resolved** (ADR 0003, superseding ADR 0002). GitHub Pages
+project site at <https://takasivenkatasandeep-08.github.io/drydock/>, built and
+published by `.github/workflows/deploy.yml` on every push touching `site/**`.
+The workflow runs `npm run verify` before it uploads anything, so a failing gate
+blocks the deploy rather than shipping past it.
+
+`basePath: '/drydock'` is set in `site/next.config.ts` and is the single place
+that decides it. Serving from a domain root instead means setting it to `""` and
+changing nothing else.
 
 ## Working on `site/`
 
@@ -27,8 +35,14 @@ node scripts/measure-reduced-motion.mjs   # needs Chrome; proven failable
 ```
 
 There is **no `dev` script** — it was removed by an over-constrained task brief.
-The export uses absolute `/_next/…` paths, so `file://` will not load assets.
-To look at it: `cd site/out && python3 -m http.server 5173`.
+The export uses absolute `/drydock/_next/…` paths, so `file://` will not load
+assets, and **serving `out/` at a server root will 404 every asset** — the paths
+carry the basePath. Mount it where it expects to be:
+
+```bash
+mkdir -p /tmp/dd && ln -sfn "$PWD/site/out" /tmp/dd/drydock
+cd /tmp/dd && python3 -m http.server 5173   # then open /drydock/
+```
 
 ## Toolchain facts that cost time to discover
 
@@ -55,8 +69,15 @@ To look at it: `cd site/out && python3 -m http.server 5173`.
   counting anything in the export.
 - Turbopack resolves its workspace root **above** this repo (a stray
   `~/yarn.lock`) and warns on every build. `turbopack.root` is unset.
-- `Big_Shoulders` has no `size-adjust` fallback metrics and an unpinned `opsz`
-  axis — expect layout shift on the hero headline.
+- Display and body both resolve to **Inter** (`--font-src-sans`), which ships
+  real `size-adjust` fallback metrics. It replaced `Big_Shoulders`, which had
+  none and an unpinned `opsz` axis, shifted the hero headline on every load, and
+  printed a build warning every time.
+- **A `--color-*` token can silently shadow a built-in `text-*` utility.**
+  `--color-base` made `text-base` emit `color: var(--color-base)` instead of
+  Tailwind's `font-size: 1rem` — measured in the emitted CSS. The token is now
+  `--color-ground`. Before naming a colour token, check the name is not also a
+  default `text-*` scale step (`base`, `sm`, `lg`, `xl`, …).
 - **A misspelled animation state name compiles clean.** `Variants` from
   `motion/react` is an index-signature type, so `{ hidden: {…}, shwon: {…} }`
   passes `tsc`, passes lint, passes every gate, and simply does not animate. Only
@@ -67,10 +88,10 @@ To look at it: `cd site/out && python3 -m http.server 5173`.
   uses; comparing the emitted file-name set across the whole `out/` tree is
   stronger still.
 - **Not every `@theme` token yields a utility.** `--color-*` and `--text-*` are
-  Tailwind v4 namespaces and generate classes (`bg-raised`, `text-hero`).
-  `--stroke-*` is not — those are bare custom properties, used as
-  `var(--stroke-hair)` in CSS. Tree-shaking retains them by name scan, so a
-  dynamically-built token name is the one thing that loses.
+  Tailwind v4 namespaces and generate classes (`bg-surface`, `text-title`).
+  `--stroke-*` is not — `--stroke-rule` is a bare custom property, referenced as
+  `var(--stroke-rule)` on the hero SVG. Tree-shaking retains it by name scan, so
+  a dynamically-built token name is the one thing that loses.
 
 ## Honesty rule for site copy
 

@@ -42,10 +42,12 @@ planwright ──► [human approves] ──► execute waves ──► wavechec
 
 ## Install (internal, team scope)
 
-```bash
-claude plugin marketplace add <org>/drydock-marketplace
-claude plugin install drydock --scope project
 ```
+/plugin marketplace add TakasiVenkataSandeep-08/drydock
+/plugin install drydock@drydock
+```
+
+Add `--scope project` to the install to share it with your team.
 
 Configure on enable (or `--config`): `plans_dir` (default `docs/plans`),
 `docs_targets` (default `CLAUDE.md,docs/decisions,docs/architecture.md`).

@@ -1,6 +1,7 @@
 # ADR 0002 — `site/` is a static export with deployment deferred
 
-**Status:** accepted · **Date:** 2026-08-19 · **Origin:** plan 001, Decision 2
+**Status:** superseded by [ADR 0003](0003-github-pages-single-homepage.md)
+(2026-08-20) · **Date:** 2026-08-19 · **Origin:** plan 001, Decision 2
 
 ## Context
 
@@ -22,3 +23,7 @@ No deploy workflow, no `.nojekyll`, no custom domain.
 - The export's absolute `/_next/…` paths mean `file://` does not work. Serve it.
 - Root `index.html` remains the repo's only published homepage. Retiring it, and
   choosing the deploy shape, belong to a follow-up plan.
+
+**Both consequences above are now closed by ADR 0003:** the remote exists, the
+basePath is chosen, and `index.html` is retired. The reasoning here is kept as
+the record of why the decision was deferred rather than guessed.
