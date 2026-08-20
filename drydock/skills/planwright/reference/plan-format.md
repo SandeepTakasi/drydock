@@ -73,17 +73,97 @@ on original assumptions.
 10. **Execution policies** — review protocol (wavecheck gate + quality review
     + phase review), escalation, checkpointing (commit per task/wave, rollback
     unit), human gates, tracker mirroring (plan file is source of truth).
-11. **Pressure-test verdict** — adversarial fresh-context review result;
+11. **Testing Gate** — written browser-executed E2E cases, authored at plan
+    time, executed after the final wave by the `drydock:seatrial` skill. Schema
+    and gate rule below. Plans with no user-facing surface write
+    `N/A — <reason>` and nothing else.
+
+12. **Pressure-test verdict** — adversarial fresh-context review result;
     APPROVED required before presenting to the user.
-12. **Phases → waves → tasks** — structure below.
-13. **Deviation Log** — append-only, maintained during execution:
+13. **Phases → waves → tasks** — structure below.
+14. **Deviation Log** — append-only, maintained during execution:
     `| # | Task | What deviated | Why | Impact | Recorded |`. Sources:
     executor completion reports, wavecheck discoveries
     (flagged `discovered-by-wavecheck`), staleness findings.
-14. **Wavecheck reports** — appended by wavecheck per wave (shape in that skill):
+15. **Wavecheck reports** — appended by wavecheck per wave (shape in that skill):
     `### Wavecheck <phase>.<wave> — PASS|BLOCK — <date>`.
-15. **Progress log** — `| Date | Task | Result | Notes |`.
-16. **Reconcile report** — appended once by reconcile at completion.
+16. **Progress log** — `| Date | Task | Result | Notes |`.
+17. **Reconcile report** — appended once by reconcile at completion.
+
+## Testing Gate section
+
+Authored by planwright at plan time — never bolted on after implementation, and
+never written by the session that just implemented the code. `drydock:seatrial`
+consumes it; `drydock:reconcile` refuses to close a plan whose gate has no GO
+verdict. No hook enforces any of this: the gate is prose, like every other gate
+in Drydock.
+
+A plan with no user-facing surface writes exactly `N/A — <reason>` as the whole
+section body. "N/A" without a reason is not valid.
+
+### Header fields (all required when the section is not N/A)
+
+| Field | Content |
+|---|---|
+| Target | Base URL under test, and how it is served (command, port, path) |
+| Auth | How a case authenticates, or `none` and why |
+| Browser | Engine and driver — Playwright MCP is the only supported driver |
+| Commit SHA | Recorded by seatrial at run time, not by the planner |
+| Evidence root | `.drydock/testing/<plan-id>/<case-id>/` — frozen, not a suggestion |
+
+### Per-case fields (all required, every case)
+
+| Field | Content |
+|---|---|
+| `id` | Stable within the plan, never reused (convention: `TG<n>`) |
+| `title` | One line, what the case establishes |
+| `preconditions` | What must already be true; a false precondition is a HALT, not a FAIL |
+| `steps` | Given / When / Then. Written to be performed exactly as stated |
+| `expected` | The observable result, including which evidence must exist |
+| `evidence` | Exactly one of `screenshot` \| `video` \| `network assertion` |
+| `severity` | Exactly one of `blocker` \| `major` \| `minor` |
+
+A case whose expected outcome is itself a failure (used to prove the gate can
+fail) MUST say so in `expected`, and MUST state that a PASS verdict on it is a
+failure of the gate. Without that inversion written down, a later reader
+reasonably treats the case as broken.
+
+### Gate rule — complete rule body
+
+- Any case of severity **blocker** with verdict FAIL → **NO-GO**. Deployment
+  does not proceed and reconcile refuses to set `RECONCILED`.
+- Any case of severity **major** with verdict FAIL → **GO-WITH-OVERRIDES**, and
+  only when `verdict.md` records an explicit human override naming the case, the
+  reason, and who decided. Absent that record the verdict is **NO-GO**.
+- Any case of severity **minor** with verdict FAIL → recorded in `verdict.md`;
+  no effect on the summary verdict.
+- All cases PASS, no overrides needed → **GO**.
+- A case that **cannot be executed at all** — target unreachable, driver absent,
+  evidence path unwritable, precondition false — is neither a PASS nor a skip.
+  seatrial HALTs and asks. A gate that degrades to "skipped" under pressure is
+  not a gate.
+- A step that cannot be performed as written is verdict FAIL with reason
+  `step not executable`. Improvising a substitute step is a contract breach, not
+  a workaround.
+
+### Verdict sheet
+
+seatrial writes `.drydock/testing/<plan-id>/verdict.md` — frozen path, quoted
+identically here, in `drydock:seatrial`, and in `drydock:reconcile`. It carries
+the summary verdict on its first line (`GO` | `NO-GO` | `GO-WITH-OVERRIDES`), an
+environment block, one row per case, and a QA handoff note stating what was
+covered and what was not. Evidence artifacts live under the evidence root and
+are gitignored by default; committing them requires asking first.
+
+**A browser verdict is evidence about the paths that were tested. It is not
+evidence that other defects are absent.** Plans and skills must not phrase it as
+proof of correctness.
+
+### Staleness
+
+The gate is stale if the target's source changed after the cases were written:
+`git diff <baseline SHA>..HEAD -- <paths the target is built from>`. Non-empty →
+seatrial HALTs and asks rather than testing written cases against a moved target.
 
 ## Phase / wave / task structure
 
