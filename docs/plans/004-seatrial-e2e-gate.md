@@ -724,8 +724,13 @@ plan with all six cases recorded and the three designed-to-fail cases having
 actually failed; generated spec files exist with their execution status stated
 honestly.
 
-**Phase gate:** `verdict.md` summary reads GO (or GO-WITH-OVERRIDES with a
-recorded override) · human reads `verdict.md` and signs the go/no-go.
+**Phase gate: CLOSED, approved by sandeep — 2026-08-21.** `verdict.md` summary
+reads GO-WITH-OVERRIDES on one recorded override (TG4, decided by sandeep,
+2026-08-20); as run the suite produced NO-GO. Sandeep read the sheet and signed
+GO. Wavechecks 2.0 and 2.1 PASS on re-audit after Decision 12; T2.R.1 APPROVED.
+Signed with the three caveats stated: the verdict rests on that single override,
+three of the six cases were designed not to pass, and the sheet's "Not covered"
+list is longer than its covered one.
 
 ### Wave 2.0 — Dependency verification
 
@@ -1362,6 +1367,7 @@ Deviations logged: 13 (5 discovered by wavecheck; 0 new in this re-audit)
 | 2026-08-20 | wavechecks 2.0, 2.1 | BLOCK → PASS on re-audit | Ownership breach in `5a32ac9` (deviation 13), resolved by Decision 12; re-audited fresh, both PASS |
 | 2026-08-20 | T2.R.1 | APPROVED | Sheet reviewed against every evidence file including the images; two disclosure gaps mirrored into the QA handoff note |
 | 2026-08-21 | reconcile | NOT INVOKED — deviation 14 | Its refusal ladder reads the verdict sheet but not the phase gate, so it would close this plan with the Phase 2 human gate unsigned. Held for the signature |
+| 2026-08-21 | Phase 2 gate | CLOSED, approved by sandeep | Read `verdict.md` and signed GO on a GO-WITH-OVERRIDES sheet. Reconcile cleared to run |
 | 2026-08-20 | Wave 2.0 | wavecheck BLOCK (run post-hoc) | Deviation 13 discovered: `T2.0.1`'s commit `5a32ac9` stages the plan file, outside its declared `owns` |
 | 2026-08-20 | Wave 2.1 | wavecheck BLOCK | Blocked on check 1 (wave 2.0 has no PASS report) rather than on its own diff; wave 2.1's commits, forbidden items, acceptance criteria and evidence traceability all hold on independent review. Plan status set to `BLOCKED` |
 | 2026-08-20 | Wave 2.0 (re-audit) | wavecheck PASS | Ownership breach resolved by Decision 12 (accepted as benign bookkeeping) |
