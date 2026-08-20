@@ -1,0 +1,60 @@
+name: Something broke
+description: A skill, agent, gate or install step did not behave as documented.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Drydock's own claims are kept in
+        [docs/compatibility.md](https://github.com/TakasiVenkataSandeep-08/drydock/blob/main/docs/compatibility.md)
+        with what is and is not verified. If you hit something that row already
+        says is unverified, it is still worth reporting — that is how it moves.
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Drydock version
+      description: From `/plugin` or `drydock/.claude-plugin/plugin.json`.
+      placeholder: "0.4.1"
+    validations:
+      required: true
+
+  - type: input
+    id: host-version
+    attributes:
+      label: Claude Code version
+      description: Output of `claude --version`. Several behaviours are host-dependent.
+      placeholder: "2.1.235"
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you ran, and what it did instead of what you expected.
+    validations:
+      required: true
+
+  - type: input
+    id: where
+    attributes:
+      label: Which piece
+      description: planwright, executor, executor-isolated, wavecheck, replan, reconcile, or install.
+      placeholder: "wavecheck"
+
+  - type: dropdown
+    id: isolation
+    attributes:
+      label: Isolation mode
+      options:
+        - default (no worktrees)
+        - "isolation: worktree"
+        - not applicable
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Plan excerpt, transcript or error output
+      description: The task block or gate report matters more than the whole plan. Redact anything private.
+      render: text

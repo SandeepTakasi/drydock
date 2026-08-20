@@ -1,0 +1,63 @@
+name: How a plan went
+description: Field report from actually running a plan. The most useful thing you can send.
+labels: ["field-report"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Drydock has three pilot plans behind it, all run by its own author. Every
+        report from someone else is worth more than another one of ours, whether
+        it went well or badly. Nothing here is required — send the parts you
+        remember.
+
+  - type: input
+    id: shape
+    attributes:
+      label: Plan shape
+      description: Roughly how big was it?
+      placeholder: "1 phase, 4 waves, 9 tasks"
+
+  - type: dropdown
+    id: sizing
+    attributes:
+      label: Did the plan feel right-sized for the job?
+      description: Over-structuring a small change is an anti-pattern the planner is supposed to refuse. Tell us if it did not.
+      options:
+        - Too heavy for what I was doing
+        - About right
+        - Too thin, I wanted more structure
+        - Hard to say
+
+  - type: dropdown
+    id: gates
+    attributes:
+      label: Between waves, did the gate run on its own?
+      description: >
+        Self-report, and we treat it as exactly that — but you know what you
+        typed. This is the one thing we cannot measure without you: our own
+        numbers only cover sessions that knew they were being watched.
+      options:
+        - It ran on its own, I only said "continue"
+        - I had to ask for it
+        - It did not run and I did not notice until later
+        - Not sure
+
+  - type: textarea
+    id: block
+    attributes:
+      label: Did wavecheck ever BLOCK, and was it right to?
+      description: A false BLOCK is as much a defect as a missed one.
+
+  - type: textarea
+    id: ownership
+    attributes:
+      label: Did anything land outside the files its task owned?
+      description: >
+        A clean merge is not evidence of compliance — a non-colliding unowned
+        edit merges silently. If you checked the diff, what did you find?
+
+  - type: textarea
+    id: anything-else
+    attributes:
+      label: Anything else
+      description: Friction, confusion, a doc that lied, a thing you wanted and could not find.
