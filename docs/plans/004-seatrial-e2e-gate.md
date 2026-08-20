@@ -779,7 +779,7 @@ recorded override) · human reads `verdict.md` and signs the go/no-go.
 ### Wave 2.R — Quality review
 
 #### T2.R.1 — Fresh-context review of the verdict sheet
-- **Status:** PENDING — awaits wavecheck 2.0 and 2.1
+- **Status:** DONE — APPROVED — 2026-08-20
 - **Description:** Review `verdict.md` for honesty rather than for green: does
   each row's evidence actually substantiate its verdict, are the three
   designed-to-fail cases failed for the stated reason rather than incidentally,
@@ -890,6 +890,211 @@ evidence about this substitution's cost, and belongs in reconcile's input for th
 next plan rather than being quietly dropped now that it is fixed.
 
 **Verdict: APPROVED.** The phase gate's remaining requirement is human approval.
+
+## Wave 2.R verdict — APPROVED — 2026-08-20
+
+**Reviewer:** fresh-context, spawned for this task alone, no authorship stake in
+`verdict.md`, the evidence directories, or the wavecheck reports it is reading.
+Everything below was independently re-derived against `.drydock/testing/004-seatrial-e2e-gate/`
+(gitignored, read from disk), the images inside it, `docs/verification-log.md`,
+§11, and the Decision/Deviation Logs — nothing is taken on the sheet's or a prior
+wavecheck's word.
+
+### Question 1 — Does each row's evidence actually substantiate its verdict?
+
+Opened every artifact, not just its filename.
+
+- **TG1 (PASS).** `TG1/h1-drydock.png` (97,693 bytes) shows the rendered
+  homepage with a single `<h1>Drydock</h1>`. `ls` confirms exactly one file in
+  `TG1/`, and the row links it as `[TG1/h1-drydock.png](TG1/h1-drydock.png)` —
+  a relative path resolving inside `verdict.md`'s own directory. §11's
+  "why it can fail" clause (evidence written outside the declared path) does not
+  apply. Both halves of the expected result hold.
+- **TG2 (FAIL, as designed).** `TG2/status-pill-actual.png` (9,037 bytes) is a
+  header-only crop reading `OPEN PILOT -- FIELD BENCHMARKS PENDING` in the site's
+  uppercase display style; the row's recorded actual DOM text,
+  `open pilot -- field benchmarks pending`, is the lowercase form CSS
+  `text-transform` would produce from that same string — the two are the same
+  fact viewed two ways, not two different facts. The image is genuine evidence
+  for the recorded string, not a placeholder.
+- **TG3 (FAIL `step not executable` + HALT, as designed).**
+  `TG3/step-not-executable.md` records four selector variants tried, all zero
+  matches, a full `document.querySelectorAll('[data-testid]')` sweep returning
+  empty, the two actual controls found (`BUTTON:Copy` ×2), and the `checkout`
+  substring absent from `innerHTML`. `TG3/no-checkout-control.png` is a full-page
+  screenshot showing the same header/hero content as TG1 — consistent with "no
+  checkout control anywhere on this page" rather than a cropped, cherry-picked
+  view. The reasoning chain in the `.md` file supports the verdict; nothing here
+  is asserted without a corresponding check.
+- **TG4 (FAIL on the evidence clause, major, overridden).** Covered in depth
+  under Q2 below.
+- **TG5 (PASS).** `TG5/network-requests.md` lists 13 same-origin requests, all
+  200, all recognisable `_next/static` chunks/fonts/the nav-mark PNG plus the
+  document itself — a plausible, non-fabricated request list for this export,
+  not a suspiciously round or padded number.
+- **TG6 (PASS).** `TG6/natural-dimensions.md` states `naturalWidth`/`naturalHeight`
+  256/256 in a 26×26 box; `TG6/nav-mark-rendered.png` (1,498 bytes, a small
+  cropped icon) is consistent with a cropped shot of that same mark, not a
+  full-page screenshot mislabeled as a close-up.
+
+Every row's evidence file, opened directly, supports what its verdict claims.
+No row over-claims relative to its own artifact.
+
+### Question 2 — Are the three designed-to-fail cases failed for the stated reason, or only incidentally?
+
+- **TG2** failed because the page's real, live status-pill text
+  (`open pilot -- field benchmarks pending`, pinned by `assert-copy.mjs` per §11)
+  does not equal the deliberately false expectation `CLOSED PILOT` — exactly the
+  clause §11 names. It did not fail because the element was missing, because the
+  page errored, or because of a selector bug; the screenshot shows the element
+  present and readable.
+- **TG3** failed with the reason string required verbatim, `step not executable`,
+  for the reason §11 predicts: no element anywhere on the page carries
+  `data-testid="checkout-submit"` — confirmed independently by the full
+  `[data-testid]` sweep returning empty and by the `checkout` substring search,
+  not merely by the one selector named in the case. It plus-HALTed as required,
+  and the halt was resolved by a named human ("sandeep... synthetic case,
+  continue") rather than silently absorbed. Nothing suggests an MCP tool error,
+  a timing race, or a wrong-page navigation produced this FAIL incidentally —
+  the diagnostic file demonstrates the element's absence is real and total.
+- **TG4** is not one of the two cases §11 designed to fail (only TG2/TG3 carry
+  the inversion rule) — it is the accidental third failure, and is examined on
+  its own terms below rather than folded into this question.
+
+Both TG2 and TG3 fail for exactly their stated clauses, independently
+corroborated rather than merely asserted.
+
+### The TG4 mechanism claim and the override
+
+This is the finding worth the most scrutiny, and it holds up under it.
+
+**The capability-gap claim is independently verifiable, not just asserted.**
+`TG4/no-video.md` states the MCP server exposes "no video/record/trace tool"
+among its 24 `browser_*` tools. This session's own tool listing (the
+`mcp__playwright__*` deferred-tool roster surfaced at session start) enumerates
+exactly 24 `browser_*` tools — `browser_click`, `browser_close`,
+`browser_console_messages`, `browser_drag`, `browser_drop`, `browser_evaluate`,
+`browser_file_upload`, `browser_fill_form`, `browser_find`,
+`browser_handle_dialog`, `browser_hover`, `browser_navigate`,
+`browser_navigate_back`, `browser_network_request`, `browser_network_requests`,
+`browser_press_key`, `browser_resize`, `browser_run_code_unsafe`,
+`browser_select_option`, `browser_snapshot`, `browser_tabs`,
+`browser_take_screenshot`, `browser_type`, `browser_wait_for` — and none of them
+starts, stops, or configures video, recording, or tracing. The count matches
+exactly and the absence is total, checked against this reviewer's own MCP
+connection rather than trusted from the case file's say-so. Playwright's
+`recordVideo` being a `BrowserContext`-construction-time option (not a
+runtime-toggleable one) is accurate, well-documented Playwright behavior. The
+mechanism claim is true, not convenient.
+
+**A workaround existed and was named, not hidden — and rejecting it was the
+correct call, not a lazy one.** `no-video.md` states plainly that
+`browser_run_code_unsafe` could open a second context with `recordVideo` set,
+and explains why that was not done: it would record a *different* context than
+the one the case's own steps ran in, which is manufacturing evidence through a
+side channel rather than capturing evidence of the run that happened —
+precisely the substitution `seatrial`'s forbidden list bars ("falling back to a
+non-Playwright driver... when the MCP is absent" and "improvising a step that
+cannot be performed as written" are the same species of error one level up:
+improvising the *evidence*, not the step). Disclosing an available shortcut and
+explaining why taking it would falsify the record is stronger evidence of
+honesty than not knowing the shortcut existed.
+
+**The override reason states a real constraint, not a rationalization.** The
+Overrides table's reason restates the same mechanism (fixed-at-creation video,
+no video/record/trace tool among 24), correctly separates "assertion held" from
+"evidence type unreachable," and names the two legitimate ways out (record an
+override, or relaunch the MCP server with `--save-video` — both outside this
+plan's Q1-scoped boundary per Decision 3/Q1) while explicitly excluding the
+illegitimate one ("changing TG4's declared evidence type... is not on this
+list"). It is attributed to a named human, dated, and the durable fix it points
+to (deviation 10: planwright should refuse to let a plan declare an evidence
+type the configured driver cannot capture) is a process fix aimed at the actual
+root cause — a plan-time declaration made before the driver's capability was
+knowable — not a fix that quietly weakens TG4 itself.
+
+**The GO-WITH-OVERRIDES-vs-NO-GO-as-run transition is honestly represented, not
+laundered.** `verdict.md`'s very first line under the `GO-WITH-OVERRIDES` header
+states, unprompted, "Without it this sheet read **NO-GO**." `docs/verification-log.md`'s
+Seatrial gate run entry records the summary **twice**, in order: "Summary
+verdict as run: NO-GO" first, then "Amended the same day: GO-WITH-OVERRIDES,"
+with the explicit clarification "The underlying FAIL is unchanged and still
+stands in the Cases table — an override records a human's decision to ship past
+a known gap, not a re-verdict." Nothing in either document reads as if the run
+itself produced a clean GO-WITH-OVERRIDES; both are explicit that the override
+is a human amendment layered on top of a real NO-GO. This is the opposite of a
+sheet reading greener than the run was.
+
+### Question 3 — Does the QA handoff note understate coverage rather than overstate it?
+
+`verdict.md`'s "Covered" list matches exactly what the six cases plus the A5
+round trip actually exercised — no case is credited with more than its own
+evidence file shows. The "Not covered" list reproduces §11's baseline
+(authentication, forms/mutations, mobile/tablet viewports, other browser
+engines, the accessibility tree, reduced motion, the live production origin,
+every page other than `/`) and adds three items the baseline could not have
+known to name until the run happened: **video evidence** ("this harness cannot
+capture at all" — TG4's actual finding), the **`og:image` scope gap** specific to
+TG5 (a browser page load never requests it; only `assert-copy.mjs` does), and
+the fact that the site's "only controls are two `Copy` buttons, and neither was
+clicked" (making the forms/mutations gap concrete rather than generic). Each
+addition narrows the coverage claim further, never widens it.
+
+Checked for a genuine omission the run should have surfaced but didn't: TG3's
+click attempt targeted one absent element; whether *any* click that
+successfully lands on a real element was exercised is not stated anywhere in
+`verdict.md`'s handoff note, and both "Copy" buttons went unclicked. This is a
+real, narrow gap — "a successful click was never exercised" is not the same
+sentence as "forms and mutations aren't covered," and a QA reader could
+reasonably want the distinction. It is minor: no case in §11 called for a
+successful click, so nothing was skipped that the gate declared it would run,
+and the same gap already exists, unremarked, in §11's own authored QA-note
+baseline predating this run — it is not something the execution introduced or
+should be faulted for inventing. Recorded as an observation, not grounds for
+REJECTED.
+
+Multi-tab handling and `browser_evaluate`-only (vs. Playwright locator-engine)
+selector resolution are named in `docs/verification-log.md`'s "Not tested" list
+but not repeated in `verdict.md`'s QA handoff — a QA reader consulting only the
+sheet would miss them. Also minor and also an observation: the verification-log
+entry is committed and sits beside the sheet's own entry in the same file
+family, so the information is not lost, only split across two documents the
+plan itself designates as siblings (Decision 8: the log is the tracked record,
+the sheet is the artifact for handoff).
+
+### What else was checked
+
+- Every wavecheck report on waves 2.0 and 2.1 (both original BLOCKs and both
+  re-audits) was read, and its own claims about the evidence were spot-checked
+  against the same files this review opened directly — no divergence found.
+- The compatibility row A5 still reads `PENDING` verbatim in
+  `docs/compatibility.md`; neither `verdict.md` nor `docs/verification-log.md`
+  claims A5 passed. The A5 entry's own verdict line reads `OBSERVED`, never
+  `PASS`.
+- `e2e/README.md` states "GENERATED, NOT EXECUTED" and traces the TG2 selector
+  correction; `verdict.md`'s "Spec run" section states the identical fact. No
+  document anywhere claims the generated specs are green, CI-ready, or
+  repeatable without having been run.
+- No row in `verdict.md`, and no sentence in the verification-log entry, claims
+  the plan's site is defect-free or that the gate proves absence of other
+  defects — the closing sentence of both documents states the opposite
+  explicitly.
+
+### Verdict: APPROVED
+
+Every row's evidence substantiates its verdict on direct inspection of the
+underlying artifact, not merely the prose describing it. TG2 and TG3 fail for
+exactly their declared clauses, independently corroborated. TG4's harness-gap
+claim is independently verified true against this session's own tool roster,
+its available workaround was disclosed and correctly declined rather than
+quietly avoided, and the override reason names a real constraint rather than
+rationalizing a shortfall. The GO-WITH-OVERRIDES sheet is explicit, in both
+places it appears, that the run itself produced NO-GO and that the override is
+a recorded human amendment on top of that fact, not a rewritten verdict. The QA
+handoff note narrows rather than widens its coverage claim, with two minor,
+non-blocking gaps (an unexercised successful click; multi-tab/`browser_evaluate`
+caveats present in the verification log but not mirrored into the sheet) noted
+as observations for a future plan rather than as reasons to reject this one.
 
 ## Deviation Log
 
@@ -1155,6 +1360,9 @@ Deviations logged: 13 (5 discovered by wavecheck; 0 new in this re-audit)
 | 2026-08-20 | wave 2.1 | wavecheck pending | Wave 2.0's wavecheck was skipped before 2.1 opened — deviation 11; both audited post-hoc |
 | 2026-08-20 | Wave 2.0 | wavecheck BLOCK (run post-hoc) | Deviation 13 discovered: `T2.0.1`'s commit `5a32ac9` stages the plan file, outside its declared `owns` |
 | 2026-08-20 | Wave 2.1 | wavecheck BLOCK | Blocked on check 1 (wave 2.0 has no PASS report) rather than on its own diff; wave 2.1's commits, forbidden items, acceptance criteria and evidence traceability all hold on independent review. Plan status set to `BLOCKED` |
+| 2026-08-20 | Wave 2.0 (re-audit) | wavecheck PASS | Ownership breach resolved by Decision 12 (accepted as benign bookkeeping) |
+| 2026-08-20 | Wave 2.1 (re-audit) | wavecheck PASS | Predecessor gate now PASS; wave 2.1's own diff independently re-confirmed clean |
+| 2026-08-20 | T2.R.1 | DONE — APPROVED | Fresh-context review: every row's evidence independently opened and traced to its verdict; TG2/TG3 fail for their stated clauses; TG4's harness-gap claim verified true against this session's own 24-tool roster and its declined workaround; GO-WITH-OVERRIDES sheet explicit about the underlying NO-GO-as-run in both places it appears; QA handoff narrows rather than overstates coverage, two minor gaps noted as observations |
 
 ## Reconcile report
 
