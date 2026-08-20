@@ -150,6 +150,7 @@ not a failure.
 | 6 | Is seatrial model-invocable? | Yes — same posture as wavecheck. Not `disable-model-invocation`. | planner (assumed — flag if wrong) | It is named as a gate inside plan documents, so the orchestrating session must be able to reach it unprompted. `replan` is human-only because auto-replanning mutates plans; running a read-only verification gate carries no such risk. Consumed by T1.1.5. |
 | 7 | Skill name | `seatrial` | planner (assumed — flag if wrong) | A sea trial is what a ship undergoes after it leaves the drydock: the metaphor already had this slot open. Consumed by T1.1.5, T1.2.1, T1.2.2, T1.2.3. |
 | 8 | Where do evidence artifacts live, and are they committed? | `.drydock/testing/<plan-id>/<case-id>/`; `.drydock/` gitignored; the dated **record** of a run is committed to `docs/verification-log.md`, the **artifacts** are not, and committing artifacts requires asking. | planner (assumed — flag if wrong) | Screenshots and video in git history bloat a public repo permanently. The record is what a later session needs; the artifacts are for the QA handoff at the time. This also gives Phase 2's tasks a tracked file to commit, which the checkpointing rule requires. Consumed by T1.0.1, T1.1.5, T1.2.4, T2.1.1. |
+| 11 | Wave 1.R REJECTED on R1 (frozen path vs `evidence_dir`). Make the config authoritative, or drop the config? | Drop `evidence_dir`; the evidence root stays the literal frozen path. `e2e_dir` is unaffected. Applied as repair Wave 1.3 across the three files that reference the key. | user | Decision 8 froze the path so seatrial and reconcile could not drift apart; a relocatable root reintroduces precisely that drift, and R1 is the proof — seatrial had already split into two forms within one file. One key removed beats three files restated, and the same narrow-don't-widen reasoning as Decision 10. Consumed by T1.3.1, T1.3.2, T1.3.3. |
 | 10 | Wavecheck 1.1 BLOCKed on deviation 6 (`PARTIAL` undefined in the contract). Widen the contract or narrow the skill? | Narrow the skill: delete `PARTIAL`, and make a subset run a HALT that writes no sheet. Applied via the contract's replaced-task mechanism — `T1.1.5` struck through, `T1.1.5r1` added to wave 1.1. | user | One file and one owner instead of two, no contract change, and it is the more consistent design: the gate rule already says a case that cannot be run is "neither a PASS nor a skip". A partial suite is the same shape of thing — not a verdict. Widening a deliberately closed enumeration to accommodate a convenience is how the closed set stops meaning anything. Consumed by T1.1.5r1. |
 | 9 | Does the adversarial pressure-test run as a subagent? | No — performed inline by the planner with files re-opened from disk, because this session is instructed not to spawn agents. Recorded as a substitution, not a skip. | planner (assumed — flag if wrong) | Planwright permits the inline fallback but the loss of fresh eyes is real and is stated in §12 rather than hidden. |
 
@@ -628,6 +629,60 @@ APPROVED · human reads the diff and approves.
 - **Forbidden:** marking A5 anything other than PENDING; editing any other row;
   editing the public-release-criteria list.
 - **Acceptance criterion:** `bash -c 'f=docs/compatibility.md; grep -q "| A5 |" "$f" && grep "| A5 |" "$f" | grep -q PENDING'` exits 0.
+
+### Wave 1.3 — Repair (appended after Wave 1.R REJECTED)
+
+> Closes finding R1. Three files reference `evidence_dir`; dropping the key
+> without fixing all three would leave dangling references to a config key that
+> no longer exists, which is a worse defect than the one being repaired. Each
+> file has one owner, so the three tasks are disjoint and parallel.
+
+#### T1.3.1 — Remove `evidence_dir` from the plugin manifest
+- **Status:** TODO
+- **Description:** Delete the `evidence_dir` entry from `userConfig`. `e2e_dir`,
+  `plans_dir` and `docs_targets` are untouched.
+- **Files owned:** `drydock/.claude-plugin/plugin.json`
+- **Depends on:** T1.2.1, Decision 11
+- **Model / thinking:** Mechanical / minimal · **Executor:** drydock:executor
+- **Context brief:** current `plugin.json`; Decision 11; finding R1 in the Wave
+  1.R verdict.
+- **Forbidden:** removing or altering `e2e_dir`, `plans_dir` or `docs_targets`;
+  touching `version`, `description` or `keywords`; adding an `icon` field.
+- **Acceptance criterion:** `bash -c 'claude plugin validate ./drydock --strict && python3 -c "import json;u=json.load(open(\"drydock/.claude-plugin/plugin.json\"))[\"userConfig\"];assert \"evidence_dir\" not in u;assert \"e2e_dir\" in u;assert \"plans_dir\" in u;assert \"docs_targets\" in u"'` exits 0.
+
+#### T1.3.2 — Seatrial: use the frozen literal evidence root throughout
+- **Status:** TODO
+- **Description:** Replace both `<evidence_dir>` placeholders with the frozen
+  literal `.drydock/testing/…` form, and drop `evidence_dir` from the skill's
+  path-config sentence so it names only `e2e_dir`. One form for the evidence root
+  in the whole file.
+- **Files owned:** `drydock/skills/seatrial/SKILL.md`
+- **Depends on:** T1.1.5r1, Decision 11
+- **Model / thinking:** Standard / default · **Executor:** drydock:executor
+- **Context brief:** `seatrial/SKILL.md` lines mentioning `evidence_dir` (3
+  occurrences: the config sentence, preflight step 5, evidence capture); the
+  contract's frozen strings `.drydock/testing/<plan-id>/<case-id>/` and
+  `.drydock/testing/<plan-id>/verdict.md`, to be quoted byte-identically;
+  Decision 11 and finding R1.
+- **Forbidden:** weakening any refusal; reintroducing `PARTIAL`; changing
+  `e2e_dir` handling, which stays configurable; leaving any `<evidence_dir>`
+  placeholder behind.
+- **Acceptance criterion:** `bash -c 'f=drydock/skills/seatrial/SKILL.md; ! grep -q "evidence_dir" "$f" && ! grep -q PARTIAL "$f" && [ "$(grep -c "\.drydock/testing/" "$f")" -ge 3 ] && grep -q "e2e_dir" "$f" && claude plugin validate ./drydock --strict'` exits 0.
+
+#### T1.3.3 — Changelog: correct the config-key line
+- **Status:** TODO
+- **Description:** The 0.5.0 entry says `plugin.json` gains `e2e_dir` and
+  `evidence_dir`. Only `e2e_dir` ships. Correct the line and record why the
+  second key was dropped, in the entry's existing style of tracing changes to
+  causes.
+- **Files owned:** `drydock/CHANGELOG.md`
+- **Depends on:** T1.2.2, Decision 11
+- **Model / thinking:** Mechanical / minimal · **Executor:** drydock:executor
+- **Context brief:** the `plugin.json` bullet in the 0.5.0 entry; Decision 11;
+  finding R1.
+- **Forbidden:** claiming the gate has been executed or that A5 passed; editing
+  any entry other than 0.5.0.
+- **Acceptance criterion:** `bash -c 'f=drydock/CHANGELOG.md; ! grep -q "evidence_dir" "$f" && grep -q "e2e_dir" "$f" && grep -q "^## 0.5.0" "$f"'` exits 0.
 
 ### Wave 1.R — Quality review
 
