@@ -60,11 +60,30 @@ executor contract, and no changes to `site/`.
 
 ## 4. Baseline
 
-Filled by T0. Must record: commit SHA at start, verbatim output of
-`claude plugin validate ./drydock --strict`, verbatim output of
-`cd site && npm run verify`, and the current `format_version` of plans 001–003
-(expected: 2, all three) so the no-bump decision is verified against reality
-rather than memory.
+Recorded by T0 on 2026-08-20.
+
+**Baseline SHA:** `7f934ba`
+
+**`claude plugin validate ./drydock --strict`** — exit 0:
+```
+Validating plugin manifest: .../drydock/.claude-plugin/plugin.json
+✔ Validation passed
+```
+
+**`cd site && npm run verify`** — exit 0:
+```
+assert-copy: PASS — .../site/out/index.html (16 literals, 5x executor, 1 h1, motion contract)
+```
+
+**`format_version` across plans 001–003:** exactly one distinct value, `2`, so
+Decision 1's no-bump choice is verified against the files rather than assumed.
+
+**Pre-existing failures excluded from acceptance criteria:** none. Both gates are
+green at baseline, so any red during Phase 1 was introduced by Phase 1.
+
+**Non-blocking noise, unchanged from earlier plans:** the Turbopack workspace-root
+warning (stray `~/yarn.lock`, CLAUDE.md) appears on every `npm run verify` and is
+not a failure.
 
 ## 5. Practices in effect
 
