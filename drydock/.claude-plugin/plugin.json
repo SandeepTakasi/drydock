@@ -35,13 +35,6 @@
       "description": "Repo-relative directory seatrial writes re-runnable Playwright spec files into",
       "default": "e2e",
       "required": false
-    },
-    "evidence_dir": {
-      "type": "string",
-      "title": "Testing Gate evidence directory",
-      "description": "Repo-relative root for Testing Gate evidence and verdict sheets; gitignored by default",
-      "default": ".drydock/testing",
-      "required": false
     }
   }
 }
