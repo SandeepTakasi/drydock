@@ -605,8 +605,16 @@ is the first that could run it, and the run below is what it did.
 | TG5 | major | PASS | 13 same-origin requests, all 200; no cross-origin request |
 | TG6 | minor | PASS | `naturalWidth` 256, `naturalHeight` 256, `complete: true`, box 26x26 |
 
-**Summary verdict: NO-GO** — TG4 is a major FAIL with no recorded override, and
-seatrial never writes an override for itself.
+**Summary verdict as run: NO-GO** — TG4 is a major FAIL, and seatrial never
+writes an override for itself.
+
+**Amended the same day: GO-WITH-OVERRIDES.** Sandeep recorded one override, on
+TG4, transcribed into the verdict sheet's Overrides table: the case's assertion
+held and only its evidence clause failed, on an evidence type this harness cannot
+capture at all, so the failure describes the driver's configuration rather than
+the site. The underlying FAIL is unchanged and still stands in the Cases table —
+an override records a human's decision to ship past a known gap, not a
+re-verdict.
 
 ### Observations — what this run proves about seatrial
 
