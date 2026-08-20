@@ -83,6 +83,16 @@ cd /tmp/dd && python3 -m http.server 5173   # then open /drydock/
   `../` climbs out of the basePath to the domain root. Four such links shipped
   live and 404'd. Docs are linked absolutely from `REPO`/`BLOB` in
   `content/copy.ts`; `assert-copy.mjs` rejects any `../` href in the export.
+- **Plugin skill files are session-cached; a skill edit needs a fresh session.**
+  Editing `drydock/skills/*/SKILL.md` has no effect on the running session —
+  invoking the skill returns the copy loaded at session start, and a skill
+  created mid-session does not appear at all. Measured 2026-08-20: after
+  committing and pushing reconcile's new refusal, invoking `drydock:reconcile`
+  returned the pre-edit text while disk and `origin/main` carried the edit, and
+  `seatrial` was absent from the skill list despite existing on disk. **A
+  same-session test of a just-edited skill exercises the stale copy and proves
+  nothing** — restart before verifying, and treat any skill this session wrote
+  as unexercised until a later session runs it. See plan 004, deviation 7.
 - **`metadataBase` must NOT contain the basePath.** Next prepends `basePath` to
   every metadata-relative asset, so a base of `…github.io/drydock/` emits
   `/drydock/drydock/opengraph-image.png` — a 404 on every social share, and
