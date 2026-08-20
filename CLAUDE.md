@@ -78,6 +78,16 @@ cd /tmp/dd && python3 -m http.server 5173   # then open /drydock/
   Tailwind's `font-size: 1rem` — measured in the emitted CSS. The token is now
   `--color-ground`. Before naming a colour token, check the name is not also a
   default `text-*` scale step (`base`, `sm`, `lg`, `xl`, …).
+- **`metadataBase` must NOT contain the basePath.** Next prepends `basePath` to
+  every metadata-relative asset, so a base of `…github.io/drydock/` emits
+  `/drydock/drydock/opengraph-image.png` — a 404 on every social share, and
+  nothing in the build complains. `content/copy.ts` keeps `site.origin` (bare
+  host, for `metadataBase`) separate from `site.url` (full address, for `og:url`).
+- **The OG image is a committed binary**, `app/opengraph-image.png`, rendered
+  from `scripts/og-card.html` by one headless-Chrome command in that file's
+  header comment. No `next/og`, no satori, no wasm in the build. Because no copy
+  assertion can read inside a PNG, `assert-copy.mjs` checks the card's promise
+  sentence is still on the page and tells you to re-render when it is not.
 - **A misspelled animation state name compiles clean.** `Variants` from
   `motion/react` is an index-signature type, so `{ hidden: {…}, shwon: {…} }`
   passes `tsc`, passes lint, passes every gate, and simply does not animate. Only

@@ -1,0 +1,104 @@
+<!doctype html>
+<!--
+  Source for app/opengraph-image.png. Rendered once, committed as a PNG, so the
+  build stays dependency-free: no next/og, no satori, no wasm in the pipeline.
+
+  Regenerate after editing (1200x630 is the OG canvas both Twitter and Slack
+  crop from; do not change it):
+
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+      --headless --disable-gpu --hide-scrollbars --force-device-scale-factor=1 \
+      --virtual-time-budget=8000 --window-size=1200,630 \
+      --screenshot=app/opengraph-image.png site/scripts/og-card.html
+
+  Every colour below is a copy of the @theme token of the same name in
+  app/globals.css. A card that drifts from the site is worse than no card, so if
+  you retune the palette, retune this too.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ground: #08090b;
+    --surface: #0e1013;
+    --line: #23272e;
+    --line-strong: #333941;
+    --ink: #f4f6f8;
+    --ink-dim: #98a2ae;
+    --accent: #8a7dff;
+    --pass: #46d39a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1200px; height: 630px; overflow: hidden;
+    background-color: var(--ground);
+    background-image: radial-gradient(1100px 520px at 50% -18%,
+      color-mix(in srgb, var(--accent) 13%, transparent), transparent 70%);
+    background-repeat: no-repeat;
+    color: var(--ink);
+    font-family: Inter, system-ui, sans-serif;
+    display: flex; flex-direction: column;
+    padding: 64px 72px;
+  }
+  .chips { display: flex; gap: 10px; }
+  .chip {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase;
+    border: 1px solid var(--line); color: var(--ink-dim);
+    padding: 7px 11px;
+  }
+  .chip.on { border-color: var(--accent); color: var(--accent); }
+  h1 {
+    font-size: 148px; font-weight: 600; letter-spacing: -0.045em;
+    line-height: 0.92; margin-top: 44px;
+  }
+  .promise {
+    font-size: 35px; line-height: 1.3; letter-spacing: -0.015em;
+    margin-top: 26px; max-width: 940px; color: var(--ink);
+  }
+  .spacer { flex: 1; }
+  .gate { margin-top: 28px; }
+  .dash {
+    height: 0; border-top: 2px dashed var(--accent);
+    /* 10 8 dash, matching the hero gate line */
+    border-top-style: dashed; opacity: 0.95;
+  }
+  .row {
+    display: flex; align-items: center; gap: 18px; margin-top: 22px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 16px; letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  .pass { border: 1px solid var(--pass); color: var(--pass); padding: 6px 10px; }
+  .right { margin-left: auto; color: var(--ink-dim); }
+</style>
+</head>
+<body>
+  <div class="chips">
+    <span class="chip on">Claude Code plugin</span>
+    <span class="chip">v0.4.1 -- open pilot</span>
+    <span class="chip">MIT</span>
+  </div>
+
+  <h1>Drydock</h1>
+
+  <p class="promise">
+    Subagents that cannot quietly rewrite each other, on a plan that is checked
+    against the diff.
+  </p>
+
+  <div class="spacer"></div>
+
+  <div class="gate">
+    <div class="dash"></div>
+    <div class="row">
+      <span>wavecheck 1.1</span>
+      <span class="pass">pass</span>
+      <span class="right">status: approved (human-only)</span>
+    </div>
+  </div>
+</body>
+</html>

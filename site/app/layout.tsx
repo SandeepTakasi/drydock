@@ -13,7 +13,7 @@ import "./globals.css";
  * include the basePath, because that is where the page actually lives.
  */
 export const metadata: Metadata = {
-  metadataBase: new URL(site.url),
+  metadataBase: new URL(site.origin),
   title: site.title,
   description: site.description,
   openGraph: {

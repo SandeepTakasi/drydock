@@ -90,6 +90,14 @@ export const site = {
   selfAuditLinkText: "Read the self-audit",
   skipLinkText: "Skip to content",
   wordmark: "Drydock",
+  /**
+   * `origin` is the bare host, `url` the full page address. They are separate
+   * on purpose: Next prepends `basePath` to every metadata-relative asset, so a
+   * `metadataBase` that already contains `/drydock` emits
+   * `/drydock/drydock/opengraph-image.png` — measured, and a 404 on every share.
+   * metadataBase takes `origin`; anything absolute (og:url) takes `url`.
+   */
+  origin: "https://takasivenkatasandeep-08.github.io",
   url: "https://takasivenkatasandeep-08.github.io/drydock/",
 };
 
