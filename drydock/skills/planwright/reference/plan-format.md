@@ -46,6 +46,15 @@ the reconcile skill.
 > follow the escalation policy (max 2 retries → tier up → human); wavecheck
 > BLOCKs on ownership violations or unlogged deviations get NO retries. When
 > the final wave and phase gate pass, invoke `drydock:reconcile`.
+>
+> **If you cannot spawn executors** — a standing instruction against unprompted
+> agents, agents unavailable — that is a deviation to log **before the wave
+> opens**, not after it closes, and it does not become permission to skip the
+> wave gate. Two obligations survive intact: stage **only** the task's owned
+> files in its checkpoint commit (a spawned executor gets this for free; by hand
+> it is the first thing to slip), and tell wavecheck the diff is self-authored,
+> because its forbidden audit is weakened when the auditor wrote the code and it
+> must say so rather than imply independence it does not have.
 
 **Staleness check (before every wave):**
 `git diff <baseline SHA>..HEAD -- <wave's owned files + wave-0 contract files>`.
@@ -177,6 +186,13 @@ seatrial HALTs and asks rather than testing written cases against a moved target
 ## Phase <p>: <milestone>
 **Exit state:** <verifiable, ideally shippable state>
 **Phase gate:** <commands> + architectural review + <human gate if required>
+
+A gate that has been met is rewritten in place to record it, and a human gate
+records **who** and **when**: `**Phase gate: CLOSED, approved by <name> —
+<YYYY-MM-DD>.**` followed by the conditions met. Nothing infers a human's
+approval from surrounding text, and `drydock:reconcile` reads this line — an
+open gate, or a closed one with no name and date, is a refusal to close the
+plan. Write the unmet form while the phase is open; amend it when it closes.
 
 ### Wave <p>.0 — Contracts
 > Pins the shared surface (interfaces, types, schemas, API shapes, migration

@@ -117,6 +117,24 @@ cd /tmp/dd && python3 -m http.server 5173   # then open /drydock/
   `--stroke-*` is not — `--stroke-rule` is a bare custom property, referenced as
   `var(--stroke-rule)` on the hero SVG. Tree-shaking retains it by name scan, so
   a dynamically-built token name is the one thing that loses.
+- **BSD `wc -l` left-pads its count** (`"       1"`, not `"1"`), so piping it
+  into `grep -qx 1` — or any exact-string match — never matches, whatever the
+  real count is. Strip it (`tr -d ' '`) and compare with `[ "$n" = 1 ]`. This
+  cost a whole acceptance criterion in plan 004: the check was unpassable
+  regardless of repo state, and the idiom was written on Linux `wc` habits.
+- **Playwright MCP resolves a relative screenshot `filename` against the MCP
+  server's own working directory**, not the repo and not any path you declare —
+  so `filename: "TG1/shot.png"` lands somewhere you did not ask for. Pass an
+  absolute path, and `mkdir -p` its parent first: a missing parent fails
+  `ENOENT` rather than being created. Measured 2026-08-20, plan 004.
+- **Playwright MCP records zero network requests for a fragment-only
+  navigation.** `page.goto` to a URL differing from the current page only by
+  `#anchor` is a same-document change that never leaves the page, so
+  `browser_network_requests` comes back empty — and a network assertion built on
+  it silently measures nothing. Use a real navigation. Measured 2026-08-20,
+  plan 004. The same run found that **a `video` evidence type is uncapturable
+  through Playwright MCP** at all: video is a per-`BrowserContext` setting fixed
+  at creation, and the server exposes no video, record or trace tool.
 
 ## Honesty rule for site copy
 

@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.5.1 — 2026-08-21
+
+Guardrails harvested from plan 004's own execution. Every item here is a
+refusal or a check that plan wanted and did not have — applied from
+[its reconcile report](../docs/plans/004-seatrial-e2e-gate.md), which proposed
+them rather than applying them itself.
+
+- **`reconcile` refuses to close a plan whose human phase gate is unsigned.**
+  Previously its ladder read the verdict sheet and wave-PASS status only, so a
+  plan with all waves PASS and a properly attributed `GO-WITH-OVERRIDES` sheet
+  would close with nobody having signed the phase gate. Plan 004 reached exactly
+  that state; only the orchestrating session holding back by hand stopped it.
+- **The format contract freezes how a closed phase gate is recorded** —
+  `**Phase gate: CLOSED, approved by <name> — <date>.**` — so the refusal above
+  has something unambiguous to read, and no skill infers a human's approval from
+  surrounding prose.
+- **`planwright` will not declare an evidence type the driver cannot capture.**
+  Confirm the capability in the authoring session; default to `screenshot` or
+  `network assertion` otherwise. `video` is a per-`BrowserContext` setting fixed
+  at creation, so a Playwright MCP server started without video saving cannot
+  produce it by any call — plan 004's only NO-GO came from a case declaring it
+  on paper, a red that described the harness rather than the software.
+- **`planwright`'s self-review checklist now requires every acceptance criterion
+  to have been RUN before its task block is frozen** — both that it can fail and
+  that it can *pass*. Three criteria in plan 004 broke this way: one unpassable
+  whatever the repo state, one already satisfied before its task began, one
+  grepping a heading level the target file never uses.
+- **The orchestrator contract states what survives when executors cannot be
+  spawned**: log it as a deviation before the wave opens, stage only owned files
+  by hand, and tell wavecheck the diff is self-authored. Inline execution caused
+  four of plan 004's fourteen deviations, including its one real ownership
+  breach.
+
+No behaviour changes to `seatrial`, `wavecheck` or `replan`.
+
 ## 0.5.0 — 2026-08-20
 
 Adds a browser-based E2E verification gate. Planned with planwright and executed

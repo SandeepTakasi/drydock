@@ -19,6 +19,21 @@ outside those paths.
 A plan with all waves PASS. If any wave lacks a PASS report, refuse — reconcile
 on an unverified plan launders unaudited changes into the docs.
 
+**Human-gate refusal.** Read every `**Phase gate:**` line in the plan. Any phase
+whose gate declares a human approval must show it recorded — `CLOSED, approved
+by <name> — <date>`, per the format contract. An open gate, or a closed one with
+no name and date, is a refusal: closing the plan would record a sign-off nobody
+gave. Do not infer approval from a passing wave, from an APPROVED quality
+review, or from the fact that someone asked you to run reconcile — those are
+different claims, and a human gate exists precisely because none of them
+substitute for it. Say which phase is unsigned and stop.
+
+This refusal was added after a plan reached reconcile with all waves PASS, a
+properly attributed verdict sheet, and an unsigned Phase 2 gate: nothing in this
+skill would have stopped the close, and only the orchestrating session holding
+back by hand prevented it. The gate a closer cannot see is a gate that does not
+hold.
+
 **Testing Gate refusal.** If the plan's `## Testing Gate` section exists and is
 not `N/A — <reason>`, then before doing anything else:
 
