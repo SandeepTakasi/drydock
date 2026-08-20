@@ -1,7 +1,7 @@
 ---
 plan: 004-seatrial-e2e-gate
 format_version: 2
-status: EXECUTING
+status: RECONCILED
 isolation: none
 created: 2026-08-20
 approved_by: sandeep
@@ -1377,3 +1377,265 @@ Deviations logged: 13 (5 discovered by wavecheck; 0 new in this re-audit)
 ## Reconcile report
 
 _Appended once by `drydock:reconcile` at completion._
+
+**Testing Gate refusal — run first, honestly.** Read `.drydock/testing/004-seatrial-e2e-gate/verdict.md`
+from disk (gitignored, not in git history). It reads `GO-WITH-OVERRIDES`. Checked
+against the refusal ladder's rule 4 by inspection of the sheet's own Overrides
+table, not by trusting the header line: one override, case `TG4`, reason stated
+in full (assertion held; only the evidence clause failed; the harness cannot
+capture `video` at all; two legitimate exits named, the illegitimate one — editing
+TG4's declared type — explicitly excluded), decider `sandeep, 2026-08-20`. All
+three required fields present and attributed to a named human, so rule 4's
+condition is met and reconcile proceeds. Every wave carries a PASS report (1.0,
+1.1 BLOCK→PASS, 1.2, 1.3, 2.0 BLOCK→PASS, 2.1 BLOCK→PASS) and both `T1.R.1` and
+`T2.R.1` read APPROVED, satisfying the Inputs refusal. The plan's own Phase 1 and
+Phase 2 gate lines both read CLOSED, approved by sandeep (2026-08-20 and
+2026-08-21 respectively) — checked directly in §§ Phase 1/Phase 2 headers, not
+assumed from deviation 14's framing.
+
+**Deviation 14, checked rather than obeyed.** Deviation 14 asserts that
+`drydock:reconcile`'s refusal ladder branches on the verdict sheet only and has
+no rule for an unsigned human phase gate. Read `drydock/skills/reconcile/SKILL.md`
+directly (reproduced under "Inputs" and "Testing Gate refusal" above this
+report): the Inputs refusal checks only "every wave has a PASS report," and the
+five-step ladder checks only the content of `verdict.md` (missing / NO-GO /
+GO-WITH-OVERRIDES with attribution / GO). Neither reads this plan's `**Phase
+gate:**` lines or any human-approval marker. The description is accurate — it is
+not being taken as an instruction, only verified as true, and it is true. It
+caused no harm on this run because the orchestrator independently held reconcile
+back until Phase 2's line read CLOSED (see Progress log, 2026-08-21 row), but the
+skill itself would not have stopped a run where that discipline lapsed. Carried
+into synthesis below as reconcile-skill feedback, not as a doc proposal —
+`reconcile/SKILL.md` is not one of `docs_targets`.
+
+**Refusal-ladder outcome: proceeding to close.** GO-WITH-OVERRIDES, correctly
+attributed, all waves PASS, both phase gates signed. Reconcile is not laundering
+an unverified plan.
+
+### Deviation synthesis (clustered by root cause)
+
+#### Cluster A — orchestrator executed tasks and reviews inline instead of spawning declared executors
+**Members:** deviation 1 (root cause), 8, 11, 13; deviation 12 noted as a weaker,
+circumstantial link.
+
+Deviation 1 records the cause directly: the orchestrating session ran under a
+standing instruction against unprompted agent spawning, and "execute phase 1"
+was read as plan approval rather than agent authorisation — contrary to this
+plan's own embedded Execution protocol, which requires every task to run as a
+spawned `drydock:executor` and every wave boundary to run `drydock:wavecheck`
+before the next wave opens. Deviation 8 names the same standing instruction
+explicitly ("same standing instruction as deviation 1") for T2.0.1. Deviation 11
+is one level up — a wave gate skipped rather than a task executor — and its own
+text calls it "the same class of slip as deviation 1." Deviation 13's ownership
+breach (`5a32ac9` staging the plan file alongside T2.0.1's one owned file) is
+attributed in the log itself to "the same root cause as deviation 1": a spawned
+executor's "stage owned files only" discipline was not mechanically present.
+Deviation 12 (commit-order inversion between T2.1.1/T2.1.2) is included only as
+a possible fifth instance — its own logged proximate cause is Decision 8's
+record/artifact split, not inline execution, and I am not asserting the
+connection as established, only as plausible: strict per-task, per-wave spawning
+would have produced commits in wave order by construction, whereas ad hoc inline
+work does not guarantee it.
+
+No wrong artifact resulted from any of these four to five deviations — every
+wavecheck re-audit, `T1.R.1`, and `T2.R.1` independently confirmed the underlying
+work correct. The cost is entirely in the audit chain's independence: a
+self-reviewed diff is weaker evidence than a fresh one (stated by the plan's own
+Wave 1.R caveat and the "Round 2: not run" note), and one real ownership breach
+(13) reached a commit before wavecheck caught it. This cluster is executor/
+orchestrator-contract feedback, not a fact about the codebase — no CLAUDE.md or
+ADR proposal follows from it.
+
+#### Cluster B — acceptance criteria authored without dry-running them against the real environment
+**Members:** deviations 2, 4, 9.
+
+All three are the same defect shape: a criterion's exact command or grep pattern
+was frozen into a task block from memory of a platform's behaviour or a file's
+shape, not from running it against the actual file or shell first. Deviation 2
+(T0): BSD `wc -l` left-pads its count, so `grep -qx 1` could never match — the
+criterion was unpassable regardless of repo state. Deviation 4 (T1.1.2): one of
+two grep clauses was already true before the task began, so it gated nothing.
+Deviation 9 (T2.0.1): the criterion greps `^#### A5`, but every entry in
+`docs/verification-log.md` is `## <id> — <title>` — a remembered heading level
+that didn't match the file's actual convention. Deviation 2's own impact note
+names the gap precisely: "the plan's own checklist asks whether a criterion can
+FAIL; it does not ask whether it can PASS." All three are Mechanical- or
+Standard-tier tasks, where a criterion gets the least scrutiny in the review
+tiering — worth naming as a pattern, not three unrelated slips.
+
+This is planwright-skill feedback (the self-review checklist item that would
+close this gap lives in `planwright/SKILL.md`, outside `docs_targets`), not a
+CLAUDE.md or ADR fact. No doc proposal follows; reported as feedback below.
+
+#### Cluster C — deviation 7 (plugin skill files are session-cached): already landed, checked for accuracy
+CLAUDE.md's "Plugin skill files are session-cached" bullet was read in full
+against deviation 7's log entry. It states the mechanism (loaded once per
+session, cached), the dated corroboration (`drydock:reconcile` returning
+pre-`T1.1.4` text on 2026-08-20 while disk and `origin/main` carried the edit;
+`seatrial` absent from the skill list because it did not exist at session
+start), and the generalisation the log's impact note draws ("invalidates a whole
+class of self-test... treat any skill this session wrote as unexercised until a
+later session runs it"). No inaccuracy and no omission found against the source
+deviation. **No proposal** — restating it would be exactly what the anti-goals
+forbid.
+
+#### Cluster D — deviation 10 (TG4 declared an evidence type the driver cannot capture): generalises into a planwright change
+§11 declared `video` evidence for TG4 before A5 had ever been observed — Q1
+deferred the whole driver-capability question to Phase 2, so no capability was
+knowable when the case was authored on paper. The result: TG4 fails its evidence
+clause on every possible run of this harness, independently confirmed by
+`T2.R.1` against this session's own 24-tool `mcp__playwright__*` roster (no
+video/record/trace tool present). This is the deviation the task brief flagged
+as clearest for a planwright change, and the review agrees: the Testing Gate
+interview/self-review checklist should refuse — or at minimum flag for a human
+decision — a case declaring `video` evidence unless the plan has, this session,
+confirmed the connected driver exposes a video/record/trace capability; absent
+that confirmation, default the case to `screenshot` or `network assertion`.
+Planwright-skill feedback, outside `docs_targets` (`plan-format.md` and
+`planwright/SKILL.md` are neither CLAUDE.md, `docs/decisions`, nor
+`docs/architecture.md`). No doc proposal; reported as feedback below, ranked
+highest-impact of the process feedback in this reconcile.
+
+#### Cluster E — deviation 14 (reconcile's own refusal ladder doesn't check the human phase gate)
+Covered in full under "Testing Gate refusal" above. Verified true by reading the
+running skill, not inherited as an assumption. Reconcile-skill feedback, outside
+`docs_targets`. Two remediations are already named in the deviation itself (read
+the plan's `**Phase gate:**` lines and refuse until a dated approval appears
+against each, or state plainly that reconcile does not check human gates) —
+this report does not choose between them; that choice belongs to a human editing
+`reconcile/SKILL.md`, which this reconcile has no authority to touch.
+
+### Assumption postmortem
+
+Decision Log entries marked "planner (assumed — flag if wrong)":
+
+| Decision | Assumption | Status | Evidence |
+|---|---|---|---|
+| 5 | `isolation: none` — every task owns one file, no worktree needed | **Held** | Every audited task commit (Wavecheck 1.0 check 2; `T1.R.1`; the re-audits of waves 2.0/2.1) shows exactly one file, its own owned path. No cross-task collision occurred. |
+| 6 | seatrial is model-invocable (no `disable-model-invocation`), so an orchestrating session can reach it unprompted | **Held structurally, never-exercised behaviourally** | `claude plugin validate --strict` confirms no such flag in the manifest. But in this run seatrial was invoked directly by the orchestrating session as a declared task (`T2.1.1`), never autonomously by a session deciding on its own that the gate was due — the behavioural claim Decision 6 actually rests on has not yet been observed. |
+| 7 | skill name `seatrial` | **Held** | No collision or confusion recorded anywhere in the deviation log or either review. |
+| 8 | evidence split — `.drydock/` gitignored artifacts, `docs/verification-log.md` the tracked record | **Held, not cleanly on first attempt** | The design itself never had to change. But T1.2.1 introduced a relocatable `evidence_dir` config key that briefly contradicted the frozen-path half of this decision, caught by Wave 1.R finding R1 and repaired in Wave 1.3 — a downstream task's implementation, not the assumption, was what broke. |
+| 9 | inline pressure-test substitution, "loss stated rather than hidden" | **Held as authorised, failed on its own predicted risk** | Planwright permits the fallback, so nothing here was out of process. But the fresh-eyes loss the decision flagged as a real risk materialised concretely: finding R1 (a plan-level contradiction) was missed by the inline Round-1 pressure test and caught only at Wave 1.R's own self-reviewed phase boundary — feeds directly into Cluster A. |
+
+### New-knowledge harvest
+
+Three facts the execution established that no doc states and the next planner
+or executor would need, none already documented elsewhere in the repo (checked
+`CLAUDE.md`, `drydock/README.md`, `drydock/CHANGELOG.md` for each before
+proposing): the BSD `wc` left-padding gotcha (deviation 2), the Playwright MCP
+screenshot-path resolution behaviour, and the fragment-only-navigation network
+gap (both from `docs/verification-log.md`'s "Seatrial gate run" observations 3
+and 4, corroborated in `verdict.md`'s TG4/TG5 evidence). All three become
+proposals below.
+
+Checked and **not** proposed: `docs/architecture.md`'s "Gates" table is
+exclusively about `site/`-build gates (`npm run verify`, `measure-reduced-
+motion.mjs`, `deploy.yml`, human browser check); §11 states explicitly that
+seatrial "does *not* verify the homepage... these cases verify seatrial's own
+fidelity," so adding it to that table would misrepresent what it checks. The
+existence of `e2e/` and its `GENERATED, NOT EXECUTED` status is already fully
+documented in `drydock/CHANGELOG.md`'s 0.5.0 entry and `drydock/README.md`;
+restating it in `CLAUDE.md` would violate the anti-goal against restating what a
+doc already says.
+
+### Proposals
+
+#### Proposal R1 — target: CLAUDE.md — kind: addition
+Finding: Playwright MCP's `browser_take_screenshot` resolves a relative
+`filename` against the MCP server's own process working directory, not any path
+the caller declares, and the parent directory must already exist before the
+call or it fails `ENOENT` — discovered capturing TG1/TG4/TG6 evidence
+(deviation 8's observation, corroborated in `docs/verification-log.md`'s
+"Seatrial gate run" observation 3).
+Confidence: high
+```diff
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -117,6 +117,10 @@
+   `var(--stroke-rule)` on the hero SVG. Tree-shaking retains it by name scan, so
+   a dynamically-built token name is the one thing that loses.
+ 
++- **Playwright MCP's `browser_take_screenshot` resolves a relative `filename`
++  against the MCP server's own working directory, not any path you declare.**
++  Use an absolute path, and `mkdir -p` its parent directory first — a missing
++  parent fails `ENOENT` rather than being created. Measured 2026-08-20, plan 004.
++
+ ## Honesty rule for site copy
+```
+
+#### Proposal R2 — target: CLAUDE.md — kind: addition
+Finding: Playwright MCP's `browser_navigate` to a URL differing from the current
+page only by fragment (`#install`) records no network requests at all —
+`browser_network_requests` returns empty for a same-document hash change,
+discovered when TG5's network case briefly produced an empty evidence file
+(`docs/verification-log.md`'s "Seatrial gate run" observation 4).
+Confidence: high
+```diff
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -117,6 +117,11 @@
+   `var(--stroke-rule)` on the hero SVG. Tree-shaking retains it by name scan, so
+   a dynamically-built token name is the one thing that loses.
+ 
++- **Playwright MCP's `page.goto` to a URL differing only by fragment (`#anchor`)
++  records zero network requests.** A same-document hash change never leaves the
++  page, so `browser_network_requests` comes back empty — a network-assertion
++  case needs a real navigation, not an anchor jump. Measured 2026-08-20, plan 004.
++
+ ## Honesty rule for site copy
+```
+
+#### Proposal R3 — target: CLAUDE.md — kind: addition
+Finding: `T0`'s acceptance criterion (`... | wc -l | grep -qx 1`) was unpassable
+on this host regardless of repo state, because BSD `wc -l` left-pads its count
+(`"       1"`), which `grep -qx` (whole-line match) can never equal `1` — a
+shell idiom written on Linux `wc` habits (deviation 2).
+Confidence: high
+```diff
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -117,6 +117,10 @@
+   `var(--stroke-rule)` on the hero SVG. Tree-shaking retains it by name scan, so
+   a dynamically-built token name is the one thing that loses.
+ 
++- **BSD `wc -l` left-pads its count** (`"       1"`, not `"1"`), so piping it
++  into `grep -qx 1` or any exact-string match never matches, regardless of the
++  real count. Strip with `tr -d ' '` and compare with `[ "$n" = 1 ]` instead.
++  Cost a whole acceptance criterion in plan 004 (deviation 2).
++
+ ## Honesty rule for site copy
+```
+
+### Skill/process feedback (clusters A, B, D, E — not doc proposals, folded in for a human to apply to the skill files directly)
+
+- **Cluster A — orchestrator/executor-contract:** nothing currently distinguishes,
+  in the orchestrator's own prompt or in `wavecheck`'s checks, "the planner
+  declined to spawn agents" from "the plan is approved." Decision 12's fix
+  (§10's restated checkpointing invariant) closes the one breach this caused
+  (deviation 13) for future inline runs, but does not stop deviation 1 itself
+  from recurring under the same standing instruction on the next plan.
+- **Cluster B — planwright checklist:** add a self-review item that runs every
+  acceptance-criterion clause against the current file/shell before the task
+  block is frozen, checking both that it currently fails (so the task binds) and
+  that its literal pattern matches the file's actual convention (heading level,
+  the platform's actual command output) rather than a remembered shape.
+  Deviation 2's own impact note already states half of this ("checklist asks
+  can-it-FAIL, not can-it-PASS"); deviations 4 and 9 show the same gap on the
+  PASS side.
+- **Cluster D — planwright Testing Gate authoring:** refuse, or flag for a human
+  decision, a case declaring `video` evidence unless the plan has already
+  confirmed this session that the connected driver can capture it; default to
+  `screenshot` or `network assertion` otherwise. Highest-impact single item in
+  this reconcile — it is the harness gap that produced this plan's only NO-GO.
+- **Cluster E — reconcile's refusal ladder:** either read the plan's `**Phase
+  gate:**` lines and refuse until a dated human approval appears against each,
+  or state in the skill's own text that it does not check human phase gates, so
+  a future closer doesn't assume it does. Both options are already named in
+  deviation 14; this report does not choose between them.
+
+### Plan closure
+
+All acceptance criteria for the Testing Gate refusal held (GO-WITH-OVERRIDES,
+properly attributed; all waves PASS; both phase gates signed). Status set to
+`RECONCILED` below. No historical section (§§2–8, the Deviation Log, the
+Wavecheck reports, the Progress log) was edited — this report is additive only.
