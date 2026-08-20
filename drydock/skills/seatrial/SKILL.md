@@ -21,8 +21,10 @@ you answer one question, once, at the end: **do the written cases still hold in 
 real browser, and what is the evidence?**
 
 Contract: `${CLAUDE_PLUGIN_ROOT}/skills/planwright/reference/plan-format.md`,
-section *Testing Gate section*. Path config comes from plugin config `e2e_dir`
-(default `e2e`) and `evidence_dir` (default `.drydock/testing`).
+section *Testing Gate section*. The generated-spec directory comes from plugin
+config `e2e_dir` (default `e2e`). The evidence root is **not** configurable: it is
+the literal path the contract freezes, so this skill and `drydock:reconcile`
+cannot drift apart about where a verdict lives.
 
 ## Inputs
 
@@ -71,7 +73,7 @@ exactly like a full one.
    sheet that does not say which driver produced it is unusable as evidence.
 4. **The target answers.** One request to the declared base URL. Unreachable is
    a HALT: name the URL and the error.
-5. **The evidence root is writable.** `<evidence_dir>/<plan-id>/`. If it cannot
+5. **The evidence root is writable.** `.drydock/testing/<plan-id>/`. If it cannot
    be created, HALT — a case whose evidence cannot be written is not a passing
    case, because the declared evidence is part of the expected result.
 6. **Auth is settled.** If the gate's header declares an auth approach, perform
@@ -112,7 +114,7 @@ For each case:
    PASS-when-it-fails: if it passes, that is a failure of the gate, and the sheet
    must say so in those words rather than logging a quiet green.
 6. **Capture the declared evidence** — exactly the declared type, into
-   `<evidence_dir>/<plan-id>/<case-id>/`:
+   `.drydock/testing/<plan-id>/<case-id>/`:
    - `screenshot` — at the moment the `Then` clause is evaluated, not at the end
      of the case.
    - `video` — the whole case. If the driver produced no video, the case FAILs on
