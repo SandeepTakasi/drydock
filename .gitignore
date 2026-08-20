@@ -2,3 +2,7 @@
 
 # Agent worktrees created by isolation: "worktree" spawns (A2 finding, 2026-08-18)
 .claude/
+
+# Testing Gate evidence: screenshots, video, verdict sheets (plan 004).
+# Untracked by default -- committing binary evidence to history is permanent.
+.drydock/
