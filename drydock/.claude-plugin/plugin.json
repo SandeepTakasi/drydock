@@ -1,13 +1,19 @@
 {
   "name": "drydock",
   "displayName": "Drydock",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Plan-first parallel execution: rigorous plan documents, wave-based subagent execution with disjoint file ownership, plan-conformance verification gates, and a reconcile loop that feeds execution learnings back into your docs. Nothing sails until it leaves the dock.",
   "author": {
     "name": "Sandeep / GeekyAnts"
   },
   "license": "MIT",
-  "keywords": ["planning", "subagents", "parallel-execution", "verification", "spec-driven"],
+  "keywords": [
+    "planning",
+    "subagents",
+    "parallel-execution",
+    "verification",
+    "spec-driven"
+  ],
   "userConfig": {
     "plans_dir": {
       "type": "string",
@@ -21,6 +27,20 @@
       "title": "Reconcile doc targets",
       "description": "Comma-separated repo-relative paths reconcile may propose updates for (never auto-edited)",
       "default": "CLAUDE.md,docs/decisions,docs/architecture.md",
+      "required": false
+    },
+    "e2e_dir": {
+      "type": "string",
+      "title": "Generated E2E spec directory",
+      "description": "Repo-relative directory seatrial writes re-runnable Playwright spec files into",
+      "default": "e2e",
+      "required": false
+    },
+    "evidence_dir": {
+      "type": "string",
+      "title": "Testing Gate evidence directory",
+      "description": "Repo-relative root for Testing Gate evidence and verdict sheets; gitignored by default",
+      "default": ".drydock/testing",
       "required": false
     }
   }
