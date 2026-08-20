@@ -19,6 +19,8 @@ import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SECTIONS_DIR = join(HERE, "..", "components", "sections");
+const PLUGIN_JSON = join(HERE, "..", "..", "drydock", ".claude-plugin", "plugin.json");
+const README = join(HERE, "..", "..", "README.md");
 
 const REQUIRED = [
   "APPROVED (HUMAN-ONLY)",
@@ -86,6 +88,9 @@ const arg = process.argv[2];
 const target = resolve(process.cwd(), arg ?? "out/index.html");
 // An explicit path means a fixture: assert copy only, not the section sources.
 const checkMotion = arg === undefined;
+// Same condition, named for the other thing it gates: checks that read repo
+// files rather than the export are meaningless against an arbitrary fixture.
+const checkRepoSources = arg === undefined;
 
 let raw;
 try {
@@ -164,6 +169,46 @@ if (checkMotion) {
   }
 }
 
+// --- version drift, against plugin.json ------------------------------------
+// The plugin version is hand-copied into content/copy.ts and README.md, so it
+// drifts silently every release: 0.4.1 stayed on the live badge after the
+// plugin went to 0.5.0, surviving a wave gate, a phase gate, a browser gate
+// and a deploy, because the version was never one of the required literals.
+// plugin.json is the single source of truth — everything else must agree.
+if (checkRepoSources) {
+  let pluginVersion;
+  try {
+    pluginVersion = JSON.parse(readFileSync(PLUGIN_JSON, "utf8")).version;
+  } catch (err) {
+    fail(`version drift: cannot read ${PLUGIN_JSON}: ${err.message}`);
+  }
+  if (pluginVersion !== undefined) {
+    if (!/^\d+\.\d+\.\d+$/.test(pluginVersion)) {
+      fail(`version drift: plugin.json version ${JSON.stringify(pluginVersion)} is not x.y.z`);
+    }
+    // Only presence is required. Older versions are legitimately cited as
+    // history ("fixed in v0.3.0"), so an exhaustive match would forbid prose.
+    if (!text.includes(`v${pluginVersion}`)) {
+      fail(
+        `version drift: the export does not render "v${pluginVersion}" — ` +
+          `plugin.json says ${pluginVersion}, so VERSION in content/copy.ts is stale`
+      );
+    }
+    let readme;
+    try {
+      readme = readFileSync(README, "utf8");
+    } catch (err) {
+      fail(`version drift: cannot read ${README}: ${err.message}`);
+    }
+    if (readme !== undefined && !readme.includes(`v${pluginVersion}`)) {
+      fail(
+        `version drift: README.md does not mention "v${pluginVersion}" — ` +
+          `it carries the status line and drifted with copy.ts last time`
+      );
+    }
+  }
+}
+
 // --- no relative-escape links ----------------------------------------------
 // `href="../docs/…"` reads fine in a repo tree and 404s in production: on a
 // Pages project site `../` climbs out of the basePath to the domain root, and
@@ -186,6 +231,6 @@ if (failures.length > 0) {
 
 console.log(
   `assert-copy: PASS — ${target} (${REQUIRED.length} literals, ${executors}x executor, 1 h1${
-    checkMotion ? ", motion contract" : ", motion contract skipped: fixture mode"
+    checkMotion ? ", motion contract, version matches plugin.json" : ", motion contract skipped: fixture mode"
   })`
 );
