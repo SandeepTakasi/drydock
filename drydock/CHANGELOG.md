@@ -55,8 +55,12 @@ is also where every defect below was caught.
 - **Two stale section citations corrected**, and both told to locate their
   section by name rather than by ordinal: wavecheck 14 → 15, reconcile 16 → 17.
   Release 0.4.0 already fixed these once; counting is the defect, not the count.
-- **`plugin.json`** gains `e2e_dir` (default `e2e`) and `evidence_dir` (default
-  `.drydock/testing`), following the `plans_dir` shape.
+- **`plugin.json`** gains `e2e_dir` (default `e2e`), following the `plans_dir`
+  shape. It does **not** gain a configurable evidence root: an earlier draft did,
+  and the phase's quality review rejected it, because the contract calls that root
+  frozen so seatrial and reconcile cannot disagree about where a verdict lives. A
+  relocatable root reintroduced exactly that drift — the draft skill had already
+  split into two forms inside one file.
 
 **Not verified, and not claimed to be.** The gate has never been executed. A new
 compatibility row **A5 — Playwright MCP availability** is registered as PENDING:
