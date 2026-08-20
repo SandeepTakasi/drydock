@@ -1069,6 +1069,47 @@ Deviations logged: 13 (5 discovered by wavecheck)
 
 **Verdict: BLOCK.** Wave 2.1's own commits, forbidden items, acceptance criteria and evidence traceability are clean — if wave 2.0's ownership breach is resolved, wave 2.1 should not need re-execution, only re-audit. But check 1 is not a judgment call: a wave cannot pass while its only predecessor wave fails audit. `T2.R.1` must not proceed. Plan status stays `BLOCKED`. Same remediation options as the Wavecheck 2.0 report above, applied at the wave-2.0 level; once resolved, re-run wavecheck 2.0 to PASS, then re-run this wavecheck 2.1 pass — expected to convert cleanly to PASS given checks 2–5 already hold today.
 
+### Wavecheck 2.0 (re-audit after Decision 12) — PASS — 2026-08-20
+
+Re-audit of the ownership breach that BLOCKed the prior pass, run fresh against
+`3a608c6` rather than trusting the resolution's own framing. The prior BLOCK
+report above stands unedited as the record of what was found.
+
+| Check | Result | Evidence |
+|---|---|---|
+| 1. Plan integrity | PASS | `format_version: 2` (supported); `status: EXECUTING` (restored from `BLOCKED` by `3a608c6`, confirmed by `grep -n "^status:"`); wave 2.0 declares exactly 1 task (`T2.0.1`); prior waves 1.0, 1.1 (re-audit), 1.2, 1.3 all carry PASS reports, phase gate APPROVED. No prior gate skipped. |
+| 2. Ownership audit | PASS, on the resolved scope | `git show --name-only 5a32ac9` still shows two files — that raw fact does not change and is not disputed. What changed is the plan's own record: `git show 5a32ac9 -- docs/plans/004-seatrial-e2e-gate.md` was read in full and contains exactly five things — the Q1 "Blocks" cell struck through with a closure note, the Phase 2 heading's status annotation, T2.0.1's own `Status:` line, Deviation Log rows 8 and 9, and two Progress-log rows. No task's `owns`, `forbidden`, or acceptance criterion changes; no other task's owned file is touched; no new task content is added. This is bookkeeping by the format contract's own vocabulary (frontmatter status, Decision/Deviation/progress log, open-question closure), matching Decision 12's characterisation exactly — the premise is true, not asserted. Decision 12 is a documented human decision (escalation-policy option (c)) accepting the breach on that basis; `docs/verification-log.md`, T2.0.1's sole declared `owns` entry, is unaffected by the reclassification and was already correct. `git status --porcelain` → 0 lines; no further unattributed drift. |
+| 3. Forbidden audit | PASS | Unchanged from the prior pass: A5's row in `docs/compatibility.md` still reads `PENDING` verbatim (`5a32ac9` never touches that file); the verdict line in the A5 entry reads `**Verdict:** OBSERVED — one navigate + screenshot round trip succeeded against...`, never `PASS`. |
+| 4. Acceptance audit | PASS, via the logged substitute | Re-run directly, not re-accepted on the report's say-so: authored criterion (`grep -q "^#### A5" ...`) → **exit 1**. Deviation 9's substitute (`grep -q '^## A5' ... && grep -A6 '^## A5' ... | grep -qE '2026-[0-9]{2}-[0-9]{2}'`) → **exit 0**, against the real heading `## A5 — Playwright MCP availability and browser-drive round trip`, dated `2026-08-20`. |
+| 5. Deviation reconciliation | PASS | Deviations 8, 9, and 13 all match the diffs and remain logged exactly as before — this re-audit changed no deviation text, only the plan's decision about how to dispose of deviation 13. No new deviation found in this pass. |
+
+**On the §10 tightening's actual strength.** The new sentence in §10 ("plan
+bookkeeping … never rides along in it") is prose, not a hook — this plan's own
+Requirement section says nothing about Drydock is hook-enforced, and that
+holds here too: nothing stops a human from staging both files by hand a second
+time. What it *does* do is remove the interpretive gap the first breach
+exploited (whether bookkeeping riding in a checkpoint commit was ever
+permitted was previously unstated, established only by five waves of unbroken
+practice) and it leans on a detection mechanism that already works — this
+exact check 2 caught the breach twice, on the first attempt, with no tooling
+change. "Impossible to recur" is the plan's own words for what is really
+"unambiguous to detect, and detected reliably the one time it happened." That
+is a real improvement over silence, but it is not structurally stronger than
+before in the sense of adding a gate that blocks the write; it is stronger in
+the sense of removing all room to argue the mixed commit was allowed. Recorded
+as a qualification, not a reason to BLOCK — Decision 12 does not claim
+mechanical enforcement it doesn't have; §10's own text says "stated because
+`5a32ac9` broke it by hand," which is honest about what changed.
+
+Deviations logged: 13 (5 discovered by wavecheck; 0 new in this re-audit)
+
+**Verdict: PASS.** The ownership breach is real, stays on the record as
+deviation 13 and the original BLOCK report above (neither is retracted), and
+is resolved by a documented human decision rather than a repair task or
+history rewrite, exactly as Decision 12 states. T2.0.1's owned diff
+(`docs/verification-log.md`) is correct and was always correct. Wave 2.1 may
+now be re-audited against this PASS.
+
 ## Progress log
 
 | Date | Task | Result | Notes |
