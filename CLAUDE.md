@@ -78,6 +78,11 @@ cd /tmp/dd && python3 -m http.server 5173   # then open /drydock/
   Tailwind's `font-size: 1rem` — measured in the emitted CSS. The token is now
   `--color-ground`. Before naming a colour token, check the name is not also a
   default `text-*` scale step (`base`, `sm`, `lg`, `xl`, …).
+- **Never link a doc with a repo-relative `../` href.** Only `site/out` is
+  deployed, so `docs/` does not exist in production, and on a Pages project site
+  `../` climbs out of the basePath to the domain root. Four such links shipped
+  live and 404'd. Docs are linked absolutely from `REPO`/`BLOB` in
+  `content/copy.ts`; `assert-copy.mjs` rejects any `../` href in the export.
 - **`metadataBase` must NOT contain the basePath.** Next prepends `basePath` to
   every metadata-relative asset, so a base of `…github.io/drydock/` emits
   `/drydock/drydock/opengraph-image.png` — a 404 on every social share, and

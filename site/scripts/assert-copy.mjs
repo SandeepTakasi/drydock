@@ -165,6 +165,19 @@ if (checkMotion) {
   }
 }
 
+// --- no relative-escape links ----------------------------------------------
+// `href="../docs/…"` reads fine in a repo tree and 404s in production: on a
+// Pages project site `../` climbs out of the basePath to the domain root, and
+// docs/ is not deployed at all. Four such links shipped live before this check
+// existed. Docs must be linked absolutely, on GitHub.
+const ESCAPING = raw.match(/href="\.\.\/[^"]*"/g) ?? [];
+for (const hit of [...new Set(ESCAPING)]) {
+  fail(
+    `relative-escape link: ${hit} climbs out of the basePath and 404s in ` +
+      `production. Link docs absolutely (see REPO/BLOB in content/copy.ts).`
+  );
+}
+
 // --- og card drift ---------------------------------------------------------
 // app/opengraph-image.png is a committed binary rendered from scripts/og-card.html,
 // so no copy assertion can see inside it. The card restates the hero promise;

@@ -80,13 +80,25 @@ export const meta: Record<
 
 const VERSION = "0.4.1";
 
+/**
+ * Docs live in the repo, not in the export — only `site/out` is deployed. So
+ * every link to a doc has to leave for GitHub, which renders markdown anyway.
+ *
+ * These were once repo-relative (`../docs/self-audit.md`), written when there
+ * was no deploy and the only way to read the site was locally beside the repo
+ * tree. On GitHub Pages `../` escapes the basePath to the domain root: all four
+ * were 404s in production. `assert-copy.mjs` now rejects any `../` href.
+ */
+const REPO = "https://github.com/TakasiVenkataSandeep-08/drydock";
+const BLOB = `${REPO}/blob/main`;
+
 export const site = {
   title: "Drydock -- plan-first parallel execution for Claude Code",
   description:
     "Plan-first parallel execution for Claude Code: a rigorous plan document as the source of truth, subagents executing it in parallel waves with disjoint file ownership, a conformance audit gating every wave, and a reconcile loop that feeds execution learnings back into your docs.",
   status: "open pilot -- field benchmarks pending",
   version: VERSION,
-  selfAuditHref: "../docs/self-audit.md",
+  selfAuditHref: `${BLOB}/docs/self-audit.md`,
   selfAuditLinkText: "Read the self-audit",
   skipLinkText: "Skip to content",
   wordmark: "Drydock",
@@ -99,6 +111,7 @@ export const site = {
    */
   origin: "https://takasivenkatasandeep-08.github.io",
   url: "https://takasivenkatasandeep-08.github.io/drydock/",
+  repo: REPO,
 };
 
 /** Top-bar navigation. Every href is a section id rendered on this page. */
@@ -340,9 +353,10 @@ export const footer: {
   tagline: "Nothing sails until it leaves the dock.",
   meta: [`v${VERSION}`, "MIT", "2026-08-19"],
   links: [
-    { href: "../docs/self-audit.md", label: "Self-audit" },
-    { href: "../docs/compatibility.md", label: "Compatibility" },
-    { href: "../drydock/README.md", label: "Plugin README" },
-    { href: "../docs/plans/001-drydock-homepage.md", label: "Example plan" },
+    { href: REPO, label: "GitHub" },
+    { href: `${BLOB}/docs/self-audit.md`, label: "Self-audit" },
+    { href: `${BLOB}/docs/compatibility.md`, label: "Compatibility" },
+    { href: `${BLOB}/drydock/README.md`, label: "Plugin README" },
+    { href: `${BLOB}/docs/plans/001-drydock-homepage.md`, label: "Example plan" },
   ],
 };
