@@ -358,7 +358,7 @@ substitution was not adequate, and it should be recorded against Decision 9.
 ## Phase 0: Pre-flight
 
 #### T0 — Baseline verification
-- **Status:** TODO
+- **Status:** DONE
 - **Description:** Run every quality-gate command on the untouched tree and
   record results verbatim in §4, plus the `format_version` of all three existing
   plans, so the no-bump decision rests on observation.
@@ -366,7 +366,10 @@ substitution was not adequate, and it should be recorded against Decision 9.
 - **Depends on:** —
 - **Model / thinking:** Mechanical / off · **Executor:** drydock:executor
 - **Context brief:** this plan §4, §5. CLAUDE.md's "Working on `site/`" section.
-- **Acceptance criterion:** `claude plugin validate ./drydock --strict && (cd site && npm run verify) && grep -h '^format_version:' docs/plans/00[123]-*.md | sort -u | wc -l | grep -qx 1` exits 0.
+- **Acceptance criterion:** `claude plugin validate ./drydock --strict && (cd site && npm run verify) && [ "$(grep -h '^format_version:' docs/plans/00[123]-*.md | sort -u | wc -l | tr -d ' ')" = 1 ]` exits 0.
+  *(Corrected at execution — deviation 2. The original piped `wc -l` into
+  `grep -qx 1`; BSD `wc` left-pads its count to `"       1"`, so the pattern
+  could never match and the criterion was unpassable regardless of repo state.)*
 
 ## Phase 1: Contract, skill, and packaging
 
@@ -694,6 +697,7 @@ recorded override) · human reads `verdict.md` and signs the go/no-go.
 
 | # | Task | What deviated | Why | Impact | Recorded |
 |---|---|---|---|---|---|
+| 2 | T0 | T0's acceptance criterion was unpassable as authored: it piped `wc -l` into `grep -qx 1`, and BSD `wc` left-pads the count to `"       1"`, which `-x` (whole-line match) can never equal `1`. Criterion corrected in place to `[ "$(… \| tr -d ' ')" = 1 ]`. | Planner error, written on Linux `wc` habits and never dry-run against this platform before the plan was presented. The plan's own checklist asks whether a criterion can FAIL; it does not ask whether it can PASS. | **Low on the repo, real on the process.** All three underlying facts were true and separately verified (both gates exit 0; all three plans are `format_version: 2`), so no wrong conclusion was drawn and no file was changed to accommodate it. Two process failures worth keeping: (a) T0's commit was made before the combined criterion was confirmed green, which the executor contract forbids — the commit stands but T0 was not DONE until the corrected criterion passed; (b) the whole plan was audited for the same idiom afterwards, finding no other instance (`grep -c` does not pad; T1.2.3's `awk` form is padding-safe). | orchestrator, at T0 |
 | 1 | all of Phase 1 | Tasks executed inline by the orchestrating session instead of being spawned as `drydock:executor` subagents, contrary to the embedded Execution protocol. | The session operates under a standing instruction not to spawn agents unless explicitly asked; "execute phase 1" was read as plan approval, not as agent authorisation. | **Material.** Two properties are lost: fresh-context isolation per task (the executor sees only its brief; this session sees the whole plan and this conversation), and independent authorship from the auditor — wavecheck's forbidden-audit judgement is weakened when the auditor wrote the diff, which wavecheck's own text names as the disqualifying condition. Mechanical checks (ownership per commit, acceptance criteria as commands) are unaffected: they are evidence, not opinion. Ownership lists, forbidden lists and per-task commits are honoured exactly as written. | orchestrator, at wave 1.0 open |
 
 ## Wavecheck reports
