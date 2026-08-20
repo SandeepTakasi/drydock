@@ -384,6 +384,14 @@ been executed in a browser yet, and the plan says so.
 **Phase gate:** `claude plugin validate ./drydock --strict` exits 0 · `T1.R.1`
 APPROVED · human reads the diff and approves.
 
+**Phase 1 gate CLOSED — 2026-08-20.** All three conditions met:
+`claude plugin validate ./drydock --strict` exit 0; `T1.R.1` APPROVED on
+re-review after Wave 1.3; human approval by sandeep. Phase 2 remains
+`BLOCKED(Q1)` — Playwright MCP is not installed, so the gate this phase built
+has still never driven a browser, and no `verdict.md` exists for this plan.
+Plan status stays `EXECUTING` rather than `DONE`: a phase closing is not a plan
+closing.
+
 ### Wave 1.0 — Contracts
 
 > Pins the shared surface every later task builds against: the section schema,
@@ -1018,6 +1026,7 @@ Deviations logged: 6 (3 discovered by wavecheck)
 | 2026-08-20 | Wave 1.R | REJECTED on R1 | Frozen evidence path contradicted the `evidence_dir` config key |
 | 2026-08-20 | Wave 1.3 | wavecheck PASS | Repair per Decision 11; `evidence_dir` dropped across three files |
 | 2026-08-20 | Wave 1.R | APPROVED on re-review | R1 closed; phase gate awaits human approval |
+| 2026-08-20 | Phase 1 gate | CLOSED, approved by sandeep | validate --strict exit 0 + T1.R.1 APPROVED + human approval. Phase 2 still BLOCKED(Q1) |
 
 ## Reconcile report
 
