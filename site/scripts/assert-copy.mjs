@@ -22,8 +22,14 @@ const SECTIONS_DIR = join(HERE, "..", "components", "sections");
 
 const REQUIRED = [
   "APPROVED (HUMAN-ONLY)",
-  "internal pilot",
+  "open pilot",
   "field benchmarks pending",
+  // A3 is the one row that must never quietly graduate. Before these two
+  // literals were required, the page could have promoted it to PASSED and the
+  // gate would still have gone green: nothing checked that the caveat was
+  // present, only that the claims were. Both strings live in A3's evidence row.
+  "PUBLISHED, NOT PASSED",
+  "ceiling, not a rate",
   "Deviations logged: 1 (1 discovered by wavecheck)",
   "A2b",
   "drift",

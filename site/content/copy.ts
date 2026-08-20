@@ -84,12 +84,13 @@ export const site = {
   title: "Drydock -- plan-first parallel execution for Claude Code",
   description:
     "Plan-first parallel execution for Claude Code: a rigorous plan document as the source of truth, subagents executing it in parallel waves with disjoint file ownership, a conformance audit gating every wave, and a reconcile loop that feeds execution learnings back into your docs.",
-  status: "internal pilot -- field benchmarks pending",
+  status: "open pilot -- field benchmarks pending",
   version: VERSION,
   selfAuditHref: "../docs/self-audit.md",
   selfAuditLinkText: "Read the self-audit",
   skipLinkText: "Skip to content",
   wordmark: "Drydock",
+  url: "https://takasivenkatasandeep-08.github.io/drydock/",
 };
 
 /** Top-bar navigation. Every href is a section id rendered on this page. */
@@ -107,7 +108,7 @@ export const hero = {
     "Subagents that cannot quietly rewrite each other, on a plan that is checked against the diff.",
   thesis: "NOTHING SAILS UNTIL IT LEAVES THE DOCK",
   sub: "A plan document is the source of truth. Subagents execute it in parallel waves with disjoint file ownership. A conformance gate audits every wave against the actual diff, never against what the executors report.",
-  badges: [`v${VERSION} -- INTERNAL PILOT`, "MIT", "PLAN FORMAT v2"],
+  badges: [`v${VERSION} -- OPEN PILOT`, "MIT", "PLAN FORMAT v2"],
   ctaPrimary: "Install it",
   wave: {
     label: "WAVE 1.1",

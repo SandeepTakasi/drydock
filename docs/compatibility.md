@@ -29,3 +29,27 @@ Public release criteria — **3 of 4 met, 1 partial**:
 
 Licensed MIT as of v0.4.0. Remaining before public release is therefore evidence,
 not code.
+
+## 2026-08-20 — published as an open pilot
+
+The homepage went live at <https://takasivenkatasandeep-08.github.io/drydock/>
+and the repo went public with **A3 unresolved and stated on the page**, rather
+than holding the release until it passes.
+
+**No row status changed to make that happen.** Going public is a decision, not
+evidence, and this file moves only on evidence — see
+[verification-log.md](verification-log.md). The release criteria above still read
+3 of 4 met, 1 partial, because that is still true.
+
+What ships visible instead: the site renders A3 as `PUBLISHED, NOT PASSED` with
+"ceiling, not a rate" attached, and `scripts/assert-copy.mjs` now **requires**
+both of those strings. Before this, nothing forced the caveat to appear — the
+page could have promoted A3 and the gate would still have gone green. Proven
+failable the same day: doctoring the export to say `PASSED` with the caveat
+removed fails `assert-copy` naming both literals.
+
+The status line reads "open pilot -- field benchmarks pending" rather than
+"internal pilot", which was simply false on a public URL.
+
+A3's route to PASSED is unchanged: one session not told the gate is observed, on
+a plan it did not plan.

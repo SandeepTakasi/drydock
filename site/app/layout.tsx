@@ -5,10 +5,29 @@ import { fontVariables } from "@/lib/fonts";
 
 import "./globals.css";
 
-/** Both strings come from content/copy.ts — this file authors no copy. */
+/**
+ * Every string here comes from content/copy.ts — this file authors no copy.
+ *
+ * `metadataBase` is what lets Next emit absolute `og:`/`twitter:` URLs; without
+ * it the social tags resolve against nothing and the build warns. It has to
+ * include the basePath, because that is where the page actually lives.
+ */
 export const metadata: Metadata = {
+  metadataBase: new URL(site.url),
   title: site.title,
   description: site.description,
+  openGraph: {
+    type: "website",
+    url: site.url,
+    siteName: site.wordmark,
+    title: site.title,
+    description: site.description,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: site.title,
+    description: site.description,
+  },
 };
 
 export default function RootLayout({
