@@ -535,7 +535,7 @@ APPROVED · human reads the diff and approves.
 - **Acceptance criterion:** `bash -c 'f=drydock/skills/seatrial/SKILL.md; test -f "$f" && grep -q "^name: seatrial" "$f" && ! grep -q "disable-model-invocation" "$f" && grep -q "step not executable" "$f" && grep -q "GENERATED, NOT EXECUTED" "$f" && grep -q "GO-WITH-OVERRIDES" "$f" && grep -q "\.drydock/testing/<plan-id>/verdict\.md" "$f" && claude plugin validate ./drydock --strict'` exits 0.
 
 #### T1.1.5r1 — Remove `PARTIAL`; a subset run HALTs and writes no sheet
-- **Status:** TODO
+- **Status:** DONE
 - **Description:** Replaces T1.1.5. Delete the `PARTIAL` summary verdict, and
   specify that running a subset of cases is a diagnostic that writes no verdict
   sheet at all: a gate run is every case or a HALT. Everything else T1.1.5
@@ -797,6 +797,32 @@ auditor.
 Deviations logged: 6 (3 discovered by wavecheck)
 
 **Verdict: BLOCK.** Wave 1.2 must not start. Plan status set to `BLOCKED`.
+
+### Wavecheck 1.1 (re-audit after T1.1.5r1) — PASS — 2026-08-20
+
+Re-run in full after the remediation, not spot-checked on the one finding.
+
+| Check | Result | Evidence |
+|---|---|---|
+| 1. Plan integrity | PASS | `status: EXECUTING` (BLOCKED → EXECUTING, permitted after the human decision recorded as Decision 10); wave 1.0 PASS present; wave 1.1's earlier BLOCK report left in place above, unedited — the record of a gate that fired is not a draft. |
+| 2. Ownership audit | PASS | Five active per-task commits, each set equal to its `owns` entry. **The two-commits-on-one-file question, answered explicitly:** `38b05ca` (T1.1.5) and `6989938` (T1.1.5r1) both touch `seatrial/SKILL.md`, which would be an ownership violation and a plan defect if both tasks were active. They are not — T1.1.5 is struck through, marked SUPERSEDED, its id retired and never reusable, per the format contract's replaced-task mechanism. Active owners of that path in wave 1.1: exactly 1. `38b05ca` stands as history. |
+| 3. Forbidden audit | PASS | T1.1.5r1's list checked clause by clause: no verdict value the contract does not define (`grep -c PARTIAL` → 0 in the skill, 0 in the contract); the contract file has zero uncommitted or committed changes from this task (`git status --porcelain` on that path → empty, and it is absent from `6989938`); all five of the skill's other refusals survive verbatim (no-fallback, no-improvisation, no-dependency, unrun-specs-are-a-hypothesis, over-claim clause — 5/5 present); 0 lines matching `PreToolUse\|PostToolUse`. Earlier findings on T1.1.1–T1.1.4 unchanged and re-verified. |
+| 4. Acceptance audit | PASS | All five active criteria executed: exit 0, 0, 0, 0, 0. T1.1.5r1's includes `claude plugin validate ./drydock --strict`. |
+| 5. Deviation reconciliation | PASS | Deviations 1–6 all logged. The remediation itself is not a deviation — it is a human decision (10) applied through the contract's own mechanism, so it belongs in the Decision Log, not here. No new deviation discovered in `6989938`. |
+
+**The BLOCK's finding, specifically re-tested rather than assumed fixed.**
+`PARTIAL` occurs 0 times in `seatrial/SKILL.md`; the skill's verdict set now
+reads `GO | NO-GO | GO-WITH-OVERRIDES`, identical to the contract's, so
+reconcile's four branches are exhaustive over it again. The undefined-behaviour
+path that caused the BLOCK is closed, not papered over.
+
+Same auditor caveat as wave 1.0 applies (deviation 1): checks 2 and 4 are
+mechanical and hold regardless of authorship; check 3 remains judgement by the
+author of the diff.
+
+Deviations logged: 6 (3 discovered by wavecheck)
+
+**Verdict: PASS.** Wave 1.2 may start.
 
 ## Progress log
 
