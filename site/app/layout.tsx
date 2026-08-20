@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import Image from "next/image";
+
+import mark from "@/assets/drydock-mark.png";
 
 import { footer, nav, site } from "@/content/copy";
 import { fontVariables } from "@/lib/fonts";
@@ -81,8 +84,25 @@ export default function RootLayout({
           <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-6 px-6 sm:px-10">
             <a
               href="#content"
-              className="font-display text-body font-semibold tracking-tight text-ink"
+              className="flex shrink-0 items-center gap-2.5 font-display text-body font-semibold tracking-tight text-ink"
             >
+              {/* A STATIC IMPORT, not a string src. Measured: `next/image`
+                  does NOT prepend `basePath` to a string src -- it emitted
+                  "/drydock-mark.png", which 404s on a project site. A static
+                  import resolves through /_next/static/media/, and _next URLs
+                  do carry the basePath, so nothing here hardcodes "/drydock".
+                  It is content-hashed too, and ships once rather than twice.
+
+                  alt is empty on purpose: the wordmark beside it says
+                  "Drydock", so announcing the mark too would just repeat it. */}
+              <Image
+                src={mark}
+                alt=""
+                width={26}
+                height={26}
+                priority
+                className="h-[26px] w-[26px]"
+              />
               {site.wordmark}
             </a>
             <span className="hidden border border-line px-2 py-1 font-mono text-mark text-ink-dim uppercase sm:inline-block">

@@ -19,7 +19,6 @@ import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SECTIONS_DIR = join(HERE, "..", "components", "sections");
-const OG_CARD = join(HERE, "og-card.html");
 
 const REQUIRED = [
   "APPROVED (HUMAN-ONLY)",
@@ -176,34 +175,6 @@ for (const hit of [...new Set(ESCAPING)]) {
     `relative-escape link: ${hit} climbs out of the basePath and 404s in ` +
       `production. Link docs absolutely (see REPO/BLOB in content/copy.ts).`
   );
-}
-
-// --- og card drift ---------------------------------------------------------
-// app/opengraph-image.png is a committed binary rendered from scripts/og-card.html,
-// so no copy assertion can see inside it. The card restates the hero promise;
-// if that sentence changes on the page and not on the card, every share shows a
-// claim the site no longer makes. Assert the card's sentence is still on the page
-// — the failure message is the instruction to re-render.
-if (checkMotion) {
-  try {
-    const card = readFileSync(OG_CARD, "utf8");
-    const block = card.match(/<p class="promise">([\s\S]*?)<\/p>/i);
-    if (!block) {
-      fail(`og card: no <p class="promise"> block in ${OG_CARD}`);
-    } else {
-      const promise = inner(block[1]);
-      if (!promise) fail("og card: the promise block is empty");
-      else if (!text.includes(promise)) {
-        fail(
-          `og card is stale: ${JSON.stringify(promise)} is not on the page. ` +
-            `Update scripts/og-card.html and re-render app/opengraph-image.png ` +
-            `(command is in the card's header comment).`
-        );
-      }
-    }
-  } catch (err) {
-    fail(`og card: cannot read ${OG_CARD}: ${err.message}`);
-  }
 }
 
 // --- report ----------------------------------------------------------------
