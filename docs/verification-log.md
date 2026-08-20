@@ -563,3 +563,88 @@ Testing Gate exercises the rest.
 **Verdict:** OBSERVED — one navigate + screenshot round trip succeeded against
 the local static export on 2026-08-20. Whether one round trip justifies moving
 the A5 row off `PENDING` is a human decision on this evidence, per plan 004 §9.
+
+---
+
+## Seatrial gate run — plan 004 Testing Gate, TG1–TG6
+
+**Date:** 2026-08-20
+**Host version:** `claude --version` → `2.1.237 (Claude Code)`
+**Parent session model:** Opus 5 (1M context) — `claude-opus-5[1m]`
+**Repo SHA at run time:** `5a32ac9`
+**Driver:** Playwright MCP (`@playwright/mcp`), Chromium headless, desktop viewport
+**Target:** `http://127.0.0.1:5173/drydock/` — `site/out` symlinked at the
+basePath, served by `python3 -m http.server 5173`
+
+This is the **first execution of the `seatrial` skill in any session**. Deviation
+7 established that skills written in a session are stale within it; this session
+is the first that could run it, and the run below is what it did.
+
+**Verdict sheet:** `.drydock/testing/004-seatrial-e2e-gate/verdict.md`
+(gitignored per Decision 8 — this entry is the tracked record of the run).
+
+### Preflight — all six passed
+
+| Check | Result |
+|---|---|
+| Gate section exists, `format_version: 2`, status `EXECUTING` | pass |
+| Not stale — `git diff 7f934ba..HEAD -- site/` | empty; export built 21:00 vs newest source 19:33 |
+| Playwright MCP resolves | 24 `mcp__playwright__browser_*` tools |
+| Target answers | `curl -o /dev/null -w %{http_code}` → `200` |
+| Evidence root writable | `.drydock/testing/004-seatrial-e2e-gate/` created |
+| Auth settled | gate header declares `none`; target is public |
+
+### Results
+
+| Case | Severity | Verdict | Actual |
+|---|---|---|---|
+| TG1 | blocker | PASS | one `<h1>`, text `Drydock`; one image at the declared path |
+| TG2 | blocker | **FAIL — as designed** | `open pilot -- field benchmarks pending` vs expected `CLOSED PILOT` |
+| TG3 | blocker | **FAIL `step not executable` — as designed**, plus HALT | `[data-testid="checkout-submit"]` → 0; page has no test ids at all; `checkout` absent from the DOM |
+| TG4 | major | **FAIL on the evidence clause** | assertion held (`$/plugin marketplace add …`); no video obtainable |
+| TG5 | major | PASS | 13 same-origin requests, all 200; no cross-origin request |
+| TG6 | minor | PASS | `naturalWidth` 256, `naturalHeight` 256, `complete: true`, box 26x26 |
+
+**Summary verdict: NO-GO** — TG4 is a major FAIL with no recorded override, and
+seatrial never writes an override for itself.
+
+### Observations — what this run proves about seatrial
+
+1. **The three designed-to-fail paths behaved.** TG2 failed against a false
+   expectation rather than agreeing with it. TG3 returned the exact reason string
+   `step not executable`, clicked no substitute element, and **halted and asked**
+   instead of manufacturing a NO-GO. The halt was resolved by the user as
+   "synthetic case, continue". This is the first evidence that the skill's
+   refusal paths work rather than merely being written down.
+2. **A `video` evidence declaration is unreachable through Playwright MCP as
+   configured.** Video is a per-`BrowserContext` setting fixed at creation, and
+   the server exposes no video, record or trace tool. So TG4's failure is a
+   harness capability gap, not a site defect. Any plan declaring `video` evidence
+   needs the MCP server launched with video saving enabled, or it will fail this
+   clause every time.
+3. **A relative screenshot `filename` does not land in the evidence root.** It
+   resolves against the MCP server's own working directory (observed under A5).
+   An absolute path works, but the parent directory must already exist — the
+   first absolute-path attempt failed `ENOENT` until the per-case directories
+   were created. Seatrial must `mkdir -p` the case directory before capturing.
+4. **`page.goto` to a URL differing only by fragment records no network
+   requests.** The `#install` navigation logged nothing, which briefly produced
+   an empty TG5 evidence file. A network case needs a real navigation, not a
+   hash change.
+5. **A locator written from an accessibility snapshot was wrong.** TG2's pill
+   read as `generic` in the snapshot; the generated CSS selector
+   `header > div > div` matched zero elements because it is a `span`. Caught by
+   re-resolving every generated selector against the live DOM. Generating specs
+   from the run rather than from the prose is load-bearing, not stylistic.
+
+### Not tested
+
+Click (no case needed one — TG3's click was the unperformable step), form fill
+and mutation, video capture, multi-tab, mobile and tablet viewports, non-Chromium
+engines, the accessibility tree, the live production origin, and every page other
+than `/`. Generated specs in `e2e/` are **GENERATED, NOT EXECUTED** —
+`@playwright/test` is absent and no dependency was added.
+
+**Verdict:** OBSERVED — seatrial ran end to end, honoured its three refusal
+paths, and returned NO-GO for a stated reason. The NO-GO reflects a harness
+capability gap (TG4's video evidence), not a defect in the site.
