@@ -57,8 +57,10 @@ Run in this order; stop early only on check 1 failure.
 
 ## Verdict
 
-Append to the plan's **`## Wavecheck reports`** section (position 14 in the
-format contract — NOT §8, which is *Open questions*):
+Append to the plan's **`## Wavecheck reports`** section (position 15 in the
+format contract — NOT §8, which is *Open questions*). Locate it by NAME, not by
+counting: the position moved from 14 to 15 when `## Testing Gate` was inserted at
+11, and a report filed by ordinal lands in the wrong section:
 
 ```
 ### Wavecheck <P>.<W> — PASS|BLOCK — <date>
