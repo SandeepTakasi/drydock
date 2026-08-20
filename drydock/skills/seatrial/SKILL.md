@@ -26,9 +26,17 @@ section *Testing Gate section*. Path config comes from plugin config `e2e_dir`
 
 ## Inputs
 
-- A plan path. Optionally a subset of case ids to run — but a partial run may
-  never produce a `GO`; it produces a `PARTIAL` sheet that is not a verdict and
-  cannot satisfy reconcile.
+- A plan path. A subset of case ids may be passed as a **diagnostic** while
+  someone is iterating on a failure — and a subset run **writes no verdict sheet
+  at all**. A gate run is every case in the section or it is a HALT.
+
+  There is no partial verdict, deliberately. The gate rule already holds that a
+  case which cannot be run is neither a pass nor a skip; a suite that was only
+  partly run is the same shape of thing, and inventing a fourth summary value for
+  it would leave `drydock:reconcile` — which branches on exactly missing, NO-GO,
+  GO-WITH-OVERRIDES and GO — with no rule, so a plan could be closed on a run
+  that verified some of it. Overwriting a real sheet with a partial one is worse
+  still, which is why nothing is written.
 - The running app. You do not start it, build it, migrate it, or seed it. If it
   is not up, that is a HALT, not a task.
 
@@ -135,10 +143,11 @@ suite can be re-run without an agent. Configure `video: 'retain-on-failure'`.
 ## The verdict sheet
 
 Write `.drydock/testing/<plan-id>/verdict.md` — the path the format contract
-freezes and `drydock:reconcile` reads. Shape:
+freezes and `drydock:reconcile` reads. Write it only after every case in the
+section has a verdict; a diagnostic subset run writes nothing. Shape:
 
 ```
-GO | NO-GO | GO-WITH-OVERRIDES | PARTIAL
+GO | NO-GO | GO-WITH-OVERRIDES
 
 ## Environment
 | Base URL | Browser | Driver | Commit SHA | Run at |
