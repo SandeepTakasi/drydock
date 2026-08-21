@@ -32,6 +32,18 @@ const REQUIRED = [
   // present, only that the claims were. Both strings live in A3's evidence row.
   "PUBLISHED, NOT PASSED",
   "ceiling, not a rate",
+  // A3 publishes a skipped gate as of v0.6.0. Promoting the page back to a
+  // spotless count would be the same silent graduation these literals exist to
+  // stop, so the skip is required to appear.
+  "1 skipped",
+  // A6 is v0.6.0's headline claim -- ownership ENFORCED rather than requested --
+  // and it ships before the hook has been observed firing in a live session.
+  // That is allowed here on the same terms A3 shipped: stated on the page, with
+  // the gate requiring the statement. Without these, the page could claim
+  // enforcement and drop the caveat, and nothing would notice.
+  "LOGIC VERIFIED, LIVE ENFORCEMENT UNEXERCISED",
+  "has not been observed once",
+  "Bash-mediated writes bypass file-tool hooks",
   "Deviations logged: 1 (1 discovered by wavecheck)",
   "A2b",
   "drift",

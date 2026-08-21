@@ -28,13 +28,28 @@ planwright ──► [human approves] ──► execute waves ──► wavechec
 
 ## What makes it different
 
+- **Disjoint ownership is enforced, not requested** (v0.6.0). A `PreToolUse`
+  hook reads `.drydock/wave-owns.json` and **denies** any Write/Edit to a path no
+  task in the active wave owns. Prose did not hold this line — a plan in this
+  repo staged a file outside its `owns` and the stated cause was that the work
+  ran inline, where the contract binds nobody. A hook binds every writer in the
+  session. Three ceilings, stated plainly: **Bash writes bypass it** (`sed -i`,
+  `>`, `git checkout`) and the post-hoc audit is the backstop; it is
+  **wave-level, not per-task**, because hook input carries no subagent identity;
+  and it is **inert unless `.drydock/wave-owns.json` exists**, which is both the
+  default state and the escape hatch. Same-wave tasks can additionally be
+  isolated by git worktrees (`isolation: worktree` in the plan header).
 - **Plan-conformance auditing, not code review.** Wavecheck answers one
   question: did the wave do exactly what the plan said and nothing else —
   ownership boundaries, forbidden lists, acceptance criteria verified against
   the actual diff, never against executor claims.
-- **Disjoint ownership as a first-class constraint.** Same-wave tasks can
-  never own the same file; optionally enforced by git worktrees
-  (`isolation: worktree` in the plan header).
+- **The plan is checked by a program, not only by a reader.**
+  `scripts/drydock-audit.mjs validate-plan` catches duplicate task ids,
+  same-wave ownership collisions, dependencies on same-wave tasks, and Testing
+  Gate defects; `audit-wave` computes the ownership audit from per-task commits
+  and prints the SHAs and file lists it derived, so wavecheck's evidence is
+  reproducible rather than eyeballed. Its first run found a same-wave dependency
+  in two of this repo's four plans that reviews and pressure tests had missed.
 - **Per-task model right-sizing lives in the plan**, not in global config.
 - **The Testing Gate is written before the code.** A plan touching a UI or API
   surface carries its end-to-end cases from the start, with declared evidence
@@ -48,6 +63,16 @@ planwright ──► [human approves] ──► execute waves ──► wavechec
   auto-applied.
 - **Replan patches, never regenerates.** Decision Log append-only, completed
   waves immutable, task ids never reused.
+
+## Requirements
+
+**Node >= 22**, on PATH. New in v0.6.0: the ownership hook and the audit script
+are Node programs (`path.matchesGlob` is stdlib from 22). Before this release the
+plugin was markdown-only and ran wherever Claude Code ran; that is no longer
+true, and it is a real adoption cost rather than a footnote. The host must also
+support `PreToolUse` hooks, or ownership enforcement silently does nothing —
+run `node drydock/hooks/enforce-owns.test.mjs` to confirm the hook behaves before
+relying on it.
 
 ## Install (internal, team scope)
 

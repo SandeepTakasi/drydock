@@ -1,5 +1,64 @@
 # Changelog
 
+## 0.6.0 — 2026-08-21
+
+The first release that ships **code**. Every prior version enforced its contract
+with prose, and the field record showed prose not holding: plan 004 logged an
+ownership breach whose stated cause was that the work ran inline, where no
+instruction binds, and a wave gate that was skipped because "continue" read as
+authorisation. v0.5.1 answered both with four more refusals. This release
+answers them with three programs, and states what they cannot do.
+
+**Implemented directly rather than as a plan 005** — by this plugin's own new
+size guidance the change sits in the short-form band, and dogfooding a plan whose
+subject is enforcement would have cost more than it taught. Logged here because
+the alternative was to not say it.
+
+- **Ownership is enforced by a `PreToolUse` hook** (`hooks/enforce-owns.mjs`).
+  Reads `.drydock/wave-owns.json`, denies any Write/Edit/NotebookEdit to a path
+  no task in the active wave owns. Wave-level, because hook input exposes no
+  subagent identity and a wave runs N executors at once. **Inert when the file is
+  absent** — the normal state of a repo, and the escape hatch that makes `deny`
+  safe. **Fails closed when the file is present but unparseable**, because a
+  broken enforcement control must not become no enforcement. **Ceilings: Bash
+  writes bypass file-tool hooks entirely**, and paths outside the project
+  directory are not enforced. `hooks/enforce-owns.test.mjs` covers ten cases,
+  including both Windows path separators.
+- **`scripts/drydock-audit.mjs`**, two subcommands, no dependencies.
+  `validate-plan [--strict]` gives planwright's own output the runnable criterion
+  it demands of every task it writes. `audit-wave` computes wavecheck's ownership
+  audit from per-task commits and **prints the SHAs and file lists it derived** —
+  never a bare verdict, because a wrong script is more dangerous than a wrong
+  model when it looks authoritative. Lenient by default so it does not red-flag
+  plans written before it existed; `--strict` for newly authored plans.
+- **Found on its first run, in this repo's own plans:** two plans place a task in
+  the same wave as a task it depends on, so those waves cannot run in parallel as
+  declared (001 T2.3.1→T2.3.2, 004 T2.1.2→T2.1.1). Neither was caught by a
+  wavecheck, a quality review, or an adversarial pressure test.
+- **Found by the audit and worth a contract fix later:** the checkpoint subject
+  `drydock(<task-id>): …` carries no plan id, and task ids repeat across plans —
+  `drydock(T2.0.1)` matches a commit in two different plans here. `audit-wave`
+  scopes its search to the plan's recorded Baseline SHA and says so when a plan
+  records none.
+- **planwright right-sizes its own ceremony.** Under ~5 files it advises against
+  planning at all rather than refusing; ~5–15 takes a short form with no pressure
+  test and no phase review; over ~15 is the full workflow. Thresholds are marked
+  assumed, not measured.
+- **planwright will not declare `video` evidence**, now checked mechanically in
+  `--strict` rather than only asked for in prose (v0.5.1).
+- **The orchestrator writes and deletes `.drydock/wave-owns.json`** around each
+  wave; the format contract carries the shape and the warning that a stale file
+  blocks the next unrelated edit.
+- **Honesty matrix drift now fails a gate.** `site/scripts/assert-matrix.mjs`
+  joins `npm run verify`: a PENDING row may not have evidence in the verification
+  log, a row citing the log must have it, and a plan logging a skipped gate must
+  be accounted for in the A3 ledger. Written before the fix and **observed failing
+  on three real drifts**, then made green: A5 moved PENDING → OBSERVED, and A3
+  moved 22/22 across 3 plans → 27/28 across 4, with the skip stated.
+- **First cost figure published** — [docs/cost-001.md](../docs/cost-001.md).
+  Includes the number it could not capture (token spend was never instrumented)
+  and says so, because the economy claim is otherwise unevidenced.
+
 ## 0.5.1 — 2026-08-21
 
 Guardrails harvested from plan 004's own execution. Every item here is a

@@ -78,7 +78,7 @@ export const meta: Record<
   },
 };
 
-const VERSION = "0.5.1";
+const VERSION = "0.6.0";
 
 /**
  * Docs live in the repo, not in the export — only `site/out` is deployed. So
@@ -213,7 +213,21 @@ export const evidence: { rows: EvidenceRow[] } = {
         "Orchestrator gate compliance (wavecheck invoked unprompted between waves)",
       status: "PUBLISHED, NOT PASSED",
       tone: "hold",
-      note: "22 of 22 wave gates invoked and 0 skipped across 3 pilot plans, 21 of 22 recorded before the next wave opened. Every session counted knew it was being observed, so read that as a ceiling, not a rate. The sample is 3 plans against the 5 to 10 this row asks for, and measurement closed there deliberately: more observed runs raise the count without changing what it means.",
+      note: "27 of 28 wave gates invoked at their boundary across 4 pilot plans, with 1 skipped and 26 of 28 recorded before the next wave opened. The skip is the useful part: the following gate refused to open on the missing report, and the retroactive audit then blocked on a real ownership breach, so the recovery path is observed rather than assumed. Every session counted knew it was being observed, so read the figure as a ceiling, not a rate. The sample is 4 plans against the 5 to 10 this row asks for.",
+    },
+    {
+      id: "A5",
+      label: "Playwright MCP availability and browser-drive round trip",
+      status: "OBSERVED, NOT PASSED",
+      tone: "hold",
+      note: "2026-08-20. Navigate returned live page state and a screenshot landed on disk, and the full Testing Gate ran through it. Two limits keep it off PASSED: availability is per-session, since an earlier session on the same machine found no browser tools at all, and only navigate and screenshot were exercised. Video evidence is not capturable through this driver at all, which is what produced that plan's only NO-GO.",
+    },
+    {
+      id: "A6",
+      label: "Ownership enforcement hook fires in a live session",
+      status: "LOGIC VERIFIED, LIVE ENFORCEMENT UNEXERCISED",
+      tone: "hold",
+      note: "New in v0.6.0, and the newest claim on this page, so read it precisely. The hook's logic passes 10 of 10 cases driven by hook-shaped input: it denies writes outside the wave's ownership in both path separator styles, stays inert when no wave is running, and fails closed on a broken config. Whether the host actually invokes it on a real edit has not been observed once. A hook registers at session start, so it is never live in the session that writes it. Bash-mediated writes bypass file-tool hooks entirely and are a documented ceiling, not a gap: the post-hoc audit is the backstop there.",
     },
   ],
 };
@@ -329,7 +343,7 @@ export const faq: FaqItem[] = [
   },
   {
     q: "How is this different from other planning plugins?",
-    a: "The gate audits plan conformance, not code quality: did the wave do exactly what the plan said and nothing else, judged against the actual diff rather than against what the executors claim. Disjoint file ownership is a first-class constraint, optionally enforced by git worktrees. Per-task model right-sizing lives in the plan instead of global config. And reconcile closes the loop by turning what execution learned into proposed doc diffs.",
+    a: "The gate audits plan conformance, not code quality: did the wave do exactly what the plan said and nothing else, judged against the actual diff rather than against what the executors claim. From v0.6.0 disjoint file ownership is enforced by a hook that denies writes outside the active wave rather than asking for them to stay inside it, with the audit as the backstop for what a hook cannot see -- see A6 for exactly how far that is verified. Per-task model right-sizing lives in the plan instead of global config. And reconcile closes the loop by turning what execution learned into proposed doc diffs.",
   },
   {
     q: "Does it review code quality?",
@@ -337,7 +351,7 @@ export const faq: FaqItem[] = [
   },
   {
     q: "Can the model skip the gates?",
-    a: "Honestly: gates are named as blocking instructions in every plan, and compliance is measured (A3), not asserted. The figure is 22 of 22 invoked, 0 skipped, across 3 pilot plans -- but every one of those sessions knew it was being watched, so it is a ceiling rather than a rate. Two things are mechanically absolute. A human flips a plan to APPROVED, and replan cannot be model-invoked.",
+    a: "Honestly: gates are named as blocking instructions in every plan, and compliance is measured (A3), not asserted. The figure is 27 of 28 invoked at their boundary across 4 pilot plans -- and one was skipped. That skip is on the record because the next gate caught it and the retroactive audit found a real ownership breach behind it. Every one of those sessions knew it was being watched, so it is a ceiling rather than a rate. Two things are mechanically absolute. A human flips a plan to APPROVED, and replan cannot be model-invoked.",
   },
   {
     q: "Why the name?",
