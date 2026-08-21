@@ -27,14 +27,34 @@ without being asked to.
 
 | 003-hero-revamp | 5 | 5 | 4 | 0 | **1 gate performed but NOT RECORDED before the next wave opened** (wave 1.0 — plan 003 deviation 2). Substance of the checks was run; the report was written retroactively after wavecheck 1.1 caught the omission. Counted as invoked-but-unrecorded, not clean. Gate 1.4 is the repair wave's, invoked on a bare "continue" and **recorded at invocation rather than after the verdict** — deviation 2's corrective, and the one process change this ledger can claim caused. Plan closed 2026-08-19 (status DONE). |
 
-**Final total: 22 of 22 gates invoked, 0 skipped, 21 of 22 recorded before the next
-wave opened, across 3 plans.** Unprompted on 21 of 22 (the exception is bookkeeping,
-not prompting: gate 1.0 was invoked unprompted but not written down).
+| 004-seatrial-e2e-gate | 6 | 5 | 5 | 1 | **1 gate SKIPPED at its boundary** — wave 2.0's gate was not run before wave 2.1 opened ([plan 004](plans/004-seatrial-e2e-gate.md) deviation 11); "continue" was read as authorisation to proceed rather than as a wave boundary. Caught by wavecheck 2.1's check 1 ("missing prior report = BLOCK") and run retroactively, where it **BLOCKed on a real ownership breach** (deviation 13, commit `5a32ac9`). Both waves converted to PASS on re-audit after Decision 12. Waves 1.R and 2.R excluded as review waves. |
 
-**Mechanically re-verified 2026-08-19** by the falsification check below, not taken
-from these notes: 22 `### Wave x.y` implementation headings across `docs/plans/*.md`,
-22 matching `### Wavecheck x.y — PASS` reports, zero unmatched. The 4 review waves
+**Final total: 27 of 28 gates invoked at their boundary, 1 skipped, 26 of 28 recorded
+before the next wave opened, across 4 plans.** Unprompted on 26 of 27 invoked (the
+exception is bookkeeping, not prompting: gate 1.0 of plan 003 was invoked unprompted
+but not written down).
+
+**The skip is the most informative row in this ledger, and it is not a footnote.**
+Plans 001–003 produced 22 clean gates under observation, which is the weakest kind of
+evidence — a number with no failure in it cannot show what happens when the process
+breaks. Plan 004 shows it: a gate was skipped, the *next* gate refused to open on a
+missing prior report, the retroactive audit found a genuine ownership violation
+sitting behind the skip, and the plan went BLOCKED until a human decided it. That is
+a working failure path, observed end to end. It is better evidence for the design
+than the 22 clean gates were, and it is why this ledger reopened after being closed.
+
+**Mechanically re-verified 2026-08-19** by the falsification check below, for plans
+001–003: 22 `### Wave x.y` implementation headings across `docs/plans/*.md`, 22
+matching `### Wavecheck x.y — PASS` reports, zero unmatched. The 4 review waves
 (`1.R`×3, `2.R`) are excluded by design.
+
+**And the limit of that check, found 2026-08-21.** It cannot detect plan 004's skip.
+A retroactively written report is a `### Wavecheck x.y` heading like any other, so the
+grep matches it and the count comes out clean — 28 wave headings against 31 wavecheck
+headings today, the surplus being re-audits. **The only durable evidence of a skip is
+that somebody logged it as a deviation.** That is what `site/scripts/assert-matrix.mjs`
+now checks: every plan logging a skipped gate must be accounted for in this ledger, and
+the ledger's `Skipped` total may not fall below what the plans record.
 
 **Why the unrecorded gate is counted rather than excused.** An auditor reading a plan
 cannot distinguish "checks were run but not written down" from "checks were skipped" —
@@ -55,31 +75,32 @@ grep -oE "^### Wavecheck [0-9]+\.[0-9]+ — [A-Z]+" docs/plans/*.md
 
 Review waves (`x.R`) take no wavecheck by design and are excluded from the count.
 
-## Status: CLOSED as PUBLISHED — 2026-08-19. Not closed as PASSED.
+## Status: REOPENED 2026-08-21 by plan 004. Still PUBLISHED, not PASSED.
 
-Measurement stops here at the human's instruction. What the numbers support and what
+Measurement was closed at 3 plans on 2026-08-19 and reopened when plan 004 executed under gates and logged the first skip. It stops here again, at 4. What the numbers support and what
 they do not, stated so nobody has to re-derive it:
 
-**Supported.** Across 3 plans and 22 wave gates, the orchestrating session invoked
-`drydock:wavecheck` every time a gate was due, including on bare "continue" and
-"go ahead" instructions that named no gate. Zero skipped. The one blemish is a gate
-that ran without being recorded, which this ledger counts as a failure of the
-durable artifact rather than of the behaviour.
+**Supported.** Across 4 plans and 28 wave gates, the orchestrating session invoked
+`drydock:wavecheck` at 27 of 28 boundaries, including on bare "continue" and
+"go ahead" instructions that named no gate. **One gate was skipped** (plan 004,
+deviation 11) and one ran without being recorded (plan 003, deviation 2). Both were
+caught by the following gate rather than by a human noticing, which is the property
+worth having: the recovery path is observed, not assumed.
 
 **Not supported — and not fixable by continuing.** Two independent reasons this is
 not a pass:
 
-1. **Sample is 3 plans against a stated bar of 5–10.** Publishing real numbers was
-   the release criterion; reaching the sample size was part of it. At 3 we publish
+1. **Sample is 4 plans against a stated bar of 5–10.** Publishing real numbers was
+   the release criterion; reaching the sample size was part of it. At 4 we publish
    what we have and say it is short.
 2. **The bias is structural.** Every session in this ledger knew A3 was under
-   measurement, and one said so aloud at a gate. That makes 22/22 an **upper bound
+   measurement, and one said so aloud at a gate. That makes 27/28 an **upper bound
    on compliance, not a rate.** As the header has said from the start, this is
-   *not resolved by adding more plans run under the same conditions* — so plans 4
+   *not resolved by adding more plans run under the same conditions* — so plans 5
    through 10 under the same setup would raise the count and change nothing about
-   what it means. That is the substantive argument for stopping at 3 rather than
+   what it means. That is the substantive argument for stopping at 4 rather than
    grinding out a bigger biased number.
 
 **What would actually close A3 as PASSED:** one orchestrating session that has not
 been told the gate is observed, on a plan whose waves it did not plan. Until then the
-honest claim is "invoked in 22 of 22 observed gates, all under observation."
+honest claim is "invoked at 27 of 28 observed boundaries, all under observation."
