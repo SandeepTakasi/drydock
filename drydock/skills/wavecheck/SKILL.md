@@ -27,8 +27,25 @@ Run in this order; stop early only on check 1 failure.
    `EXECUTING`, the wave id exists, all prior waves have PASS reports. Missing
    prior report = BLOCK (someone skipped a gate).
 
-2. **Ownership audit.** Attribution must be per task, never inferred from
-   the combined wave diff — the combined diff cannot tell WHICH task touched
+2. **Ownership audit — run the script, paste its evidence.**
+
+   ```
+   node ${CLAUDE_PLUGIN_ROOT}/scripts/drydock-audit.mjs audit-wave <plan> <wave>
+   ```
+
+   It derives each task's changed-file set from its `drydock(<task-id>)`
+   checkpoint commit and compares it to the task's `owns`. **Paste its table
+   into your report verbatim** — the commit SHAs and per-task file lists are the
+   evidence for this check, and a bare PASS from a script is worth less than a
+   model's judgment because it looks authoritative while showing nothing. If the
+   script's verdict contradicts what you read in the diff, say so and stop; a
+   disagreement between the two is a finding, not something to average.
+
+   Do not delegate checks 3–5 to it. It computes what is mechanical; those need
+   judgment, which is why you are here.
+
+   The rules it enforces, unchanged: attribution must be per task, never inferred
+   from the combined wave diff — the combined diff cannot tell WHICH task touched
    a file, and a rogue edit to a file owned by a sibling task passes a naive
    union check (defect confirmed in dry-run 2026-08-18). Mechanism by mode:
    - `isolation: worktree` → `git diff --name-only` per worktree.

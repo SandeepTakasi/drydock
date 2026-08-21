@@ -56,6 +56,21 @@ the reconcile skill.
 > because its forbidden audit is weakened when the auditor wrote the code and it
 > must say so rather than imply independence it does not have.
 
+**Ownership enforcement (before every wave, from v0.6.0):** write the wave's
+combined ownership to `.drydock/wave-owns.json` and delete it when the wave
+closes:
+
+```json
+{ "plan": "NNN-slug", "wave": "2.1", "owns": ["<every owns glob in the wave>"] }
+```
+
+The plugin's `PreToolUse` hook reads it and denies any Write/Edit to a path no
+task in the wave owns. It is wave-level because a wave runs N executors at once
+and hook input carries no subagent identity; per-task attribution remains
+wavecheck's job. **Leaving a stale file behind blocks the next unrelated edit**,
+so deleting it is part of closing the wave. It does not replace the audit — Bash
+writes bypass file-tool hooks entirely.
+
 **Staleness check (before every wave):**
 `git diff <baseline SHA>..HEAD -- <wave's owned files + wave-0 contract files>`.
 Non-empty → wave is STALE: re-validate its tasks against current code, update

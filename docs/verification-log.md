@@ -656,3 +656,79 @@ than `/`. Generated specs in `e2e/` are **GENERATED, NOT EXECUTED** —
 **Verdict:** OBSERVED — seatrial ran end to end, honoured its three refusal
 paths, and returned NO-GO for a stated reason. The NO-GO reflects a harness
 capability gap (TG4's video evidence), not a defect in the site.
+
+## A6 — Ownership enforcement hook (PreToolUse)
+
+**Date:** 2026-08-21
+**Host version:** `claude --version` → `2.1.237 (Claude Code)`
+**Node:** v24.14.1 (`path.matchesGlob` requires >= 22)
+**Repo SHA at run time:** working tree, pre-commit, on top of `05cbe49`
+
+**What this entry does and does not claim.** The hook's *logic* was exercised
+directly, by piping PreToolUse-shaped JSON into `hooks/enforce-owns.mjs` and
+asserting the exit code. Its *registration* — whether Claude Code actually
+invokes it on Write/Edit in a live session — is **NOT** verified here and cannot
+be from this session: hooks register at session start on the same terms as skill
+files (CLAUDE.md, plan 004 deviation 7), so a hook added by the session that
+writes it is not live in that session. Treat live enforcement as unexercised
+until a later session denies a real edit.
+
+### Method
+
+`node drydock/hooks/enforce-owns.test.mjs` — ten cases, inputs built with
+`JSON.stringify` rather than shell heredocs. That detail is load-bearing: an
+earlier heredoc fixture silently dropped the backslash escapes, producing invalid
+JSON, which the hook's parse-error path treats as allow. Three cases then *looked*
+like they passed enforcement while nothing had been enforced at all. A fixture
+that cannot fail proves nothing, and the fix is generating the JSON.
+
+### Result — 10 of 10
+
+| Case | Expect | Got |
+|---|---|---|
+| relative path inside `owns` | allow | allow |
+| relative path outside `owns` | **deny** | deny |
+| absolute native (`\`) path outside `owns` | **deny** | deny |
+| absolute POSIX (`/`) path outside `owns` | **deny** | deny |
+| absolute native path inside `owns` | allow | allow |
+| glob subtree (`e2e/**`) | allow | allow |
+| path outside the project directory | allow | allow |
+| `notebook_path` instead of `file_path` | **deny** | deny |
+| config file absent | allow (inert) | allow |
+| config present but unparseable | **deny** (fail closed) | deny |
+
+Denial payload, verbatim, for the relative-unowned case:
+
+```
+{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny"},
+ "systemMessage":"Drydock ownership violation: 005-x wave 2.1 does not own site/content/copy.ts.\n
+ Owned by this wave: docs/**, e2e/**\n…Stale? delete .drydock/wave-owns.json"}
+```
+
+### Observations
+
+1. **Both Windows path separators had to be handled explicitly.** The tool hands
+   back native paths; plan `owns` globs are always written with forward slashes.
+   Normalising to a repo-relative POSIX path before `matchesGlob` is what makes
+   the two comparable, and the failure mode without it is allow — the dangerous
+   direction.
+2. **Absent config must be inert, and that is not a convenience.** The plugin
+   installs into repos that are not mid-wave; a hook that denied by default would
+   break every unrelated edit in every repo that installed it.
+3. **Present-but-broken config fails closed.** A malformed enforcement control
+   that degrades into no enforcement is worse than no control, because it reads
+   as protection. The denial message names the remedy so a stale file cannot
+   wedge a repo silently.
+4. **A4 re-run with `hooks/hooks.json` present:**
+   `claude plugin validate ./drydock --strict` → `✔ Validation passed`, exit 0.
+
+### Not tested
+
+Live registration and invocation by the host (see above); enforcement against
+Bash-mediated writes (`sed -i`, `>` redirect, `git checkout`), which do not pass
+through file-tool hooks at all and are a documented ceiling rather than a gap;
+worktree-isolated sessions; and any host without `PreToolUse` support.
+
+**Verdict:** LOGIC VERIFIED, LIVE ENFORCEMENT UNEXERCISED. The script does what
+the contract says on ten cases including both separator styles and both failure
+postures. Whether the host calls it is the next session's evidence.

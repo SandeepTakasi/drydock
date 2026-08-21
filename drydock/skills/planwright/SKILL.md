@@ -18,6 +18,18 @@ These four principles resolve every judgment call in this skill. When in doubt, 
 3. **Verify, don't trust.** Every task carries an objective, machine-checkable acceptance criterion. LLM review is a second layer for design quality, never the only quality mechanism.
 4. **Decisions are logged, not implied.** Every question asked, answer received, and trade-off resolved is recorded in the plan's Decision Log so future sessions inherit the reasoning, not just the conclusion.
 
+## Right-size the ceremony first
+
+Before step 1, estimate how many files the change touches and say which track you are taking. This process has real overhead — one pilot plan reached 2,069 lines to rebuild a page that already existed as 240 lines of hand-written HTML — and applying all of it to a small change is the failure this section exists to prevent.
+
+| Files touched | Track |
+|---|---|
+| **under ~5** | Say plainly that this is below the useful boundary and why, and offer to just do the work instead. If the user still wants a plan, write one — this is advice, not a refusal. |
+| **~5–15** | Short form: one phase, no adversarial pressure test, no separate phase review, plan under ~100 lines. Everything else in this skill still applies — ownership, acceptance criteria, the Decision Log, the Testing Gate. |
+| **over ~15** | The full workflow below. |
+
+These thresholds are `(assumed — flag if wrong)` and belong in the Decision Log as such: they are judgment, not measurement, and should be revised once there is a published cost figure to set them against. What is *not* judgment is the direction — the parts that scale with risk (ownership, criteria, gates) stay at every size; the parts that scale with cost (pressure test, phase review, phase structure) are what a smaller change drops.
+
 ## Workflow
 
 Follow these six steps in order. Steps 1–3 are about earning the right to plan; steps 4–6 produce the plan.
@@ -120,6 +132,7 @@ Before presenting the plan to the user, run this self-review checklist and fix a
 - [ ] **Every acceptance criterion is provably failable, and criteria guarding defects that text cannot see say how.** Ask of each: what state makes this command exit non-zero? If a criterion's clauses were already satisfied by earlier tasks before this task began, it gates nothing. Where a criterion guards a class of defect invisible to source text (computed styles, rendered output, runtime behaviour), require evidence that the check has been observed failing — introduce the defect deliberately, watch the gate catch it, revert.
 - [ ] **Every acceptance criterion was RUN, against the real file and the real shell, before the task block was frozen.** Ask both halves: can it fail, *and can it pass?* A criterion authored from memory of a platform's output or a file's shape is the most common way a task ships an inert or unpassable gate — and it is Mechanical- and Standard-tier criteria, which get the least scrutiny, that break this way. Confirm each literal pattern against the actual convention it greps: heading level, exact command output, padding. Three separate criteria in one plan failed this way — one unpassable regardless of repo state (BSD `wc` left-pads, so `grep -qx 1` could never match), one already satisfied before its task began, one grepping `####` at a file that uses `##` throughout.
 - [ ] **§11 Testing Gate is written, or is `N/A` with a real reason.** If the plan touches a UI or API surface: every case has all seven fields, every declared evidence type is one of `screenshot` / `video` / `network assertion` **and the connected driver has been confirmed this session to capture it**, at least one case is designed to fail and declares that inversion, and the target's base URL and start command came from the user rather than from a guess. An absent section on a UI-touching plan, or a bare "N/A", fails this item.
+- [ ] **`node ${CLAUDE_PLUGIN_ROOT}/scripts/drydock-audit.mjs validate-plan --strict <plan-path>` exits 0.** This skill requires every task it writes to carry "one command that exits 0" and shipped none for its own output; this is that command. It checks what a reader cannot reliably eyeball across a thousand-line document: duplicate task ids, two tasks in one wave owning the same file, a dependency on a task in the same wave (those tasks are declared parallel and cannot be), required sections and their order, and Testing Gate completeness. Run it before the pressure test — a plan defect multiplies across every agent that executes it, and the first run of this check found a same-wave dependency in two of this repo's four plans that reviews, gates and a pressure test had all missed.
 - [ ] Scope is surgical: challenge each task with "does the requirement fail without this?" — anything that survives only as "nice to have" moves to Out of scope / follow-ups.
 - [ ] The Orchestrator contract is embedded; wavecheck gates, quality-review tasks, escalation policy, checkpoint policy, and the final `drydock:reconcile` step are filled in, not left as template text.
 
