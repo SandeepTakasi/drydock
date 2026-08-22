@@ -54,7 +54,7 @@ export const meta: Record<
   lifecycle: {
     id: "lifecycle",
     eyebrow: "02 / HOW IT WORKS",
-    heading: "Six pieces, one contract",
+    heading: "Seven pieces, one contract",
   },
   terminal: {
     id: "terminal",
@@ -169,7 +169,12 @@ export const problem = {
   coda: "Drifted code is often good code. It just is not the code the plan specified, and nothing in a quality review is looking for that difference.",
 };
 
-export const evidence: { rows: EvidenceRow[] } = {
+export const evidence: {
+  rows: EvidenceRow[];
+  provenance: string;
+  planHref: string;
+  planLinkText: string;
+} = {
   rows: [
     {
       id: "--",
@@ -220,23 +225,26 @@ export const evidence: { rows: EvidenceRow[] } = {
       label: "Browser-drive round trip through Playwright MCP",
       status: "PASSED",
       tone: "pass",
-      note: "2026-08-22, host 2.1.235, Node v24.14.1, Chromium 151, driven against the static export served at its basePath. Nine capabilities returned live, verified state, and every effect was confirmed by a second measurement rather than by the call not erroring: navigate, accessibility snapshot, a click on a nav link that moved the scroll position and set the hash, a click on an FAQ disclosure that flipped exactly one item, live evaluation of computed styles and custom properties, network recording across a real cross-document navigation (10 requests, all 200, all inside the basePath, no external host), resize at mobile and desktop widths with no horizontal overflow, multi-tab open and close, and a console with zero errors and zero warnings. That closes the earlier limit, when only navigate and screenshot had ever been exercised. Two constraints are stated rather than pending. Availability is per-session and belongs to the environment, not to Drydock: the server was absent in one session and present in another on the same machine, and even the tool namespace moved between them. When the driver does not resolve, seatrial halts with install instructions, which is the designed response. And video evidence is not capturable through this driver at all, since it is fixed when the browser context is created and no video, record or trace tool is exposed, which is what produced the only NO-GO in plan 004. Form fill is untested because this target carries zero forms and zero inputs, measured rather than assumed.",
+      note: "2026-08-22, driven against this site's own export served at its basePath. Nine driver capabilities returned live state, each confirmed by a second measurement rather than by the call not erroring: navigation, snapshot, clicks that moved the page, style evaluation, network recording, resize, tabs, console. Two constraints stand. Availability is per-session and belongs to the environment rather than to Drydock, and seatrial halts with instructions when the driver is missing. Video evidence cannot be captured through this driver at all.",
     },
     {
       id: "A6",
       label: "Ownership enforcement hook fires in a live session",
       status: "PASSED",
       tone: "pass",
-      note: "Live as of 2026-08-22, and measured by a session that wrote none of this code: the host does invoke the hook, and a real edit was denied. With a wave armed from plan 004, a write and a valid edit to paths outside the wave's ownership were both refused and left the files untouched, a write and an edit inside it were allowed, and once the wave was closed the same refused write went through — inert again within the one session, because the boundary file is read on every call while the hook itself registers at session start. The decision log held exactly four entries, two denials and two allowances, one per decision the hook actually made. The 12-case logic self-check still passes alongside it. Two ceilings stand, and both were exercised here rather than reasoned about: Bash-mediated writes bypass file-tool hooks entirely, so a shell redirect to the same refused path wrote and left no trace, and paths outside the project directory are not enforced at all. The post-hoc wave audit is the backstop for both, which is why enforcement is claimed as a boundary with stated holes rather than a guarantee.",
+      note: "Verified live on 2026-08-22 by a session that wrote none of this code. A write and a real edit to unowned paths were both refused, files untouched; writes inside the boundary were allowed and logged; closing the wave let the same refused write through. Two ceilings stand, both exercised rather than assumed: Bash-mediated writes bypass file-tool hooks entirely, and paths outside the project directory are not enforced. The wave audit is the backstop.",
     },
     {
       id: "A7",
       label: "seatrial Testing Gate executes end to end",
       status: "OBSERVED, ONE FULL RUN",
       tone: "hold",
-      note: "2026-08-20, driven through Playwright MCP against this site's own static export. Six declared cases ran to a verdict sheet: three passed, three failed, and all three failures were the ones the plan designed to fail. One was written against a deliberately false expectation and failed rather than agreeing with it. One named a step the page cannot perform, returned the exact reason string, clicked no substitute element, and halted to ask instead of manufacturing a verdict. The third held its assertion and failed only its video evidence clause, which is a limit of the driver rather than a defect in the site. The summary verdict was NO-GO, because seatrial never writes an override for its own failures; a human recorded one afterwards against that video case, and the underlying failure still stands in the sheet. Read the scope precisely: this is one run against one target. The generated spec files are GENERATED, NOT EXECUTED, since no test runner was added to this repo, and click, form fill, mutation, multi-tab, mobile viewports and non-Chromium engines are all untested.",
+      note: "2026-08-20, through Playwright MCP against this site's export. Six cases ran to a verdict sheet: three passed, and the three failures were the three the plan designed to fail -- one written against a false expectation, one naming a step the page cannot perform, which halted to ask rather than improvise, and one whose video evidence this driver cannot capture. The sheet closed NO-GO: seatrial writes no override for its own failures. Specs it generates are GENERATED, NOT EXECUTED here.",
     },
   ],
+  provenance: "This page is not a brochure for something built elsewhere. The site was planned, executed in parallel waves and gated with Drydock itself, across four plans whose deviation logs are in the repo.",
+  planHref: `${BLOB}/docs/plans/001-drydock-homepage.md`,
+  planLinkText: "Read the plan that built this",
 };
 
 export const terminal: {
@@ -283,7 +291,7 @@ export const lifecycle: { flow: string[]; loop: string; pieces: Piece[] } = {
     "seatrial",
     "reconcile",
   ],
-  loop: "on BLOCK: /drydock:replan or a human decision. No retries.",
+  loop: "on BLOCK, drift, or NO-GO: /drydock:replan or a human decision. No retries.",
   pieces: [
     {
       name: "planwright",
@@ -325,7 +333,7 @@ export const lifecycle: { flow: string[]; loop: string; pieces: Piece[] } = {
       kind: "skill",
       invocation: "model, or /drydock:seatrial -- after the final wave",
       detail:
-        "Drives the plan's written end-to-end cases against the running app through Playwright MCP, captures the declared evidence per case, generates re-runnable spec files, and writes a go/no-go sheet. It halts rather than degrades: no driver, no target, no evidence root, it stops and says so.",
+        "Drives the plan's written end-to-end cases through a real browser, captures the evidence each one declares, and writes a go/no-go sheet. Halts rather than degrades.",
     },
     {
       name: "reconcile",
@@ -341,6 +349,7 @@ export const install: {
   commands: string[];
   scopeNote: string;
   configNote: string;
+  requirement: string;
   copyLabel: string;
   copyAriaLabel: string;
   copiedLabel: string;
@@ -351,7 +360,9 @@ export const install: {
   ],
   scopeNote: "Add --scope project to share it with your team.",
   configNote:
-    "Configured on enable: where plans live (default docs/plans) and which docs reconcile may propose changes to. Then run /drydock:planwright on something small.",
+    "Configured on enable: where plans live (default docs/plans), which docs reconcile may propose changes to, and where seatrial writes its generated specs (default e2e). Then run /drydock:planwright on something small.",
+  requirement:
+    "Requires Node 22 or newer on PATH -- the ownership hook and the plan audit are Node programs. On anything older the hook exits 0 with a message and ownership is not enforced.",
   copyLabel: "Copy",
   copyAriaLabel: "Copy install command to clipboard",
   copiedLabel: "Copied",
@@ -364,7 +375,7 @@ export const faq: FaqItem[] = [
   },
   {
     q: "How is this different from other planning plugins?",
-    a: "The gate audits plan conformance, not code quality: did the wave do exactly what the plan said and nothing else, judged against the actual diff rather than against what the executors claim. From v0.6.0 disjoint file ownership is enforced by a hook that denies writes outside the active wave rather than asking for them to stay inside it, with the audit as the backstop for what a hook cannot see -- see A6 for exactly how far that is verified. Per-task model right-sizing lives in the plan instead of global config. And reconcile closes the loop by turning what execution learned into proposed doc diffs.",
+    a: "The gate audits plan conformance, not code quality: did the wave do exactly what the plan said and nothing else, judged against the actual diff rather than against what the executors claim. From v0.6.0 disjoint file ownership is enforced rather than requested: wave-start generates the boundary from the plan, a hook denies every write outside it until the wave closes, and outside a wave it is inert. The audit is the backstop for what a hook cannot see -- see A6. Per-task model right-sizing lives in the plan instead of global config. And reconcile closes the loop by turning what execution learned into proposed doc diffs.",
   },
   {
     q: "Does it review code quality?",
@@ -376,7 +387,7 @@ export const faq: FaqItem[] = [
   },
   {
     q: "Does anything actually touch a browser?",
-    a: "Yes, that is seatrial. A plan can carry a Testing Gate of written end-to-end cases, and seatrial drives them against the running app through Playwright MCP, capturing the evidence each case declares and writing a go/no-go sheet. It refuses in three directions instead of improvising: a step it cannot perform returns 'step not executable' and clicks no substitute element, a missing driver or unreachable target halts with instructions, and it never writes an override for its own failures -- shipping past a known gap stays a human decision, recorded as one. Exercised end to end on this site: six cases, three passes, and three failures that were all the designed ones. The generated spec files are GENERATED, NOT EXECUTED here, because adding a test runner to this repo was declined -- see A7.",
+    a: "Yes -- that is seatrial. A plan can carry a Testing Gate of end-to-end cases written before the code, and seatrial drives them through Playwright MCP, capturing each case's declared evidence into a go/no-go sheet. It refuses rather than improvises: a step it cannot perform is reported, not worked around; a missing driver halts; and it never overrides its own failures. Run end to end on this site: six cases, three passes, three designed failures. The specs it writes are GENERATED, NOT EXECUTED here -- see A7.",
   },
   {
     q: "Why the name?",
@@ -390,7 +401,7 @@ export const footer: {
   links: { href: string; label: string }[];
 } = {
   tagline: "Nothing sails until it leaves the dock.",
-  meta: [`v${VERSION}`, "MIT", "2026-08-19"],
+  meta: [`v${VERSION}`, "MIT", "2026-08-22"],
   links: [
     { href: REPO, label: "GitHub" },
     { href: `${BLOB}/docs/self-audit.md`, label: "Self-audit" },

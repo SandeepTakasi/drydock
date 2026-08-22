@@ -45,11 +45,12 @@ export default function Evidence({ meta }: SectionProps) {
           <Row key={row.label} row={row} />
         ))}
       </ul>
-      <p className="mt-8">
-        <a
-          href={site.selfAuditHref}
-          className="font-mono text-mark text-accent uppercase underline underline-offset-4"
-        >
+      <p className="mt-8 max-w-3xl text-note text-ink-dim">{evidence.provenance}</p>
+      <p className="mt-4 flex flex-wrap gap-x-6 gap-y-2">
+        <a href={evidence.planHref} className="font-mono text-mark text-accent uppercase underline underline-offset-4">
+          {evidence.planLinkText}
+        </a>
+        <a href={site.selfAuditHref} className="font-mono text-mark text-accent uppercase underline underline-offset-4">
           {site.selfAuditLinkText}
         </a>
       </p>

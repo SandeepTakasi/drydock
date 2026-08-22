@@ -48,6 +48,11 @@ const REQUIRED = [
   // Both halves have to stay on the page: the run is the claim, and this is the
   // ceiling that would quietly drop off it first.
   "GENERATED, NOT EXECUTED",
+  // The one install prerequisite. Below Node 22 the ownership hook exits 0 and
+  // enforces nothing, so a page that sells enforcement without naming the
+  // version sells a guarantee the reader may not have. Pinned so it cannot be
+  // trimmed away as boilerplate.
+  "Node 22 or newer",
   "Bash-mediated writes bypass file-tool hooks",
   "Deviations logged: 1 (1 discovered by wavecheck)",
   "A2b",

@@ -90,6 +90,9 @@ export default function Install({ meta }: SectionProps) {
       <p className="mt-4 max-w-3xl text-note text-ink-dim">
         {install.configNote}
       </p>
+      <p className="mt-4 max-w-3xl text-note text-ink-dim">
+        {install.requirement}
+      </p>
     </Section>
   );
 }
