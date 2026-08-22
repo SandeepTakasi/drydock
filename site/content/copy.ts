@@ -217,10 +217,10 @@ export const evidence: { rows: EvidenceRow[] } = {
     },
     {
       id: "A5",
-      label: "Playwright MCP availability and browser-drive round trip",
-      status: "OBSERVED, NOT PASSED",
-      tone: "hold",
-      note: "2026-08-20. Navigate returned live page state and a screenshot landed on disk, and the full Testing Gate ran through it. Two limits keep it off PASSED: availability is per-session, since an earlier session on the same machine found no browser tools at all, and only navigate and screenshot were exercised. Video evidence is not capturable through this driver at all, which is what produced that plan's only NO-GO.",
+      label: "Browser-drive round trip through Playwright MCP",
+      status: "PASSED",
+      tone: "pass",
+      note: "2026-08-22, host 2.1.235, Node v24.14.1, Chromium 151, driven against the static export served at its basePath. Nine capabilities returned live, verified state, and every effect was confirmed by a second measurement rather than by the call not erroring: navigate, accessibility snapshot, a click on a nav link that moved the scroll position and set the hash, a click on an FAQ disclosure that flipped exactly one item, live evaluation of computed styles and custom properties, network recording across a real cross-document navigation (10 requests, all 200, all inside the basePath, no external host), resize at mobile and desktop widths with no horizontal overflow, multi-tab open and close, and a console with zero errors and zero warnings. That closes the earlier limit, when only navigate and screenshot had ever been exercised. Two constraints are stated rather than pending. Availability is per-session and belongs to the environment, not to Drydock: the server was absent in one session and present in another on the same machine, and even the tool namespace moved between them. When the driver does not resolve, seatrial halts with install instructions, which is the designed response. And video evidence is not capturable through this driver at all, since it is fixed when the browser context is created and no video, record or trace tool is exposed, which is what produced the only NO-GO in plan 004. Form fill is untested because this target carries zero forms and zero inputs, measured rather than assumed.",
     },
     {
       id: "A6",

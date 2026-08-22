@@ -564,6 +564,105 @@ Testing Gate exercises the rest.
 the local static export on 2026-08-20. Whether one round trip justifies moving
 the A5 row off `PENDING` is a human decision on this evidence, per plan 004 §9.
 
+### A5 addendum — 2026-08-22
+
+**Date:** 2026-08-22
+**Host version:** `claude --version` → `2.1.235 (Claude Code)`
+**Node:** `v24.14.1` (also the static server's runtime)
+**Repo SHA at run time:** working tree, pre-commit, on top of `8ebf7f2`
+**Driver:** Playwright MCP, exposed this session under the plugin-scoped
+namespace `mcp__plugin_playwright_playwright__browser_*` — **not** the
+`mcp__playwright__browser_*` prefix the 2026-08-20 run recorded. Any check that
+greps for a fixed tool prefix is checking the wrong thing.
+**Browser:** `navigator.userAgent` →
+`Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36`
+**Target:** `http://127.0.0.1:5173/drydock/`
+
+`python3 is not installed on this machine`, so CLAUDE.md's `python3 -m http.server`
+recipe does not run here. Replaced with a ~25-line Node `http` server held in the
+session scratchpad (not the repo) that maps `/drydock/*` onto `site/out/*`
+directly, which also removes the symlink step. Preflight before any browser call:
+
+```
+curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5173/drydock/         → 200
+curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5173/drydock/404.html → 200
+```
+
+This run exists to close limb (b) of the 2026-08-20 entry: only navigate and
+screenshot had ever been exercised.
+
+### Capabilities exercised
+
+| Capability | Expected | Observed |
+|---|---|---|
+| `browser_navigate` | reaches the served export | `Page URL: http://127.0.0.1:5173/drydock/`, `Page Title: Drydock -- plan-first parallel execution for Claude Code` — matches the exported `<title>` |
+| `browser_snapshot` | accessibility tree, not pixels | full tree at `depth: 4`: one `banner`, one `main`, one `contentinfo`, `heading "Drydock" [level=1]`, and the four in-page nav links `#problem` `#lifecycle` `#evidence` `#install`. The heading contract `assert-copy` checks statically is confirmed live |
+| `browser_click` (nav link) | scrolls to the section | before: `{scrollY: 0, hash: ""}`; after clicking `Evidence`: `{scrollY: 3346, hash: "#evidence", evidenceTop: -24}`. Real effect, verified by measurement rather than by the click returning without error |
+| `browser_click` (disclosure) | toggles one FAQ item | `details.open` before `[true,false,false,false,false]`, after clicking summary 03: `[true,false,true,false,false]`. Exactly one item changed |
+| `browser_evaluate` | reads what only the live DOM knows | `--color-ground` → `#08090b`; `--stroke-rule` → `2px` (confirms live that it is a bare custom property, not a utility); `<h1>` `font-family` → `Inter, "Inter Fallback", system-ui, sans-serif` (the `size-adjust` fallback is present); `document.forms.length` → `0` |
+| `browser_network_requests` | records a **real** navigation | after `page.goto('…/drydock/404.html')` — a cross-document navigation, not a fragment change — **10 requests, all `[200] OK`, all under `/drydock/`**: the document, 1 PNG, 1 CSS chunk, 5 JS chunks, 2 self-hosted `.woff2`. No external host is contacted |
+| `browser_resize` | layout responds | 390x844 → `h1` `52px`; 1280x800 → `h1` `112px`; `documentElement.scrollWidth > innerWidth` false at both widths |
+| `browser_tabs` | list / new / close | `new` opened a second tab and made it current (`0: …/drydock/`, `1: (current) …/404.html`); `close index:1` returned to a single tab, `0: (current)` |
+| `browser_console_messages` | surfaces page diagnostics | `Total messages: 0 (Errors: 0, Warnings: 0)` across the whole session, `all: true`, `level: warning` |
+
+### Form fill — not exercisable on this target
+
+`browser_fill_form` was **not** exercised, and not because it failed.
+`browser_evaluate` measured the page first:
+
+```
+{ forms: 0, inputs: 0, details: 5, buttons: 2 }
+```
+
+The homepage is a static marketing export with zero `<form>`, zero
+`<input>`/`<textarea>`/`<select>`. There is nothing on this target to fill, so
+the capability is **untested here** and no claim is made about it either way.
+Filling a fabricated page would evidence the fixture, not the driver.
+
+### Observations
+
+1. **Limb (b) of the 2026-08-20 entry is closed.** Click, `browser_evaluate`,
+   network recording, snapshot, resize and multi-tab all returned live state,
+   and every effect was confirmed by a second measurement rather than by the
+   call not erroring.
+2. **A real navigation records requests; the fragment lesson holds.** The
+   10-request list came from `goto` to a different document. The earlier finding
+   that a fragment-only `goto` records nothing is unchanged — this run avoided
+   it rather than disproving it.
+3. **The tool namespace moved between sessions.** 2026-08-20 saw
+   `mcp__playwright__browser_*`; this session sees
+   `mcp__plugin_playwright_playwright__browser_*`. The capability is the same;
+   the identifier is not stable across sessions.
+4. **Availability is still per-session, and that is environmental.** Present
+   here, absent in plan 004's planning session, on the same machine. Nothing in
+   this repo can make an MCP server connect. `drydock:seatrial` HALTs with
+   install instructions when the driver does not resolve, which is the designed
+   response to a driver that is simply not there.
+5. **`video` remains uncapturable.** Unchanged and re-confirmed by inspection of
+   the exposed tool list: no video, record or trace tool exists. Video is a
+   per-`BrowserContext` setting fixed at creation. This produced plan 004's only
+   NO-GO and is a permanent ceiling of this driver, not a pending item.
+6. **The server working directory is not stable either.** Auto-saved
+   snapshots landed in `.playwright-mcp/` **under the repo root** this session;
+   the 2026-08-20 run saw a relative filename resolve to the session home
+   directory instead. The 2026-08-20 lesson stands and gets sharper: the
+   resolution base is unpredictable across sessions, so pass an absolute path.
+   The six snapshot files this run produced were deleted afterwards.
+
+### Not tested
+
+Form fill (no form exists on this target — see above); video capture
+(uncapturable, above); file upload, drag/drop, dialog handling, `browser_hover`,
+`browser_press_key`, `browser_select_option`; authenticated targets; any target
+that is not this local static export; and any browser other than the Chromium
+build the MCP server launched.
+
+**Verdict:** PASSED for the **browser-drive round trip** — nine capabilities
+returned live, verified state against the served export on 2026-08-22. Two things
+are deliberately *not* folded into that verdict, because neither is a pending
+verification: per-session availability is a property of the environment, and
+`video` is a permanent limit of this driver.
+
 ---
 
 ## Seatrial gate run — plan 004 Testing Gate, TG1–TG6
