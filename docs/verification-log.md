@@ -877,3 +877,80 @@ here observes the host invoking the hook; every case above drives it directly.
 What changed is that a wave which runs unenforced now says so in its audit
 instead of passing quietly. A6 moves when a session that did not write this code
 watches a real edit get denied.
+
+### A6 addendum — 2026-08-22, live registration OBSERVED
+
+**Date:** 2026-08-22
+**Host version:** `claude --version` → `2.1.235 (Claude Code)`
+**Node:** v24.14.1
+**Repo SHA at run time:** `d7de845`, working tree clean
+**Plugin copy that ran:** `~/.claude/plugins/cache/drydock/drydock/0.7.0`,
+`gitCommitSha d7de845` — byte-identical to `drydock/hooks/enforce-owns.mjs`
+modulo CRLF. Worth stating: the hook the host executes is the installed cache
+copy, not the working tree, so editing the repo file mid-session changes nothing.
+
+**This is the evidence the two entries above said was missing.** The session that
+ran it did not write the hook, the audit tool or either of the earlier entries;
+it read the repo, armed a wave and tried to write outside it. Every decision
+below was made by the host invoking the hook, not by piping JSON into it.
+
+### Method
+
+`node drydock/scripts/drydock-audit.mjs wave-start docs/plans/004-seatrial-e2e-gate.md 2.1`
+armed the boundary — `owns: docs/verification-log.md, e2e/**`, derived from
+`T2.1.1` and `T2.1.2`. Probes were then issued as ordinary tool calls. Each
+verdict is confirmed twice: by what the host returned, and by the state of the
+file on disk afterwards.
+
+### Result — 7 of 7
+
+| # | Probe | Expect | Observed |
+|---|---|---|---|
+| 1 | `Write` to unowned `site/a6-probe.txt` | deny | `PreToolUse:Write hook error` carrying the hook's verbatim deny payload; **file not created** |
+| 2 | `Write` to owned `e2e/a6-allow-probe.txt` | allow | created; receipt `allow` |
+| 3 | `Edit` of that owned file | allow | applied; second receipt `allow` |
+| 4 | `Edit` of unowned `site/a6-probe.txt`, `old_string` a real match | **deny** | `PreToolUse:Edit hook error`, deny payload; **content unchanged** (`A6 probe line`) |
+| 5 | `Write` outside the project dir (session scratchpad) | allow, no receipt | created; no log line — the `../` early-out precedes `record()` |
+| 6 | `printf > site/a6-probe.txt` via Bash | allow, no receipt | wrote; no log line — the documented ceiling, now observed rather than reasoned |
+| 7 | Same `Write` as probe 1 after `rm .drydock/wave-owns.json` | inert allow | created; no fifth receipt |
+
+`.drydock/enforcement.log` ended with exactly 4 lines — 2 `deny`, 2 `allow` —
+one per hook-mediated in-repo decision, and none for probes 5, 6 or 7.
+
+### Observations
+
+1. **A failing `Edit` precondition short-circuits before the hook.** An `Edit`
+   whose `old_string` did not match an unowned file returned the ordinary
+   "String to replace not found" tool error and wrote **no receipt** — the hook
+   never ran. No enforcement hole (no write happens either way), but the receipt
+   log counts *attempted writes the host would have performed*, not every tool
+   call aimed at a file. Probe 4 exists because of this: the first attempt at a
+   deny-on-`Edit` case proved nothing, and a matching `old_string` was needed to
+   put a real write in front of the hook.
+2. **The deny payload reaches the caller intact**, including the remedy line.
+   The host surfaces it as a tool error, so the writer sees which wave, which
+   path, and what the owned set is, without reading the plan.
+3. **Disarming is immediate and needs no restart.** Probe 7 is the same write as
+   probe 1, denied then allowed, minutes apart in one session. The *config* is
+   read per invocation even though the *registration* is fixed at session start.
+
+### Not tested
+
+`NotebookEdit` (this repo has no notebooks — the matcher covers it and the logic
+case passes, but no live notebook write has been denied); worktree-isolated
+sessions; hosts without `PreToolUse` support; concurrent executors racing on the
+append.
+
+**Verdict: PASSED — the host invokes the hook, and a real edit was denied.**
+Both ceilings stand and are unchanged: Bash-mediated writes bypass file-tool
+hooks entirely, and paths outside the project directory are not enforced. Both
+were exercised here (probes 5 and 6) rather than assumed.
+
+**Copy gate moved with the row.** `assert-copy.mjs` required
+`"LOGIC VERIFIED, LIVE ENFORCEMENT UNEXERCISED"` and `"has not been observed
+once"`; both would now force the page to understate its own evidence, so they
+were replaced by `"outside the project directory are not enforced"` — pinning
+what is still *not* true, alongside the Bash-ceiling literal that was already
+required. Proven failable the same day: rewriting that phrase in the export to
+"fully enforced everywhere" fails the gate naming the missing literal, and
+`npm run verify` is green with the export restored.

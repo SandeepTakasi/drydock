@@ -225,9 +225,9 @@ export const evidence: { rows: EvidenceRow[] } = {
     {
       id: "A6",
       label: "Ownership enforcement hook fires in a live session",
-      status: "LOGIC VERIFIED, LIVE ENFORCEMENT UNEXERCISED",
-      tone: "hold",
-      note: "New in v0.6.0, hardened in v0.7.0, and the newest claim on this page, so read it precisely. The hook's logic passes 12 of 12 cases driven by hook-shaped input: it denies writes outside the wave's ownership in both path separator styles, stays inert when no wave is running, fails closed on a broken config, and fails open with a clear message on a Node too old to support it. Whether the host actually invokes it on a real edit has not been observed once. A hook registers at session start, so it is never live in the session that writes it. What v0.7.0 adds is that this can no longer hide: the hook records every decision, and the wave audit blocks a plan that claims enforcement but shows no decisions, so a wave that ran unenforced is reported rather than assumed. Bash-mediated writes bypass file-tool hooks entirely and are a documented ceiling, not a gap: the post-hoc audit is the backstop there.",
+      status: "PASSED",
+      tone: "pass",
+      note: "Live as of 2026-08-22, and measured by a session that wrote none of this code: the host does invoke the hook, and a real edit was denied. With a wave armed from plan 004, a write and a valid edit to paths outside the wave's ownership were both refused and left the files untouched, a write and an edit inside it were allowed, and once the wave was closed the same refused write went through — inert again within the one session, because the boundary file is read on every call while the hook itself registers at session start. The decision log held exactly four entries, two denials and two allowances, one per decision the hook actually made. The 12-case logic self-check still passes alongside it. Two ceilings stand, and both were exercised here rather than reasoned about: Bash-mediated writes bypass file-tool hooks entirely, so a shell redirect to the same refused path wrote and left no trace, and paths outside the project directory are not enforced at all. The post-hoc wave audit is the backstop for both, which is why enforcement is claimed as a boundary with stated holes rather than a guarantee.",
     },
   ],
 };

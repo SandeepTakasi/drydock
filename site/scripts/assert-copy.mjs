@@ -36,13 +36,14 @@ const REQUIRED = [
   // spotless count would be the same silent graduation these literals exist to
   // stop, so the skip is required to appear.
   "1 skipped",
-  // A6 is v0.6.0's headline claim -- ownership ENFORCED rather than requested --
-  // and it ships before the hook has been observed firing in a live session.
-  // That is allowed here on the same terms A3 shipped: stated on the page, with
-  // the gate requiring the statement. Without these, the page could claim
-  // enforcement and drop the caveat, and nothing would notice.
-  "LOGIC VERIFIED, LIVE ENFORCEMENT UNEXERCISED",
-  "has not been observed once",
+  // A6 is the plugin's headline claim -- ownership ENFORCED rather than
+  // requested -- and as of 2026-08-22 it is observed live: the host invokes the
+  // hook and a real edit was denied. What the literals guard moved with it. The
+  // old pair pinned the "not yet observed" caveat, and keeping them would now
+  // force the page to understate its own evidence. These pin what is still NOT
+  // true, which is where an enforcement claim rots next: a hook that stops file
+  // tools and nothing else. Drop them and the page can read as a guarantee.
+  "outside the project directory are not enforced",
   "Bash-mediated writes bypass file-tool hooks",
   "Deviations logged: 1 (1 discovered by wavecheck)",
   "A2b",
