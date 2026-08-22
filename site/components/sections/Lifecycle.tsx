@@ -42,7 +42,7 @@ export default function Lifecycle({ meta }: SectionProps) {
             <p className="mt-2 font-mono text-mark text-accent">
               {piece.invocation}
             </p>
-            <p className="mt-4 text-note text-ink-dim">{piece.detail}</p>
+            <p className="mt-4 max-w-[68ch] text-note text-ink-dim">{piece.detail}</p>
           </li>
         ))}
       </ul>
