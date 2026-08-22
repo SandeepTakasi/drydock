@@ -1,5 +1,54 @@
 # Changelog
 
+## 0.7.0 — 2026-08-22
+
+**0.6.0 shipped a claim its mechanism did not fully support.** An external review
+of the released state found three ways ownership enforcement could silently not
+happen, all the same shape — nothing noticed. This release makes non-enforcement
+detectable, which is the difference between a claim and a guarantee.
+
+- **`wave-start` generates the ownership boundary from the plan.** Nothing
+  created `.drydock/wave-owns.json` in 0.6.0; the only instruction to write it
+  was a sentence in the format contract, so the hook was armed only if a model
+  remembered to arm it — the same prose-compliance the hook exists to replace,
+  and this repo's own A3 row records an orchestrator forgetting a gate. Deriving
+  the config from the plan also deletes a second defect rather than checking for
+  it: a hand-typed `{"owns":["**"]}` enforced nothing while looking exactly like
+  enforcement, and a derived boundary cannot exceed its plan.
+- **The hook leaves a receipt, and the audit demands it.** Every decision, allow
+  and deny alike, is appended to `.drydock/enforcement.log`. `audit-wave` now
+  answers *did enforcement actually run for this wave* rather than *was a config
+  present* — a question a hook that never executed also satisfies. A hook that
+  was never armed, never registered by the host, or that bailed on an old Node
+  all leave the same trace: nothing. It also compares the enforced boundary
+  against the plan's, catching a stale or hand-widened config.
+- **Node < 22 no longer fails open silently.** The hook imported `matchesGlob`
+  as a *named* export, so on older Node it was a parse-time SyntaxError — exit 1,
+  not exit 2, therefore not a deny. Writes proceeded with an error on every edit.
+  A named import cannot be guarded, which is precisely why this shipped
+  undetected; it is now a default import with a capability check that exits 0
+  with one clear message. Still fail-open, deliberately — wedging every edit in
+  someone's repo over a runtime version is worse — but the missing receipt now
+  makes it visible to the audit.
+- **Plan format v3**: optional `enforcement: required | none`, default `none`.
+  wavecheck BLOCKs an unenforced wave only when the plan claims enforcement, so
+  plans 001–004 audit exactly as before. v2 and v3 are both supported; the bump
+  retires nothing. planwright writes `required` on new plans.
+- **`docs/plans/README.md`** explains why two of the four reference plans FAIL
+  `validate-plan`. They are real defects the validator found on its first run,
+  missed by three layers of review, and they stay unedited because execution
+  history is not a draft. Without that page a new reader reasonably concludes the
+  tool is broken, when it is the tool's best demonstration.
+- **A worked wave lifecycle in the plugin README** — arm, run, audit, close. The
+  mechanism was described twice and never shown.
+- Hook self-check is now 12 cases, adding the receipt on both paths and the
+  old-Node fail-open. The latter needed `spawnSync`: the case is expected to
+  succeed, and `execFileSync` only surfaces stderr on failure, so the assertion
+  would have been blind exactly when the behaviour was correct.
+
+A6 does not move. It still needs a session that did not write the hook to watch
+it deny a real edit, and the site literals that force its caveat stay required.
+
 ## 0.6.0 — 2026-08-21
 
 The first release that ships **code**. Every prior version enforced its contract

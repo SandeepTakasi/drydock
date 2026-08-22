@@ -28,11 +28,14 @@
  * pointing forwards — are always errors, because those are wrong in any version.
  */
 
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { matchesGlob } from "node:path";
+import { dirname, join, matchesGlob } from "node:path";
 
-const SUPPORTED_FORMAT_VERSIONS = [2];
+// 3 adds the optional `enforcement:` frontmatter key. 2 stays supported: plans
+// written before it default to `none` and audit exactly as they always did, so
+// the version bump retires nothing.
+const SUPPORTED_FORMAT_VERSIONS = [2, 3];
 
 const REQUIRED_SECTIONS = [
   "Requirement",
@@ -70,7 +73,8 @@ function parsePlan(path) {
   const lines = text.split(/\r?\n/);
 
   const frontmatter = {};
-  if (lines[0]?.trim() === "---") {
+  const hasFrontmatter = lines[0]?.trim() === "---";
+  if (hasFrontmatter) {
     for (let i = 1; i < lines.length && lines[i].trim() !== "---"; i++) {
       const m = lines[i].match(/^([a-z_]+):\s*(.*?)\s*$/);
       if (m) frontmatter[m[1]] = m[2].replace(/\s*#.*$/, "");
@@ -119,7 +123,7 @@ function parsePlan(path) {
   }
   flush();
 
-  return { path, text, lines, frontmatter, sections, tasks };
+  return { path, text, lines, frontmatter, hasFrontmatter, sections, tasks };
 }
 
 // `T2.1.3` -> wave `2.1`. `T0` is the pre-flight baseline and sits in no wave.
@@ -142,6 +146,17 @@ function validatePlan(path, strict) {
   const plan = parsePlan(path);
   const errors = [];
   const notes = [];
+
+  // A markdown file with no YAML frontmatter at all is not a plan — an index, a
+  // README, a stray note in the plans directory. Skip it cleanly so
+  // `for p in docs/plans/*.md` stays the obvious way to check a corpus; adding
+  // docs/plans/README.md broke exactly that loop, including in this repo's own
+  // documented verification steps. A file that HAS frontmatter but no `plan:`
+  // key is a different thing — a malformed plan — and stays an error.
+  if (!plan.hasFrontmatter) {
+    console.log(`validate-plan: SKIP — ${path} (no frontmatter; not a plan file)`);
+    return;
+  }
 
   const fv = Number(plan.frontmatter.format_version);
   if (!plan.frontmatter.plan) errors.push("frontmatter: no `plan:` key — is this a Drydock plan?");
@@ -263,6 +278,57 @@ function sectionBody(plan, name) {
   return (end === -1 ? rest : rest.slice(0, end)).join("\n");
 }
 
+// ------------------------------------------------------------ wave-start ---
+
+// The ownership boundary is DERIVED from the plan, never hand-authored. Until
+// 0.7.0 the orchestrator was told, in prose, to write `.drydock/wave-owns.json`
+// itself — which meant the enforcement hook was armed only if a model remembered
+// to arm it, and a hand-written `{"owns":["**"]}` would have enforced nothing
+// while looking exactly like enforcement. Generating the file from the plan
+// deletes both problems instead of adding checks for them: a config derived from
+// the plan cannot be broader than the plan.
+//
+// Closing a wave is `rm .drydock/wave-owns.json`. There is no wave-end
+// subcommand because `rm` is already one correct command, and the audit reads
+// the enforcement log rather than the config, so nothing depends on the file
+// surviving.
+function waveStart(planPath, wave) {
+  const plan = parsePlan(planPath);
+  const tasks = plan.tasks.filter((t) => !t.superseded && waveOf(t.id) === wave);
+
+  if (tasks.length === 0) {
+    console.error(`wave-start: no tasks found for wave ${wave} in ${planPath}`);
+    process.exit(1);
+  }
+
+  const owns = [...new Set(tasks.flatMap((t) => t.owns))];
+  if (owns.length === 0) {
+    console.error(
+      `wave-start: wave ${wave} declares no owned files across ${tasks.length} task(s). ` +
+        `Arming an empty boundary would deny every write in the repo; fix the plan.`
+    );
+    process.exit(1);
+  }
+
+  const root = repoRoot(planPath);
+  const configPath = join(root, ".drydock", "wave-owns.json");
+  mkdirSync(dirname(configPath), { recursive: true });
+  writeFileSync(
+    configPath,
+    JSON.stringify({ plan: plan.frontmatter.plan ?? null, wave, owns }, null, 2) + "\n"
+  );
+
+  console.log(`wave-start: armed ${plan.frontmatter.plan ?? planPath} wave ${wave}`);
+  console.log(`  tasks: ${tasks.map((t) => t.id).join(", ")}`);
+  for (const o of owns) console.log(`  owns:  ${o}`);
+  console.log(`\nwrote ${configPath}`);
+  // Forward slashes, always: this line is meant to be copy-pasted into a shell,
+  // and join() would hand a Windows user a backslash path for a POSIX command.
+  console.log(`close the wave with:  rm .drydock/wave-owns.json`);
+}
+
+const repoRoot = () => git(["rev-parse", "--show-toplevel"]);
+
 // ------------------------------------------------------------ audit-wave ----
 
 const git = (args) => execFileSync("git", args, { encoding: "utf8" }).trim();
@@ -337,6 +403,53 @@ function auditWave(path, wave) {
   // history ago against today's working tree would report every unrelated edit
   // in the repo as that wave's violation, so the check downgrades to a note the
   // moment HEAD has moved past the wave.
+  // --- was enforcement actually running for this wave? ----------------------
+  // The question deliberately is NOT "was a config file present" — that is
+  // satisfied by a file nobody's hook ever read. The enforcement log is written
+  // by the hook itself, on allow as well as deny, so entries are proof the hook
+  // was alive at the tool boundary while this wave ran. A hook that was never
+  // armed, never registered by the host, or that bailed on Node < 22 all leave
+  // the same trace: nothing.
+  //
+  // Gated on the plan declaring `enforcement: required`, so plans written before
+  // 0.7.0 keep auditing unchanged rather than retroactively failing.
+  if (plan.frontmatter.enforcement === "required") {
+    const logPath = join(repoRoot(), ".drydock", "enforcement.log");
+    const entries = existsSync(logPath)
+      ? readFileSync(logPath, "utf8")
+          .split(/\r?\n/)
+          .filter(Boolean)
+          .map((l) => { try { return JSON.parse(l); } catch { return null; } })
+          .filter((e) => e && e.wave === wave)
+      : [];
+
+    if (entries.length === 0) {
+      errors.push(
+        `plan declares \`enforcement: required\` but ${logPath} holds no entries for wave ${wave} — ` +
+          `this wave ran with ownership enforcement INACTIVE. Causes, in order of likelihood: ` +
+          `\`wave-start\` was never run, the host does not register PreToolUse hooks, or Node is older than 22. ` +
+          `One innocent cause: a wave whose writes all went through Bash never reaches a file-tool hook — ` +
+          `if that is what happened, say so rather than letting this read as misconduct.`
+      );
+    } else {
+      // The armed boundary must be the plan's boundary. Catches a config left
+      // over from another wave, or one widened by hand after wave-start.
+      const planOwns = [...new Set(tasks.flatMap((t) => t.owns))].sort();
+      const armedOwns = [...new Set(entries.flatMap((e) => e.owns ?? []))].sort();
+      if (JSON.stringify(planOwns) !== JSON.stringify(armedOwns)) {
+        errors.push(
+          `the armed ownership boundary does not match the plan for wave ${wave}. ` +
+            `Plan: [${planOwns.join(", ")}]. Enforced: [${armedOwns.join(", ")}]. ` +
+            `Re-arm with \`wave-start\` rather than editing the config by hand.`
+        );
+      }
+      notes.push(
+        `enforcement active: ${entries.length} hook decision(s) recorded for wave ${wave} ` +
+          `(${entries.filter((e) => e.decision === "deny").length} denied)`
+      );
+    }
+  }
+
   const dirty = git(["status", "--porcelain"]);
   const head = git(["rev-parse", "HEAD"]);
   const live = rows.some((r) => r.sha !== "—" && head.startsWith(r.sha));
@@ -381,8 +494,10 @@ const [command, ...rest] = argv.filter((a) => a !== "--strict");
 
 if (command === "validate-plan" && rest[0]) validatePlan(rest[0], strict);
 else if (command === "audit-wave" && rest[0] && rest[1]) auditWave(rest[0], rest[1]);
+else if (command === "wave-start" && rest[0] && rest[1]) waveStart(rest[0], rest[1]);
 else {
-  console.error("usage: drydock-audit.mjs validate-plan [--strict] <plan.md>");
-  console.error("       drydock-audit.mjs audit-wave <plan.md> <wave>");
+  console.error("usage: drydock-audit.mjs wave-start   <plan.md> <wave>   # arm the ownership hook");
+  console.error("       drydock-audit.mjs audit-wave   <plan.md> <wave>   # audit it afterwards");
+  console.error("       drydock-audit.mjs validate-plan [--strict] <plan.md>");
   process.exit(2);
 }

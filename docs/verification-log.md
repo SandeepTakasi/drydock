@@ -732,3 +732,49 @@ worktree-isolated sessions; and any host without `PreToolUse` support.
 **Verdict:** LOGIC VERIFIED, LIVE ENFORCEMENT UNEXERCISED. The script does what
 the contract says on ten cases including both separator styles and both failure
 postures. Whether the host calls it is the next session's evidence.
+
+### A6 addendum — 2026-08-22, v0.7.0
+
+**Repo SHA at run time:** working tree, pre-commit, on top of `1e0b8a6`
+
+0.6.0's hook could silently not run, and nothing would have said so. Three
+mechanisms shipped in 0.7.0 to make that detectable; each was exercised.
+
+**1. The boundary is derived, not typed.** `wave-start` against plan 004 wave 2.1
+emitted exactly the union of `T2.1.1` and `T2.1.2`'s `owns`
+(`docs/verification-log.md`, `e2e/**`) and nothing wider. A boundary generated
+from the plan cannot exceed the plan, which retires the hand-authored
+`{"owns":["**"]}` case rather than checking for it.
+
+**2. The receipt, proven in all three directions.** Against a copy of plan 004
+carrying `format_version: 3` / `enforcement: required`:
+
+| Condition | Expected | Observed |
+|---|---|---|
+| No enforcement log | BLOCK | `FAIL (1)` — "this wave ran with ownership enforcement INACTIVE", naming the four possible causes including the innocent one |
+| Two decisions driven through the hook | clear | `PASS` — note: "enforcement active: 2 hook decision(s) recorded for wave 2.1 (0 denied)" |
+| Config widened to `["**"]` by hand after arming | mismatch caught | `FAIL (1)` — "Plan: [docs/verification-log.md, e2e/\*\*]. Enforced: [\*\*, docs/verification-log.md, e2e/\*\*]" |
+
+The log is written on allow as well as deny. An allow is the evidence the hook
+was alive for that write, and without it the audit could only establish that a
+config file existed — which a hook that never executed also satisfies.
+
+**3. Old Node fails open, loudly, and is now visible.** Exercised by blanking
+`path.matchesGlob` through a CJS preload: exit 0, and
+`Drydock: ownership enforcement is INACTIVE — Node <version> does not provide
+path.matchesGlob (added in v22)` on stderr. It writes no receipt, so check 2
+reports the wave as unenforced instead of the failure passing unnoticed. The
+import was changed from named to default because a named import fails at parse
+time — no guard could run, which is why the 0.6.0 behaviour shipped undetected.
+
+Backward compatibility confirmed: plans 001–004 carry no `enforcement:` key,
+default to `none`, and produce byte-identical verdicts to before the check
+existed. `audit-wave 2.0` still reports the `5a32ac9` ownership breach.
+
+Self-check now 12 cases, all passing.
+
+**Verdict: unchanged — LOGIC VERIFIED, LIVE ENFORCEMENT UNEXERCISED.** Nothing
+here observes the host invoking the hook; every case above drives it directly.
+What changed is that a wave which runs unenforced now says so in its audit
+instead of passing quietly. A6 moves when a session that did not write this code
+watches a real edit get denied.

@@ -78,7 +78,7 @@ export const meta: Record<
   },
 };
 
-const VERSION = "0.6.0";
+const VERSION = "0.7.0";
 
 /**
  * Docs live in the repo, not in the export — only `site/out` is deployed. So
@@ -129,7 +129,7 @@ export const hero = {
     "Subagents that cannot quietly rewrite each other, on a plan that is checked against the diff.",
   thesis: "NOTHING SAILS UNTIL IT LEAVES THE DOCK",
   sub: "A plan document is the source of truth. Subagents execute it in parallel waves with disjoint file ownership. A conformance gate audits every wave against the actual diff, never against what the executors report.",
-  badges: [`v${VERSION} -- OPEN PILOT`, "MIT", "PLAN FORMAT v2"],
+  badges: [`v${VERSION} -- OPEN PILOT`, "MIT", "PLAN FORMAT v3"],
   ctaPrimary: "Install it",
   wave: {
     label: "WAVE 1.1",
@@ -227,7 +227,7 @@ export const evidence: { rows: EvidenceRow[] } = {
       label: "Ownership enforcement hook fires in a live session",
       status: "LOGIC VERIFIED, LIVE ENFORCEMENT UNEXERCISED",
       tone: "hold",
-      note: "New in v0.6.0, and the newest claim on this page, so read it precisely. The hook's logic passes 10 of 10 cases driven by hook-shaped input: it denies writes outside the wave's ownership in both path separator styles, stays inert when no wave is running, and fails closed on a broken config. Whether the host actually invokes it on a real edit has not been observed once. A hook registers at session start, so it is never live in the session that writes it. Bash-mediated writes bypass file-tool hooks entirely and are a documented ceiling, not a gap: the post-hoc audit is the backstop there.",
+      note: "New in v0.6.0, hardened in v0.7.0, and the newest claim on this page, so read it precisely. The hook's logic passes 12 of 12 cases driven by hook-shaped input: it denies writes outside the wave's ownership in both path separator styles, stays inert when no wave is running, fails closed on a broken config, and fails open with a clear message on a Node too old to support it. Whether the host actually invokes it on a real edit has not been observed once. A hook registers at session start, so it is never live in the session that writes it. What v0.7.0 adds is that this can no longer hide: the hook records every decision, and the wave audit blocks a plan that claims enforcement but shows no decisions, so a wave that ran unenforced is reported rather than assumed. Bash-mediated writes bypass file-tool hooks entirely and are a documented ceiling, not a gap: the post-hoc audit is the backstop there.",
     },
   ],
 };

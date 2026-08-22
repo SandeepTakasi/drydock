@@ -41,6 +41,14 @@ Run in this order; stop early only on check 1 failure.
    script's verdict contradicts what you read in the diff, say so and stop; a
    disagreement between the two is a finding, not something to average.
 
+   From v0.7.0 it also answers **did enforcement actually run for this wave** —
+   not "was a config present", which a hook that never executed also satisfies.
+   The hook records every decision it makes to `.drydock/enforcement.log`, so an
+   empty log means the wave ran with the ownership boundary unenforced. On a plan
+   declaring `enforcement: required` that is a BLOCK on check-1 grounds. One
+   innocent cause exists and the report must consider it: a wave whose writes all
+   went through Bash never reaches a file-tool hook. Say which you concluded.
+
    Do not delegate checks 3–5 to it. It computes what is mechanical; those need
    judgment, which is why you are here.
 

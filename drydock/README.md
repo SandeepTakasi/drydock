@@ -64,6 +64,24 @@ planwright ──► [human approves] ──► execute waves ──► wavechec
 - **Replan patches, never regenerates.** Decision Log append-only, completed
   waves immutable, task ids never reused.
 
+## The wave lifecycle, in three commands
+
+Ownership enforcement is armed per wave, from the plan, and closed when the wave
+closes:
+
+```bash
+node scripts/drydock-audit.mjs wave-start docs/plans/005-x.md 2.1   # arm the hook
+# ... the wave's executors run; the hook denies writes outside the boundary ...
+node scripts/drydock-audit.mjs audit-wave  docs/plans/005-x.md 2.1  # audit afterwards
+rm .drydock/wave-owns.json                                          # close the wave
+```
+
+`wave-start` derives the boundary from the plan — never write
+`.drydock/wave-owns.json` by hand. The hook records every decision to
+`.drydock/enforcement.log`, and `audit-wave` reads that log to establish whether
+enforcement was actually running, which is a different and stronger question than
+whether a config file existed. Both files live under the gitignored `.drydock/`.
+
 ## Requirements
 
 **Node >= 22**, on PATH. New in v0.6.0: the ownership hook and the audit script

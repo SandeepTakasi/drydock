@@ -19,13 +19,25 @@ sequence; `plans_dir` from plugin config, default `docs/plans`).
 ```yaml
 ---
 plan: NNN-<slug>
-format_version: 2
+format_version: 3
 status: DRAFT | APPROVED | EXECUTING | BLOCKED | DONE | RECONCILED
 isolation: none | worktree          # opt-in worktree isolation, default none
+enforcement: required | none        # v3; default none when the key is absent
 created: YYYY-MM-DD
 approved_by: <name> | unapproved
 ---
 ```
+
+**`enforcement: required`** means this plan claims it was executed with the
+ownership hook live, and `drydock:wavecheck` holds it to that claim: a wave with
+no hook decisions recorded in `.drydock/enforcement.log` is a BLOCK, because the
+wave ran unenforced. Write `required` on every new plan. Plans authored before v3
+omit the key, default to `none`, and audit exactly as they always did — the
+version bump retires nothing, and both v2 and v3 are supported.
+
+The distinction is the whole reason the key exists: "a config file was present"
+is satisfied by a hook that never ran, so the plan states its own standard and
+the audit checks the standard the plan stated.
 
 Status transitions are one-way except BLOCKED (may return to EXECUTING after
 replan or human decision). Only a human sets APPROVED. Executors MUST NOT run
@@ -56,20 +68,28 @@ the reconcile skill.
 > because its forbidden audit is weakened when the auditor wrote the code and it
 > must say so rather than imply independence it does not have.
 
-**Ownership enforcement (before every wave, from v0.6.0):** write the wave's
-combined ownership to `.drydock/wave-owns.json` and delete it when the wave
-closes:
+**Ownership enforcement (arm before every wave, from v0.7.0):**
 
-```json
-{ "plan": "NNN-slug", "wave": "2.1", "owns": ["<every owns glob in the wave>"] }
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/scripts/drydock-audit.mjs wave-start <plan> <wave>
+# ... the wave's executors run ...
+rm .drydock/wave-owns.json     # closing the wave
 ```
 
-The plugin's `PreToolUse` hook reads it and denies any Write/Edit to a path no
-task in the wave owns. It is wave-level because a wave runs N executors at once
-and hook input carries no subagent identity; per-task attribution remains
-wavecheck's job. **Leaving a stale file behind blocks the next unrelated edit**,
-so deleting it is part of closing the wave. It does not replace the audit — Bash
-writes bypass file-tool hooks entirely.
+`wave-start` derives the boundary from the plan itself and writes
+`.drydock/wave-owns.json`; the `PreToolUse` hook reads it and denies any
+Write/Edit to a path no task in the wave owns. **Do not write that file by
+hand.** v0.6.0 asked you to, and it was the wrong instruction twice over: an
+orchestrator that forgot left the hook inert with no error, and a boundary typed
+by hand can be wider than the plan — `{"owns":["**"]}` enforces nothing while
+looking exactly like enforcement. A derived boundary cannot exceed its plan, and
+`wavecheck` compares what was enforced against what the plan says.
+
+It is wave-level because a wave runs N executors at once and hook input carries
+no subagent identity; per-task attribution remains wavecheck's job. **Leaving a
+stale file behind blocks the next unrelated edit**, so deleting it is part of
+closing the wave. It does not replace the audit — Bash writes bypass file-tool
+hooks entirely.
 
 **Staleness check (before every wave):**
 `git diff <baseline SHA>..HEAD -- <wave's owned files + wave-0 contract files>`.

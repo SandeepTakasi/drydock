@@ -69,6 +69,7 @@ Parallelism rules — these prevent the two classic failure modes (agents collid
 - **Wave 0 defines contracts.** Before any parallel implementation wave, a wave must pin down the shared surface: interfaces, types, schemas, API shapes, migration order. Parallel tasks then build against frozen contracts.
 - **Disjoint file ownership.** Every task lists the files it owns. Within a wave, no file appears in two tasks. If two tasks need the same file, they belong in different waves or should be merged.
 - A task is only in a wave if **all** its dependencies completed in earlier waves.
+- **Ownership enforcement (on by default).** Write `format_version: 3` and `enforcement: required` in the plan header. That commits the plan to being executed with the ownership hook live, and `drydock:wavecheck` then BLOCKs any wave with no hook decisions recorded — an unenforced wave stops being invisible. Only write `enforcement: none` when the user's host cannot run `PreToolUse` hooks or is on Node < 22, and record that as a Decision with the reason, because it downgrades every ownership claim the plan makes to prose.
 - **Worktree isolation (opt-in).** If the user opted in during step 1, or tasks are high-collision-risk (generated code, lockfiles, sweeping renames), set `isolation: worktree` in the plan header. Tasks then run via `drydock:executor-isolated`, each in its own git worktree, merged per the procedure in the format contract. It adds a merge step per wave — do not default to it.
 
 **Atomicity test** — a task is atomic when all four hold; if any fails, split it:
