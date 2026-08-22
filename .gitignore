@@ -6,3 +6,5 @@
 # Testing Gate evidence: screenshots, video, verdict sheets (plan 004).
 # Untracked by default -- committing binary evidence to history is permanent.
 .drydock/
+# Playwright MCP scratch output (snapshots, screenshots) -- evidence lives in .drydock/testing/
+.playwright-mcp/

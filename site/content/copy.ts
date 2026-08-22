@@ -229,6 +229,13 @@ export const evidence: { rows: EvidenceRow[] } = {
       tone: "pass",
       note: "Live as of 2026-08-22, and measured by a session that wrote none of this code: the host does invoke the hook, and a real edit was denied. With a wave armed from plan 004, a write and a valid edit to paths outside the wave's ownership were both refused and left the files untouched, a write and an edit inside it were allowed, and once the wave was closed the same refused write went through — inert again within the one session, because the boundary file is read on every call while the hook itself registers at session start. The decision log held exactly four entries, two denials and two allowances, one per decision the hook actually made. The 12-case logic self-check still passes alongside it. Two ceilings stand, and both were exercised here rather than reasoned about: Bash-mediated writes bypass file-tool hooks entirely, so a shell redirect to the same refused path wrote and left no trace, and paths outside the project directory are not enforced at all. The post-hoc wave audit is the backstop for both, which is why enforcement is claimed as a boundary with stated holes rather than a guarantee.",
     },
+    {
+      id: "A7",
+      label: "seatrial Testing Gate executes end to end",
+      status: "OBSERVED, ONE FULL RUN",
+      tone: "hold",
+      note: "2026-08-20, driven through Playwright MCP against this site's own static export. Six declared cases ran to a verdict sheet: three passed, three failed, and all three failures were the ones the plan designed to fail. One was written against a deliberately false expectation and failed rather than agreeing with it. One named a step the page cannot perform, returned the exact reason string, clicked no substitute element, and halted to ask instead of manufacturing a verdict. The third held its assertion and failed only its video evidence clause, which is a limit of the driver rather than a defect in the site. The summary verdict was NO-GO, because seatrial never writes an override for its own failures; a human recorded one afterwards against that video case, and the underlying failure still stands in the sheet. Read the scope precisely: this is one run against one target. The generated spec files are GENERATED, NOT EXECUTED, since no test runner was added to this repo, and click, form fill, mutation, multi-tab, mobile viewports and non-Chromium engines are all untested.",
+    },
   ],
 };
 
@@ -268,7 +275,14 @@ export const terminal: {
 };
 
 export const lifecycle: { flow: string[]; loop: string; pieces: Piece[] } = {
-  flow: ["planwright", "human approves", "execute waves", "wavecheck", "reconcile"],
+  flow: [
+    "planwright",
+    "human approves",
+    "execute waves",
+    "wavecheck",
+    "seatrial",
+    "reconcile",
+  ],
   loop: "on BLOCK: /drydock:replan or a human decision. No retries.",
   pieces: [
     {
@@ -305,6 +319,13 @@ export const lifecycle: { flow: string[]; loop: string; pieces: Piece[] } = {
       invocation: "human-only (disable-model-invocation)",
       detail:
         "Patches an approved plan after a BLOCK. Completed waves stay immutable, the decision log is append-only, and task ids are never reused.",
+    },
+    {
+      name: "seatrial",
+      kind: "skill",
+      invocation: "model, or /drydock:seatrial -- after the final wave",
+      detail:
+        "Drives the plan's written end-to-end cases against the running app through Playwright MCP, captures the declared evidence per case, generates re-runnable spec files, and writes a go/no-go sheet. It halts rather than degrades: no driver, no target, no evidence root, it stops and says so.",
     },
     {
       name: "reconcile",
@@ -352,6 +373,10 @@ export const faq: FaqItem[] = [
   {
     q: "Can the model skip the gates?",
     a: "Honestly: gates are named as blocking instructions in every plan, and compliance is measured (A3), not asserted. The figure is 27 of 28 invoked at their boundary across 4 pilot plans -- and one was skipped. That skip is on the record because the next gate caught it and the retroactive audit found a real ownership breach behind it. Every one of those sessions knew it was being watched, so it is a ceiling rather than a rate. Two things are mechanically absolute. A human flips a plan to APPROVED, and replan cannot be model-invoked.",
+  },
+  {
+    q: "Does anything actually touch a browser?",
+    a: "Yes, that is seatrial. A plan can carry a Testing Gate of written end-to-end cases, and seatrial drives them against the running app through Playwright MCP, capturing the evidence each case declares and writing a go/no-go sheet. It refuses in three directions instead of improvising: a step it cannot perform returns 'step not executable' and clicks no substitute element, a missing driver or unreachable target halts with instructions, and it never writes an override for its own failures -- shipping past a known gap stays a human decision, recorded as one. Exercised end to end on this site: six cases, three passes, and three failures that were all the designed ones. The generated spec files are GENERATED, NOT EXECUTED here, because adding a test runner to this repo was declined -- see A7.",
   },
   {
     q: "Why the name?",

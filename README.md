@@ -16,7 +16,12 @@ the skip is the useful part, because the next gate refused to open on the
 missing report and the retroactive audit found a real ownership breach behind
 it. Every session knew it was observed, so the figure is a ceiling rather than a
 rate, and it is published as PUBLISHED, **not** PASSED. From v0.6.0 ownership is
-**enforced by a hook** rather than requested in prose, and what one run costs is
+**enforced by a hook** rather than requested in prose — and as of 2026-08-22 that
+hook is observed denying a real edit in a live session, not merely unit-tested
+(A6). A plan can also carry a **Testing Gate**, which `seatrial` drives against
+the running app through Playwright MCP, capturing the evidence each case declares
+and closing with a go/no-go sheet; it has run end to end on this site (A7), where
+its three designed-to-fail cases all failed as designed. What one run costs is
 [published](docs/cost-001.md) — including the number that run never captured.
 Behind it: an adversarial
 [self-audit](docs/self-audit.md) of the auditor itself (it caught a lying

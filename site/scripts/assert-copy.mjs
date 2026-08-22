@@ -44,18 +44,26 @@ const REQUIRED = [
   // true, which is where an enforcement claim rots next: a hook that stops file
   // tools and nothing else. Drop them and the page can read as a guarantee.
   "outside the project directory are not enforced",
+  // A7 ships a browser gate that ran once and generated spec files nobody ran.
+  // Both halves have to stay on the page: the run is the claim, and this is the
+  // ceiling that would quietly drop off it first.
+  "GENERATED, NOT EXECUTED",
   "Bash-mediated writes bypass file-tool hooks",
   "Deviations logged: 1 (1 discovered by wavecheck)",
   "A2b",
   "drift",
   "one-file change",
   "NOTHING SAILS UNTIL IT LEAVES THE DOCK",
-  // the six lifecycle pieces
+  // the seven lifecycle pieces. seatrial was missing here for two releases:
+  // it shipped in v0.6.0 and the page never learned about it, so the flow strip
+  // sold five steps for a six-step product. The literal list is what stops a
+  // piece going quiet, and it can only do that for pieces somebody added to it.
   "planwright",
   "executor",
   "executor-isolated",
   "wavecheck",
   "replan",
+  "seatrial",
   "reconcile",
 ];
 

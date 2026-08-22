@@ -665,7 +665,12 @@ verification: per-session availability is a property of the environment, and
 
 ---
 
-## Seatrial gate run — plan 004 Testing Gate, TG1–TG6
+## A7 — Seatrial Testing Gate, end to end (plan 004, TG1–TG6)
+
+**Row id assigned 2026-08-22.** This entry was headed `Seatrial gate run` and
+carried no compatibility id, so the matrix could not cite it and `assert-matrix`
+could not check it. The run itself is unchanged — nothing below was re-run to
+give it a letter.
 
 **Date:** 2026-08-20
 **Host version:** `claude --version` → `2.1.237 (Claude Code)`
