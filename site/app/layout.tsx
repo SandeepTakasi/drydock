@@ -3,6 +3,7 @@ import Image from "next/image";
 
 import mark from "@/assets/drydock-mark.png";
 
+import MobileNav from "@/components/MobileNav";
 import { footer, nav, site } from "@/content/copy";
 import { fontVariables } from "@/lib/fonts";
 
@@ -113,11 +114,12 @@ export default function RootLayout({
                 <a
                   key={item.href}
                   href={item.href}
-                  className="hidden font-mono text-mark text-ink-dim uppercase transition-colors hover:text-ink md:inline-block"
+                  className="hidden py-1.5 font-mono text-mark text-ink-dim uppercase transition-colors hover:text-ink md:inline-block"
                 >
                   {item.label}
                 </a>
               ))}
+              <MobileNav />
               <span className="font-mono text-mark text-accent uppercase">
                 v{site.version}
               </span>
@@ -132,12 +134,12 @@ export default function RootLayout({
         <footer className="border-t border-line">
           <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-10 sm:px-10 md:flex-row md:items-center md:justify-between">
             <p className="max-w-sm text-note text-ink-dim">{footer.tagline}</p>
-            <ul className="flex flex-wrap gap-x-5 gap-y-2">
+            <ul className="flex flex-wrap gap-x-6 gap-y-1">
               {footer.links.map((link) => (
                 <li key={link.href}>
                   <a
                     href={link.href}
-                    className="font-mono text-mark text-ink-dim uppercase transition-colors hover:text-accent"
+                    className="inline-block py-1.5 font-mono text-mark text-ink-dim uppercase transition-colors hover:text-accent"
                   >
                     {link.label}
                   </a>

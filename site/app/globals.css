@@ -53,6 +53,16 @@
   --stroke-rule: 2px;
 }
 
+/* 11px mono labels read fine at desk distance and are tight on a phone, so
+   they take one step up on small screens. The utility emits
+   `font-size: var(--text-mark)` rather than a literal, which is what makes
+   redefining the token here work at all -- measured in the emitted CSS. */
+@media (width < 40rem) {
+  :root {
+    --text-mark: 0.75rem;
+  }
+}
+
 @layer base {
   body {
     background-color: var(--color-ground);

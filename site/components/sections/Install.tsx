@@ -69,7 +69,7 @@ export default function Install({ meta }: SectionProps) {
                   setCopiedIndex(ok ? i : null);
                 }}
                 className={
-                  "shrink-0 border px-3 py-1 font-mono text-mark uppercase transition-colors " +
+                  "shrink-0 border px-3 py-1.5 font-mono text-mark uppercase transition-colors " +
                   (copied
                     ? "border-pass text-pass"
                     : "border-line text-ink-dim hover:border-line-strong hover:text-ink")
