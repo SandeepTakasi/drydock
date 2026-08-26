@@ -237,9 +237,9 @@ export const evidence: {
     {
       id: "A7",
       label: "seatrial Testing Gate executes end to end",
-      status: "OBSERVED, ONE FULL RUN",
+      status: "OBSERVED, TWO FULL RUNS",
       tone: "hold",
-      note: "2026-08-20, through Playwright MCP against this site's export. Six cases ran to a verdict sheet: three passed, and the three failures were the three the plan designed to fail -- one written against a false expectation, one naming a step the page cannot perform, which halted to ask rather than improvise, and one whose video evidence this driver cannot capture. The sheet closed NO-GO: seatrial writes no override for its own failures. Specs it generates are GENERATED, NOT EXECUTED here.",
+      note: "Run twice, 2026-08-20 and 2026-08-26, twelve commits apart, with identical verdicts: six cases, three passes, and three failures that the plan designed to fail -- a false expectation, an unperformable step that halted to ask rather than improvise, and a video clause this driver cannot satisfy. Both sheets closed NO-GO; seatrial writes no override for its own failures. The second run also halted on stale cases and on an unreachable target, and wrote nothing at all when the driver dropped mid-suite. Specs are GENERATED, NOT EXECUTED.",
     },
   ],
   provenance: "This page is not a brochure for something built elsewhere. The site was planned, executed in parallel waves and gated with Drydock itself, across four plans whose deviation logs are in the repo.",

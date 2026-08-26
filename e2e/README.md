@@ -15,6 +15,17 @@ accessibility snapshot (`header > div > div`) matched **zero** elements, because
 the pill is a `span`. It was caught only by re-checking against the DOM. That is
 the exact failure mode of generating specs from prose instead of from the run.
 
+**Re-run 2026-08-26 at commit `05627d1`.** The whole gate was executed again
+against the same target after 12 commits had moved `site/`; preflight HALTed on
+that staleness and continued only on a human re-validation. Every case returned
+the same verdict as the first run, and every locator below resolved to the same
+element with the same measured value -- 13 same-origin requests all 200, the
+mark still 256x256, the pill still `open pilot -- field benchmarks pending`, and
+still zero test ids on the page. **Nothing in these spec files changed**, which
+is the useful part: regenerating from a second run reproduced them exactly.
+
+Still GENERATED, NOT EXECUTED -- no runner was installed for either run.
+
 The live verdicts are in `.drydock/testing/004-seatrial-e2e-gate/verdict.md`
 (gitignored).
 
@@ -22,7 +33,7 @@ The live verdicts are in `.drydock/testing/004-seatrial-e2e-gate/verdict.md`
 
 ```bash
 # 1. the target these specs expect (CLAUDE.md's recipe)
-cd /Users/takasivenkatasandeep/Desktop/drydock-repo
+cd <repo root>
 npm --prefix site run build
 mkdir -p /tmp/dd && ln -sfn "$PWD/site/out" /tmp/dd/drydock
 (cd /tmp/dd && python3 -m http.server 5173)

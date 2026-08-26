@@ -761,6 +761,50 @@ than `/`. Generated specs in `e2e/` are **GENERATED, NOT EXECUTED** —
 paths, and returned NO-GO for a stated reason. The NO-GO reflects a harness
 capability gap (TG4's video evidence), not a defect in the site.
 
+### A7 addendum — 2026-08-26, second full run
+
+**Date:** 2026-08-26 (16:38Z) · **Host:** 2.1.235 · **Node:** v24.14.1
+**Repo SHA at run time:** `05627d1` · **Baseline the cases were written at:** `7f934ba`
+**Target:** `http://127.0.0.1:5173/drydock/`, `site/out` served at the basePath by
+a Node static server. **Driver:** Playwright MCP, 24 tools registered.
+
+The same six cases, run again by a session that did not write them, against a
+target that had moved **12 commits** since the cases were authored. Every verdict
+matched the 2026-08-20 run: TG1 PASS, TG2 FAIL, TG3 FAIL `step not executable`,
+TG4 FAIL on the evidence clause, TG5 PASS, TG6 PASS, sheet **NO-GO**.
+
+**What the re-run adds, which the first run could not.** The first run measured
+seatrial against a target it was written for, in one sitting. This one hit three
+refusal conditions the first never reached, and each behaved as the contract
+says:
+
+| Condition | Contract | Observed |
+|---|---|---|
+| Cases stale — 12 commits touched `site/` since baseline | HALT and ask, do not test fixed cases against a moved target | Preflight 2 stopped the run; it proceeded only after a human re-validated the six cases |
+| Target unreachable — the static server had died between sessions | HALT, name the URL; **do not start the app** | Preflight 4 stopped with `000` on the declared URL. The server was restarted by the operator *outside* the gate, then preflight re-run |
+| Driver lost mid-suite — the Playwright MCP server disconnected after TG3 | HALT, no fallback driver, no partial sheet | Run stopped with three cases verdicted. **No `verdict.md`, no spec files, `git status e2e/` clean.** Two other browser drivers were available in-session and neither was used |
+
+That third row is the one worth keeping. A partial sheet reads to a later human
+exactly like a complete one, and a sheet whose evidence came from an undeclared
+driver answers a different question than the one the gate asked. Both were
+available shortcuts; neither was taken.
+
+**Reproducibility, measured rather than asserted.** Regenerating the spec files
+from this run produced them **byte-identical** to the committed ones -- same
+locators, same assertions, same measured values (13 same-origin requests all 200,
+mark 256x256, pill `open pilot -- field benchmarks pending`, zero test ids).
+Only `e2e/README.md` changed, to record the re-run. Specs remain
+**GENERATED, NOT EXECUTED**: no runner was installed for either run.
+
+**Unchanged limits.** Video evidence is still uncapturable through this driver,
+which is still what produces the NO-GO; one target, one browser, one viewport,
+one page; and no override was recorded this time, so the sheet stands at NO-GO
+rather than GO-WITH-OVERRIDES.
+
+**Verdict: OBSERVED, twice.** Two independent runs, four days and twelve commits
+apart, returning identical verdicts, with the staleness, unreachable-target and
+lost-driver refusals all exercised in the second.
+
 ## A6 — Ownership enforcement hook (PreToolUse)
 
 **Date:** 2026-08-21
