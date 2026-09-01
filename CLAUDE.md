@@ -93,6 +93,13 @@ cd /tmp/dd && python3 -m http.server 5173   # then open /drydock/
   same-session test of a just-edited skill exercises the stale copy and proves
   nothing** — restart before verifying, and treat any skill this session wrote
   as unexercised until a later session runs it. See plan 004, deviation 7.
+  **This includes the plan's own gate.** A plan whose tasks edit
+  `wavecheck/SKILL.md` or `planwright/SKILL.md` cannot exercise those edits when
+  its wave closes: `drydock:wavecheck` runs from the copy cached at session
+  start. Plan 005 changed wavecheck to read `execution:` and was then gated by a
+  wavecheck that could not read it (deviation 3). Such a task is shipped, gated
+  on its mechanical criteria, and **still unproven** — say so in the wavecheck
+  report rather than letting a PASS imply otherwise.
 - **`metadataBase` must NOT contain the basePath.** Next prepends `basePath` to
   every metadata-relative asset, so a base of `…github.io/drydock/` emits
   `/drydock/drydock/opengraph-image.png` — a 404 on every social share, and
@@ -148,3 +155,27 @@ benchmark the repo cannot evidence.
 
 `docs/plans/`. Read a completed plan's Deviation Log before planning adjacent
 work — plan 001's has 49 entries and most are still live constraints.
+
+## Executing a plan here
+
+- **A session told to prefer Bash for file edits will silently produce no
+  enforcement receipts.** `PreToolUse` hooks see Write/Edit and never see a
+  `python` heredoc, a `>` redirect or `sed -i`. A wave whose edits all go
+  through Bash leaves `.drydock/enforcement.log` empty, and on a plan declaring
+  `enforcement: required` that is a wavecheck BLOCK — indistinguishable from a
+  hook that was never armed. **Use Write/Edit for the owned files of an
+  executing wave**, whatever the session's general preference. Measured
+  2026-09-01, plan 005 deviation 1: one changelog write went through Bash and
+  left no receipt while the wave's other 13 decisions were logged.
+- **Close the wave before writing the plan document.** The plan file is owned by
+  no task, so while `.drydock/wave-owns.json` is armed the hook **denies** edits
+  to it — including the orchestrator's own bookkeeping. Order is: finish the
+  tasks, `rm .drydock/wave-owns.json`, then write the Deviation Log and the
+  wavecheck report. Measured 2026-09-01, plan 005 deviation 2. Widening `owns`
+  to include the plan file is the wrong fix and is what the denial message says
+  not to do — it is the mixture behind plan 004's deviation 13.
+- **Per task: edit (file tool) → commit only owned files →
+  `drydock-audit.mjs task-close <plan> <task-id>`.** Under
+  `attribution: manifest` the commit subject is free; the manifest carries
+  attribution, and a task with no entry BLOCKs the wave exactly as a missing
+  commit does.

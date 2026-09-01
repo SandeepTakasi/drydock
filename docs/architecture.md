@@ -11,6 +11,7 @@
 | `docs/verification-log.md` | raw evidence behind each compatibility row |
 | `docs/self-audit.md` | adversarial dry-run of the auditor |
 | `docs/plans/` | Drydock plan documents |
+| `.drydock/` | plan-execution runtime state, **gitignored**: `wave-owns.json` (the armed ownership boundary; deleting it closes the wave), `enforcement.log` (one JSONL receipt per hook decision), `attribution.jsonl` (task → commit manifest under `attribution: manifest`), `testing/` (seatrial evidence) |
 
 ## `site/` — four frozen contracts, then components
 
@@ -49,6 +50,9 @@ trim border, so full-bleed backgrounds are fine.
 | `npm run verify` | build, types, lint, required literals, over-claim patterns, motion-contract source rules | anything only visible as a computed style |
 | `scripts/measure-reduced-motion.mjs` | the reveal-attribute contract, dash preservation, stippling, invisible elements, scroll-linked drift (D1/D2, vacuous while nothing drifts) | everything else |
 | `.github/workflows/deploy.yml` | runs `verify` before any publish, so a red gate cannot reach Pages | anything `verify` is blind to |
+| `enforce-owns.mjs` (PreToolUse) | Write/Edit to a path the armed wave does not own — denied at the tool boundary, before the edit lands | **Bash-mediated writes entirely**, and paths outside the project directory |
+| `drydock-audit.mjs audit-wave` | per-task ownership against the real diff, unattributable tasks, a dirty tree, and whether enforcement actually ran | intent, quality, anything a commit does not record |
+| `drydock-audit.mjs validate-plan --strict` | plan defects a reader cannot eyeball: duplicate ids, same-wave collisions and dependencies, section order, Testing Gate completeness | whether the plan is a *good* plan |
 | human browser check | typography metrics, grid legibility, optical spacing | — |
 
 `verify` stays hermetic and browser-free on purpose. Timing lives only in
