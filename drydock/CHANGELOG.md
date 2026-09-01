@@ -1,5 +1,55 @@
 # Changelog
 
+## 0.8.0 — 2026-09-01
+
+**Two field reports, one cause: the plan format assumed a fleet of parallel
+executors, and solo or sequential runs paid for machinery they never used.**
+Minor bump rather than patch — the plan format gains two keys
+([#4](https://github.com/SandeepTakasi/drydock/issues/4),
+[#1](https://github.com/SandeepTakasi/drydock/issues/1)).
+
+- **`lane: small | full`, default `full`.** The small lane is one phase, one
+  wave, one gate, no `Wave x.R` quality review and no pressure test. What scales
+  with *risk* stays — ownership, acceptance criteria, both logs, the Testing
+  Gate; only what scales with *cost* goes. `validate-plan` holds a `lane: small`
+  plan to one implementation wave and no review wave, so the key is a commitment
+  rather than a label. Escalate to `full` for genuine concurrency, not for size
+  alone: the report that prompted this measured ~20 five-check gates for one
+  feature with no parallel critical path.
+- **`execution: solo | fleet`, default `fleet`.** Solo says the orchestrating
+  session runs the tasks itself. Every plan executed under a standing no-agents
+  rule used to open with the same Deviation 1 — *"tasks executed in-session by
+  the orchestrator"* — because the plan asserted a fleet and then caveated it,
+  every wave. It is now a header fact stated once. `solo` relaxes no gate, no
+  ownership boundary and no acceptance criterion.
+- **The same-wave dependency rule is now fleet-only, and that is the
+  load-bearing change.** It exists because *simultaneous* tasks cannot depend on
+  each other; solo runs a wave in sequence, so a same-wave dependency is
+  execution order rather than a contradiction. A dependency on a *later* wave
+  stays an error in both modes — that one is impossible however tasks are run.
+  Plans 001–004 omit the key, default to `fleet`, and 001 and 004 still FAIL on
+  exactly the same-wave dependency `docs/plans/README.md` documents.
+- **The RED/implementation wave split is gone, and it was never actually
+  stated.** Two lines ordered a test task before an implementation task *within*
+  a wave — precisely the same-wave dependency the validator rejects — which left
+  wave-splitting as the only valid reading, turning every parallel wave into a
+  sequential pair. The failing test and the code that satisfies it now belong in
+  one task, or two sequential tasks under `solo`. A wave boundary is a
+  synchronisation point with a five-check gate attached; red/green does not need
+  one.
+- **The practices interview asks whether executors will actually be spawned** —
+  a yes/no about intent. The nearest existing question asked how many concurrent
+  subagents the user could orchestrate, which is capacity, so a plan could
+  assume a fleet it was never going to get.
+
+Nine new cases (33 total). Proven failable: neutering the solo exemption fails
+two of them.
+
+**Dogfooded.** Plan 005 is itself `lane: small`, `execution: solo` — one wave,
+seven tasks, one gate — and it did not pass `validate-plan` until its own
+T1.0.2 landed. That was the task's acceptance criterion: *this plan validates,
+and 001 still does not.*
+
 ## 0.7.3 — 2026-09-01
 
 **A plan had five surfaces claiming to hold its state and maintained two of
