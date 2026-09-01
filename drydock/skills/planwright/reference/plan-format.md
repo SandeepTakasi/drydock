@@ -50,6 +50,22 @@ The distinction is the whole reason the key exists: "a config file was present"
 is satisfied by a hook that never ran, so the plan states its own standard and
 the audit checks the standard the plan stated.
 
+**What `required` does NOT mean, stated because it has been read the other way.**
+It is a **receipt check, not a coverage guarantee.** Ownership has two layers and
+they answer different questions:
+
+- The hook **prevents** a write at the tool boundary. It sees `Write`/`Edit` and
+  is **blind to Bash** — `sed -i`, a heredoc, `>` — and to paths outside the
+  project directory.
+- `audit-wave` **detects** a violation after the fact, from each task's commit
+  and the working tree, and it never consults the hook. This layer sees
+  everything a commit or a dirty tree carries, Bash-mediated writes included.
+
+So a wave with an empty enforcement log ran without *prevention*; it did not run
+without *auditing*. Reading the pair as "enforcement can only fail on its own
+absence" gets it backwards — the audit is the layer that cannot be bypassed by
+choosing a different tool, because it reads the result rather than the act.
+
 **`attribution:`** decides how wavecheck FINDS a task's commit — never how it
 judges it. The ownership check is `git show --name-only` against the task's
 `owns` either way.

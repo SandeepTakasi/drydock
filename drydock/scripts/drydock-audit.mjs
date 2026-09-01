@@ -751,12 +751,26 @@ function auditWave(path, wave) {
       : [];
 
     if (entries.length === 0) {
+      // Which of the three sub-cases this is, decided from evidence the tool
+      // already holds rather than handed to a model as "one innocent cause
+      // exists, consider it". That instruction was prose-compliance of exactly
+      // the kind `wave-start` and `task-close` were built to delete. Issue #3.
+      const logExists = existsSync(logPath);
+      const otherWaves = logExists
+        ? readFileSync(logPath, "utf8")
+            .split(/\r?\n/)
+            .filter(Boolean)
+            .map((l) => { try { return JSON.parse(l); } catch { return null; } })
+            .filter((e) => e && e.wave !== wave).length
+        : 0;
+      const cause = !logExists
+        ? `no \`${logPath}\` exists at all, so the hook never ran here: \`wave-start\` was never invoked, the host does not register PreToolUse hooks, or Node is older than 22 (the hook exits 0 with a message rather than wedging every edit)`
+        : otherWaves > 0
+          ? `the log holds ${otherWaves} decision(s) for OTHER waves, so the hook is alive and registered — this wave's writes simply never reached it, which is what happens when they go through Bash (\`sed -i\`, a heredoc, \`>\`), since a PreToolUse file-tool hook cannot see those`
+          : `the log exists but is empty — armed at some point, invoked never`;
       errors.push(
-        `plan declares \`enforcement: required\` but ${logPath} holds no entries for wave ${wave} — ` +
-          `this wave ran with ownership enforcement INACTIVE. Causes, in order of likelihood: ` +
-          `\`wave-start\` was never run, the host does not register PreToolUse hooks, or Node is older than 22. ` +
-          `One innocent cause: a wave whose writes all went through Bash never reaches a file-tool hook — ` +
-          `if that is what happened, say so rather than letting this read as misconduct.`
+        `plan declares \`enforcement: required\` but ${logPath} holds no entries for wave ${wave}: ${cause}. ` +
+          `Prevention did not run for this wave. Detection did — check 2 above audited every task commit against its \`owns\` regardless — so read this as an unmet claim, not as an unaudited wave.`
       );
     } else {
       // The armed boundary must be the plan's boundary. Catches a config left
@@ -783,6 +797,17 @@ function auditWave(path, wave) {
   // failing it over a frontmatter word would conflate two different verdicts.
   const staleStatus = statusContradiction(plan);
   if (staleStatus) notes.push(`plan status is stale — ${staleStatus} Fix with \`plan-status --write\`, or by hand.`);
+
+  // What a PASS from this subcommand does and does not mean. Two layers exist
+  // and they answer different questions: the hook PREVENTS a write at the tool
+  // boundary and is blind to Bash; this audit DETECTS one after it lands in a
+  // commit or the working tree, and sees everything either of those carries.
+  // Issue #3 read the pair as "enforcement can only BLOCK on its own absence" —
+  // it cannot, because this check never consults the hook at all.
+  const attributed = new Set(rows.filter((r) => r.sha !== "—").map((r) => r.sha)).size;
+  notes.push(
+    `ownership verified by this audit from ${attributed} commit(s), independently of the hook — detection, not prevention: a Bash-mediated write to an unowned file is caught when it lands, not when it happens`
+  );
 
   const dirty = git(["status", "--porcelain"]);
   const head = git(["rev-parse", "HEAD"]);

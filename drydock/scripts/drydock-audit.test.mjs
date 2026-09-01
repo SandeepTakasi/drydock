@@ -539,6 +539,68 @@ cases.push(
   }, (out) => out.includes("preferred:   planning") && out.includes("resolve-plans-dir: .drydock/plans")]
 );
 
+// --------------------------------------------------------------------------
+// An empty enforcement log has three different causes and they are not the same
+// finding (issue #3). The old message listed them and asked the reader to pick;
+// the tool holds the evidence, so it decides. Same reasoning as `wave-start`
+// and `task-close`: a rule a model has to remember to apply is not a rule.
+
+const enforcedPlan = `---
+plan: 900-fixture
+format_version: 3
+status: EXECUTING
+enforcement: required
+attribution: manifest
+execution: solo
+---
+
+#### T1.0.1 — first
+- **Files owned:** \`a.txt\`
+- **Acceptance criterion:** \`true\` exits 0.
+
+### Wave 1.0 — one
+`;
+
+// A wave whose task committed and was recorded, so attribution is clean and the
+// only thing missing is the hook's receipt.
+const enforcedRepo = (name, log) => {
+  const dir = join(DIR, `enf-${name}`);
+  mkdirSync(dir, { recursive: true });
+  git(dir, ["init", "-q", "-b", "main"]);
+  writeFileSync(join(dir, ".gitignore"), ".drydock/\n");
+  writeFileSync(join(dir, "plan.md"), enforcedPlan);
+  git(dir, ["add", "-A"]);
+  git(dir, ["commit", "-q", "-m", "chore: baseline"]);
+  commitAs(dir, ["a.txt"], "fix(a): do the thing");
+  cli(dir, ["task-close", "plan.md", "T1.0.1"]);
+  if (log !== null) writeFileSync(join(dir, ".drydock", "enforcement.log"), log);
+  return dir;
+};
+
+const OTHER_WAVE = JSON.stringify({ ts: "x", plan: "900-fixture", wave: "9.9", decision: "allow", path: "z.txt", owns: ["z.txt"] }) + "\n";
+
+cases.push(
+  ["no log at all is diagnosed as the hook never having run",
+    () => cli(enforcedRepo("nolog", null), ["audit-wave", "plan.md", "1.0"]),
+    (out) => out.includes("exists at all, so the hook never ran here")],
+
+  ["a log carrying other waves is diagnosed as this wave bypassing it",
+    () => cli(enforcedRepo("otherwave", OTHER_WAVE), ["audit-wave", "plan.md", "1.0"]),
+    (out) => out.includes("decision(s) for OTHER waves") && out.includes("go through Bash")],
+
+  ["an empty log is diagnosed as armed but never invoked",
+    () => cli(enforcedRepo("emptylog", ""), ["audit-wave", "plan.md", "1.0"]),
+    (out) => out.includes("armed at some point, invoked never")],
+
+  ["a missing receipt is reported as an unmet claim, not an unaudited wave",
+    () => cli(enforcedRepo("claim", null), ["audit-wave", "plan.md", "1.0"]),
+    (out) => out.includes("Prevention did not run") && out.includes("Detection did")],
+
+  ["every audit states which layer verified ownership",
+    () => cli(enforcedRepo("layer", null), ["audit-wave", "plan.md", "1.0"]),
+    (out) => out.includes("independently of the hook — detection, not prevention")]
+);
+
 let failed = 0;
 for (const [name, run, ok] of cases) {
   const out = run();

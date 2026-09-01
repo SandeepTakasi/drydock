@@ -39,6 +39,12 @@ planwright ──► [human approves] ──► execute waves ──► wavechec
   and it is **inert unless `.drydock/wave-owns.json` exists**, which is both the
   default state and the escape hatch. Same-wave tasks can additionally be
   isolated by git worktrees (`isolation: worktree` in the plan header).
+  **`enforcement: required` is a receipt check, not a coverage guarantee** — it
+  asserts the hook ran, and the hook is one of two layers. The hook *prevents*
+  at the tool boundary and cannot see Bash; `audit-wave` *detects* from each
+  task's commit and the working tree and never consults the hook, so it catches
+  what the hook is blind to, after the fact rather than before. A wave with an
+  empty log ran without prevention, not without auditing.
 - **Plan-conformance auditing, not code review.** Wavecheck answers one
   question: did the wave do exactly what the plan said and nothing else —
   ownership boundaries, forbidden lists, acceptance criteria verified against

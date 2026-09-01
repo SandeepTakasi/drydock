@@ -1,5 +1,51 @@
 # Changelog
 
+## 0.8.4 — 2026-09-01
+
+**"Enforcement can only BLOCK on its own absence"**
+([#3](https://github.com/SandeepTakasi/drydock/issues/3)). It cannot, and the
+reason it read that way is that nothing said the second layer existed. Ownership
+has two, answering different questions:
+
+- The hook **prevents** a write at the tool boundary. It sees `Write`/`Edit`, and
+  is blind to Bash (`sed -i`, a heredoc, `>`) and to paths outside the project.
+- `audit-wave` **detects** a violation from each task's commit and the working
+  tree, and **never consults the hook**. It therefore catches precisely what the
+  hook is blind to — after the fact rather than before.
+
+So a wave with an empty log ran without *prevention*, not without *auditing*.
+The issue's proposed fix — relocate ownership validation to a wave-close `git
+diff` check — describes what `audit-wave` has done since v0.3.0; what was
+missing was saying so.
+
+- **An empty enforcement log is now diagnosed, not listed.** Three causes, and
+  they are not the same finding: no log file at all (the hook never ran here —
+  never armed, host does not register `PreToolUse`, or Node < 22), a log holding
+  decisions for *other* waves (the hook is alive and this wave's writes went
+  around it, which is what Bash does), and an empty log (armed, never invoked).
+  The tool holds the evidence for all three, so it decides. The old message
+  listed them and asked the reader to pick, ending "if that is what happened, say
+  so" — prose-compliance of exactly the kind `wave-start` and `task-close` were
+  built to delete.
+- **The BLOCK now says what it is.** "Prevention did not run for this wave.
+  Detection did — check 2 audited every task commit against its `owns`
+  regardless — so read this as an unmet claim, not an unaudited wave."
+- **Every audit states which layer verified ownership**, so a green gate can
+  never be read as "the hook was watching" and an empty log can never be read as
+  "nothing checked this".
+- **`enforcement: required` is documented as a receipt check, not a coverage
+  guarantee**, in both the plugin README and the format contract — the issue's
+  second ask, and the honest framing.
+
+Five new cases (52 total), each driving a real repo through the three log states.
+Proven failable: flattening the diagnosis fails three.
+
+**On the issue's evidence.** It reports 35 hook decisions with zero denies. That
+is no longer true of this repo: plan 005's wave 1.0 recorded 13 decisions with
+**one deny**, refusing an edit to the plan document while the wave was armed. The
+mechanism has now been observed refusing real work, unprompted, in a session that
+did not write it.
+
 ## 0.8.3 — 2026-09-01
 
 **`plans_dir` defaulted to a path some repos forbid, and every plan then argued
