@@ -298,14 +298,14 @@ export const lifecycle: { flow: string[]; loop: string; pieces: Piece[] } = {
       kind: "skill",
       invocation: "model or /drydock:planwright",
       detail:
-        "Interrogates the request and writes the plan document: phases, parallel waves, atomic tasks with owned files, and the gates between them.",
+        "Interrogates the request and writes the plan document: phases, parallel waves, atomic tasks with owned files, and the gates between them. Then checks it with drydock-audit.mjs validate-plan, which catches what a reader cannot: duplicate task ids, two tasks owning one file, a dependency that cannot hold.",
     },
     {
       name: "executor",
       kind: "agent",
-      invocation: "spawned per task",
+      invocation: "spawned per task, or in-session when solo",
       detail:
-        "Executes exactly one task block and writes only the files that task owns.",
+        "Executes exactly one task block and writes only the files that task owns, then records its commit with task-close so attribution never depends on the message text.",
     },
     {
       name: "executor-isolated",
@@ -319,7 +319,7 @@ export const lifecycle: { flow: string[]; loop: string; pieces: Piece[] } = {
       kind: "skill",
       invocation: "blocking gate inside every plan",
       detail:
-        "Audits the finished wave against the plan, using the actual diff: ownership, forbidden lists, acceptance criteria, deviations. PASS or BLOCK.",
+        "Audits the finished wave against the plan, using the actual diff: ownership, forbidden lists, acceptance criteria, deviations. PASS or BLOCK. Its mechanical half is audit-wave, judged against the boundary wave-start derived from the plan.",
     },
     {
       name: "replan",
@@ -334,13 +334,6 @@ export const lifecycle: { flow: string[]; loop: string; pieces: Piece[] } = {
       invocation: "model, or /drydock:seatrial -- after the final wave",
       detail:
         "Drives the plan's written end-to-end cases through a real browser, captures the evidence each one declares, and writes a go/no-go sheet. Halts rather than degrades.",
-    },
-    {
-      name: "drydock-audit.mjs",
-      kind: "script",
-      invocation: "run by the skills, and by you",
-      detail:
-        "The mechanical half: validate-plan checks a plan for defects a reader cannot eyeball, wave-start derives the ownership boundary from the plan, task-close records which commit belongs to which task, audit-wave proves the diff stayed inside it, plan-status derives plan state from the gates.",
     },
     {
       name: "reconcile",
