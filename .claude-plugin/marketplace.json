@@ -2,7 +2,7 @@
   "name": "drydock",
   "description": "Drydock \u2014 plan-first parallel execution for Claude Code.",
   "owner": {
-    "name": "Sandeep / GeekyAnts"
+    "name": "Sandeep Takasi"
   },
   "plugins": [
     {

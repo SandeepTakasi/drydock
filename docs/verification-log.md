@@ -258,9 +258,8 @@ isolation`. The main working tree still holds one line and `main` is still at
    risks the worktree dir being accidentally committed — and it would surface in
    wavecheck as an unexplained change outside every task's `owns` set.
    `.claude/` was added to `.gitignore` as a result of this finding.
-4. **Commit authorship is the human's git identity** (`sandeep
-   <venkatas@geekyants.com>`), not a distinct agent identity. Attribution of
-   agent-authored commits relies entirely on the `drydock(...)` subject prefix.
+4. **Commit authorship is the human's git identity** (`sandeep`), not a distinct agent identity.
+   Attribution of agent-authored commits relies entirely on the `drydock(...)` subject prefix.
 
 ### Not tested
 
