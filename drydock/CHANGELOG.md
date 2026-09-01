@@ -1,5 +1,49 @@
 # Changelog
 
+## 0.8.8 — 2026-09-02
+
+**Three checks in `validate-plan` asserted more than they tested.** Each one
+read as a guarantee and was satisfiable by a plan that violated it. Found by
+running the validator against synthetic plans built to break it, which is not
+something the corpus in this repo would ever have surfaced.
+
+- **Same-wave ownership compared glob STRINGS, not the file sets they
+  describe.** Only a byte-identical duplicate collided, so `site/**` in one task
+  and `site/content/copy.ts` in a sibling passed `--strict` clean — while both
+  tasks could write the same file. That is the exact defect class the plugin
+  exists to prevent, missed by the check whose own message says it cannot
+  happen, and it is worse downstream: `wave-start` unions a wave's globs into
+  one boundary, so the hook permits both writes and only the post-hoc audit can
+  catch it — and only if the two tasks happen to touch the same file. Overlap is
+  now computed: a literal path against a glob via `matchesGlob`, glob against
+  glob by fixed directory prefix. Deliberately biased toward reporting; a false
+  overlap costs one line in a plan review, a missed one costs two agents writing
+  the same file. Ceiling stated in a `ponytail:` comment — this is prefix
+  comparison, not set intersection, and shapes like `src/*.ts` vs `src/a*` are
+  out of its reach.
+- **Testing Gate fields were counted across the whole section.** A case needed
+  the word `evidence` to appear as often as there were cases — so one
+  well-formed case writing each field twice paid for a second case declaring
+  nothing at all, and `--strict` passed it. Fields are now required **per case
+  block**. This also settles a message that had been wrong since it was written:
+  it always said "all seven fields" while the list held five. The missing two
+  are `id` and `title`, both carried by the case heading, and the error now says
+  so instead of naming a number nothing checked.
+- **The `video` check rejected plans for refusing video.** `video` is
+  uncapturable through the supported driver (A5), so a case declaring it fails
+  its evidence clause on every run — plan 004's only NO-GO, still caught. But
+  the test was a bare word scan over the section, so
+  `evidence: screenshot only (no video — the driver cannot capture it)` was
+  reported as *declaring* video. Its sibling `rival`-driver check already
+  carried a negation guard for precisely this, because writing what a thing is
+  NOT is how this corpus documents a constraint; the `video` check never got
+  one. Now scoped to evidence declarations and negation-aware within them, and
+  the error quotes the offending line.
+
+No plan in the corpus changes verdict: 001–004 fail on exactly what they failed
+on before, 005 still passes, and plan 004's TG4 is still the NO-GO it was
+written to be. Eleven tests added, each one failing against the old check.
+
 ## 0.8.7 — 2026-09-01
 
 **A closed wave's verdict could not be re-derived, and the tool blamed the wrong

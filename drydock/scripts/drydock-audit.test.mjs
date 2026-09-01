@@ -99,6 +99,147 @@ const cases = [
 ];
 
 // --------------------------------------------------------------------------
+// Same-wave ownership is about FILE SETS, not strings. Comparing glob strings
+// caught only a byte-identical duplicate, so the natural way to write an
+// overlap passed `--strict` clean while both tasks could write the same file —
+// the exact defect class the plugin exists to prevent, missed by the check
+// whose message asserts it cannot happen.
+
+const twoOwners = (a, b) => `
+#### T1.0.1 — one
+- **Files owned:** ${a}
+- **Acceptance criterion:** \`true\` exits 0.
+
+#### T1.0.2 — two
+- **Files owned:** ${b}
+- **Acceptance criterion:** \`true\` exits 0.
+`;
+
+cases.push(
+  ["a glob swallowing a sibling's literal path is an overlap",
+    () => validate("ov-lit", twoOwners("`site/**`", "`site/content/copy.ts`")),
+    (out) => out.includes("describe overlapping file sets") && out.includes("validate-plan: FAIL")],
+
+  ["nested globs overlap too",
+    () => validate("ov-glob", twoOwners("`site/**`", "`site/content/**`")),
+    (out) => out.includes("describe overlapping file sets")],
+
+  // The original string-equality case still has to report, and still with the
+  // wording that names one path rather than two.
+  ["an identical glob in two tasks still reports as one path",
+    () => validate("ov-same", twoOwners("`site/a.ts`", "`site/a.ts`")),
+    (out) => out.includes("`site/a.ts` is owned by both T1.0.1 and T1.0.2")],
+
+  // Both halves of "must not over-report": sibling subtrees are the ordinary
+  // way a wave is split, and two different exact files never collide.
+  ["sibling subtrees are not an overlap",
+    () => validate("ov-clean", twoOwners("`site/**`", "`docs/**`")),
+    (out) => out.includes("validate-plan: PASS")],
+
+  ["two different literal paths are not an overlap",
+    () => validate("ov-lits", twoOwners("`a.txt`", "`b.txt`")),
+    (out) => out.includes("validate-plan: PASS")],
+
+  // One task may describe its own files with a glob AND a path inside it. That
+  // is redundant, not a collision — there is no second writer.
+  ["a task overlapping only itself is fine", () => validate("ov-self", `
+#### T1.0.1 — one
+- **Files owned:** \`site/**\`, \`site/content/copy.ts\`
+- **Acceptance criterion:** \`true\` exits 0.
+`), (out) => out.includes("validate-plan: PASS")],
+);
+
+// --------------------------------------------------------------------------
+// Testing Gate: fields are required PER CASE, and `video` is only a defect when
+// a case actually declares it as evidence.
+
+const tgPlan = (gateBody) => `---
+plan: 900-fixture
+format_version: 3
+status: DRAFT
+---
+
+## Requirement
+## Spec reference
+## Surgical-scope statement
+## Baseline
+## Practices in effect
+## Findings & constraints
+## Decision Log
+## Open questions
+## Out of scope / follow-ups
+## Execution policies
+## Testing Gate
+
+${gateBody}
+
+## Pressure-test verdict
+### Wave 1.0 — do it
+#### T1.0.1 — thing
+- **Files owned:** \`a.txt\`
+- **Acceptance criterion:** \`true\` exits 0.
+- **Context brief:** x
+## Deviation Log
+## Wavecheck reports
+## Progress log
+## Reconcile report
+`;
+
+// TG1 writes every field TWICE. Under the old section-wide count that paid for
+// TG2's total silence and the plan passed --strict.
+const paddedThenEmpty = `
+#### TG1 — login works
+- **Preconditions:** app running
+- **Preconditions:** app seeded
+- **Steps:** open /login
+- **Steps:** submit
+- **Expected result:** dashboard
+- **Expected result:** no error
+- **Severity:** blocker · **Evidence:** screenshot
+- **Severity:** blocker · **Evidence:** screenshot
+
+#### TG2 — logout works
+- (this case declares nothing at all)
+`;
+
+const oneGoodCase = (evidence) => `
+#### TG1 — login works
+- **Preconditions:** app running
+- **Steps:** open /login
+- **Expected result:** dashboard
+- **Severity:** blocker · **Evidence:** ${evidence}
+`;
+
+cases.push(
+  ["a padded case cannot pay for an empty one",
+    () => validateRaw("tg-empty", tgPlan(paddedThenEmpty), true),
+    (out) => out.includes("case TG2 declares no") && out.includes("validate-plan --strict: FAIL")],
+
+  ["ids listed only in a summary table declare nothing", () => validateRaw("tg-table", tgPlan(`
+| ID | Title | Severity | Evidence |
+|---|---|---|---|
+| TG1 | login works | blocker | screenshot |
+`), true), (out) => out.includes("carries no per-case block")],
+
+  // The regression this fixes: writing what a thing is NOT is how this corpus
+  // documents a constraint, and the old bare word scan read the disclaimer as
+  // a declaration.
+  ["an evidence line refusing video is not a video declaration",
+    () => validateRaw("tg-novideo", tgPlan(oneGoodCase("screenshot only (no video — the driver cannot capture it)")), true),
+    (out) => out.includes("no `video` evidence declared — good") && out.includes("validate-plan --strict: PASS")],
+
+  // ...while a real declaration is still plan 004's NO-GO.
+  ["a case actually declaring video is still rejected",
+    () => validateRaw("tg-video", tgPlan(oneGoodCase("video")), true),
+    (out) => out.includes("declares `video` evidence") && out.includes("validate-plan --strict: FAIL")],
+
+  // Prose about the driver's limits is not an evidence declaration either.
+  ["prose mentioning video outside an evidence line is ignored",
+    () => validateRaw("tg-prose", tgPlan(`**Browser:** Playwright MCP. Video capture is impossible here.\n${oneGoodCase("screenshot")}`), true),
+    (out) => out.includes("no `video` evidence declared — good")],
+);
+
+// --------------------------------------------------------------------------
 // Manifest attribution (issue #2). These need a real repository: the whole
 // point is that a commit whose SUBJECT carries no task id is still attributable,
 // so there has to be a commit to attribute. Each case gets a throwaway repo —

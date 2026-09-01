@@ -117,7 +117,34 @@ const REQUIRED_SECTIONS = [
   "Reconcile report",
 ];
 
+// Five of the contract's SEVEN per-case fields. The other two — `id` and
+// `title` — are carried by the case heading (`#### TG1 — what it establishes`),
+// so a block that exists has them; these are what its body must still declare.
 const TESTING_GATE_FIELDS = ["preconditions", "steps", "expected", "evidence", "severity"];
+
+// A case block starts at its own heading and runs to the next one. Both shapes
+// the corpus writes count: plan 004's `#### TG4 — …` and the bolded
+// `**TG1 — …**` form. A summary-table row (`| TG4 | … | major | video |`)
+// deliberately does NOT open a block — it is an index, not a declaration, and
+// treating it as a case would fail every plan that writes both.
+const CASE_HEAD = /^(?:#{1,6}\s*|\*\*)\s*(TG\d+)\b/;
+
+function caseBlocks(gate) {
+  const blocks = [];
+  for (const line of gate.split(/\r?\n/)) {
+    const m = line.match(CASE_HEAD);
+    if (m) blocks.push({ id: m[1], body: line });
+    else if (blocks.length > 0) blocks[blocks.length - 1].body += `\n${line}`;
+  }
+  return blocks;
+}
+
+// "no video", "not video", "without video" — and the trailing form this repo
+// actually writes, where the word is followed by why it cannot be used. Bounded
+// to the same line so a negation in one case cannot excuse a declaration in the
+// next.
+const NEGATED_VIDEO =
+  /\b(?:no|not|never|without|excluding|omitting)\s+(?:\w+\s+){0,2}video\b|\bvideo\b[^\n]{0,80}?\b(?:cannot|can't|uncapturable|unsupported|unavailable|not captur\w*)\b/i;
 
 // ---------------------------------------------------------------- parsing ---
 
@@ -206,6 +233,35 @@ function parsePlan(path) {
   flush();
 
   return { path, text, lines, frontmatter, hasFrontmatter, sections, tasks };
+}
+
+// Do two `owns` globs describe file sets that can intersect?
+//
+// Full glob-vs-glob intersection is a real algorithm; this is not it, and does
+// not need to be. Two cases cover every shape the corpus writes:
+//
+//   1. One side is a LITERAL path (no wildcard). Then the question is just "does
+//      the other glob match it", which `matchesGlob` answers exactly. This is
+//      the case that shipped broken — `site/**` vs `site/content/copy.ts`.
+//   2. Both sides are globs. Compare the fixed directory prefix each one sits
+//      under: `site/**` and `site/content/**` overlap because one prefix
+//      contains the other. Coarse, and deliberately biased toward reporting —
+//      a false overlap is one line in a plan review, a missed one is two agents
+//      writing the same file.
+//
+// ponytail: prefix comparison for glob-vs-glob, not set intersection. Exact
+// intersection only matters for shapes like `src/*.ts` vs `src/a*` that no plan
+// in this corpus has written; revisit if one ever does.
+const literal = (g) => !/[*?[\]{}]/.test(g);
+const fixedPrefix = (g) => g.slice(0, g.search(/[*?[\]{}]/) === -1 ? g.length : g.search(/[*?[\]{}]/)).replace(/[^/]*$/, "");
+
+function globsOverlap(a, b) {
+  if (a === b) return true;
+  if (literal(a) && literal(b)) return false; // two different exact paths
+  if (literal(a)) return matchesGlob(a, b);
+  if (literal(b)) return matchesGlob(b, a);
+  const [pa, pb] = [fixedPrefix(a), fixedPrefix(b)];
+  return pa.startsWith(pb) || pb.startsWith(pa);
 }
 
 // `T2.1.3` -> wave `2.1`. `T0` is the pre-flight baseline and sits in no wave.
@@ -331,15 +387,27 @@ function validatePlan(path, strict) {
     if (!byWave.has(wave)) byWave.set(wave, []);
     byWave.get(wave).push(t);
   }
+  // Disjointness is about the FILE SETS two globs describe, not the strings.
+  // Comparing strings caught only a byte-identical duplicate, so the natural way
+  // to write an overlap — `site/**` in one task and `site/content/copy.ts` in a
+  // sibling — passed `--strict` clean while both tasks could write the same
+  // file. That is the exact defect class the plugin exists to prevent, and it
+  // slipped through the check whose message asserts it cannot happen. Worse
+  // downstream: `wave-start` UNIONS a wave's globs into one boundary, so the
+  // hook allows both writes, leaving only the post-hoc audit — and that catches
+  // it solely if the two tasks happen to touch the same file.
   for (const [wave, tasks] of byWave) {
-    const owner = new Map();
-    for (const t of tasks) {
-      for (const glob of t.owns) {
-        if (owner.has(glob)) {
-          errors.push(`wave ${wave}: \`${glob}\` is owned by both ${owner.get(glob)} and ${t.id} — same-wave ownership must be disjoint`);
-        } else {
-          owner.set(glob, t.id);
-        }
+    const claims = tasks.flatMap((t) => t.owns.map((glob) => ({ glob, id: t.id })));
+    for (let i = 0; i < claims.length; i++) {
+      for (let j = i + 1; j < claims.length; j++) {
+        const [a, b] = [claims[i], claims[j]];
+        if (a.id === b.id) continue; // one task may describe its own files twice
+        if (!globsOverlap(a.glob, b.glob)) continue;
+        errors.push(
+          a.glob === b.glob
+            ? `wave ${wave}: \`${a.glob}\` is owned by both ${a.id} and ${b.id} — same-wave ownership must be disjoint`
+            : `wave ${wave}: \`${a.glob}\` (${a.id}) and \`${b.glob}\` (${b.id}) describe overlapping file sets — same-wave ownership must be disjoint, and the wave's armed boundary is their union, so the hook would permit both`
+        );
       }
     }
   }
@@ -405,14 +473,49 @@ function validatePlan(path, strict) {
     } else {
       const caseIds = [...new Set([...gate.matchAll(/\bTG\d+\b/g)].map((m) => m[0]))];
       if (caseIds.length === 0) errors.push("Testing Gate: not N/A but declares no `TG<n>` cases");
-      for (const field of TESTING_GATE_FIELDS) {
-        const count = [...gate.matchAll(new RegExp(`\\b${field}\\b`, "gi"))].length;
-        if (count < caseIds.length) {
-          errors.push(`Testing Gate: \`${field}\` appears ${count}x for ${caseIds.length} case(s) — every case needs all seven fields`);
+
+      // PER CASE, not across the section. Counting `field` occurrences in the
+      // whole gate and comparing to the case count let one well-formed case pay
+      // for an empty one: a TG1 that writes each field twice satisfies the count
+      // for a TG2 declaring nothing at all, and `--strict` passed it. Verified
+      // against a synthetic plan before this changed.
+      //
+      // The blocks also settle the "seven fields" the message always claimed
+      // while the list held five. `id` and `title` are the missing two, and both
+      // are carried by the case heading itself — so a case with a heading has
+      // them by construction, and the five below are what remains to check.
+      const blocks = caseBlocks(gate);
+      if (caseIds.length > 0 && blocks.length === 0) {
+        errors.push(
+          `Testing Gate: names ${caseIds.length} \`TG<n>\` id(s) but carries no per-case block — a case listed only in the summary table declares none of its seven fields`
+        );
+      }
+      for (const { id, body } of blocks) {
+        const missing = TESTING_GATE_FIELDS.filter((f) => !new RegExp(`\\b${f}\\b`, "i").test(body));
+        if (missing.length > 0) {
+          errors.push(
+            `Testing Gate: case ${id} declares no ${missing.map((f) => `\`${f}\``).join(", ")} — all seven fields are required (\`id\` and \`title\` come from the case heading; these are the other five)`
+          );
         }
       }
-      if (!/\bvideo\b/i.test(gate)) notes.push("Testing Gate: no `video` evidence declared — good; the Playwright MCP driver cannot capture it (A5)");
-      else errors.push("Testing Gate: declares `video` evidence, which the supported driver cannot capture at all — that case fails its evidence clause on every possible run (plan 004's only NO-GO)");
+
+      // `video` is uncapturable through the supported driver (A5), so a case
+      // DECLARING it fails its evidence clause on every possible run — plan
+      // 004's only NO-GO, and still correctly caught.
+      //
+      // But the old test was a bare word scan over the whole section, which
+      // rejected `evidence: screenshot only (no video — the driver cannot
+      // capture it)` as if it had declared video. Its sibling `rival` check
+      // below already carries a guard for exactly this, because writing what a
+      // thing is NOT is how this corpus habitually documents a constraint; the
+      // `video` check simply never got one. Scoped to evidence declarations, and
+      // negation-aware within them.
+      const videoDeclared = gate
+        .split(/\r?\n/)
+        .filter((l) => /evidence/i.test(l) && /\bvideo\b/i.test(l))
+        .filter((l) => !NEGATED_VIDEO.test(l));
+      if (videoDeclared.length === 0) notes.push("Testing Gate: no `video` evidence declared — good; the Playwright MCP driver cannot capture it (A5)");
+      else errors.push(`Testing Gate: declares \`video\` evidence, which the supported driver cannot capture at all — that case fails its evidence clause on every possible run (plan 004's only NO-GO). Line: ${videoDeclared[0].trim()}`);
 
       // Same shape as the `video` rule, one field over: a gate naming a driver
       // seatrial will not use produces evidence of a different kind than the
