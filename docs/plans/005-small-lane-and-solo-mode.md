@@ -1,7 +1,7 @@
 ---
 plan: 005-small-lane-and-solo-mode
 format_version: 3
-status: EXECUTING
+status: DONE
 isolation: none
 enforcement: required
 attribution: manifest
@@ -168,9 +168,12 @@ Skipped — short-form track, per the right-size table's 5–15 row and Decision
 **Exit state:** `lane:` and `execution:` are defined, validated, written by
 planwright, and honoured by wavecheck; the RED/impl contradiction is gone; the
 plugin ships as 0.8.0 with `npm run verify` green.
-**Phase gate:** `node drydock/scripts/drydock-audit.test.mjs`,
-`node drydock/hooks/enforce-owns.test.mjs`, the full `validate-plan` sweep, and
-`cd site && npm run verify` — plus human sign-off.
+**Phase gate: CLOSED, approved by sandeep — 2026-09-01.**
+Conditions met: `drydock-audit.test.mjs` 33/33; `enforce-owns.test.mjs` PASS,
+12 cases; the full `validate-plan` sweep (002/003/005 PASS, 001/004 FAIL on
+their one documented same-wave dependency, README SKIP); `cd site && npm run
+verify` exit 0 with `assert-copy` reporting `version matches plugin.json`; and
+wavecheck 1.0 PASS on all five checks.
 
 #### T0 — Baseline verification
 - **Description:** Runs every quality-gate command in §4 on the untouched
