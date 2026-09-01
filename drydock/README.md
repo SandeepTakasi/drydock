@@ -103,6 +103,10 @@ Add `--scope project` to the install to share it with your team.
 
 Configure on enable (or `--config`): `plans_dir` (default `docs/plans`),
 `docs_targets` (default `CLAUDE.md,docs/decisions,docs/architecture.md`).
+If your repo gitignores `plans_dir` — house rules against committing tool
+artifacts — planwright falls back to `.drydock/plans/` and says so in one fixed
+sentence in the plan, rather than each plan improvising a justification for its
+own location. `drydock-audit.mjs resolve-plans-dir` reports what it resolved.
 
 Versioning: explicit semver from v0.4.0 (`CHANGELOG.md` maintained per release).
 Licensed MIT. Remaining before public release, per

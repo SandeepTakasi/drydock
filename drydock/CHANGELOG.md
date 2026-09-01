@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.8.3 — 2026-09-01
+
+**`plans_dir` defaulted to a path some repos forbid, and every plan then argued
+its own case for living elsewhere**
+([#6](https://github.com/SandeepTakasi/drydock/issues/6)). House rules against
+committing tool or planning artifacts make `docs/plans/` uncommittable; the plan
+went somewhere else and carried a hand-written paragraph justifying it. The
+reasoning came out different in every plan, so a reader had to reconstruct why
+the file sat where it sat. The defect is the improvisation, not the default.
+
+- **`drydock-audit.mjs resolve-plans-dir [<preferred>]`** reports the directory,
+  whether the repo will carry the file, and **one fixed sentence** for the plan
+  to quote verbatim under its title. Same answer every time, generated rather
+  than argued. planwright runs it instead of writing its own justification.
+- **The fallback is `.drydock/plans/`, inside the repo but gitignored** — not an
+  out-of-repo directory as the issue proposed. A repo that forbids *committing*
+  an artifact has not forbidden *having* one, `.drydock/` is already where every
+  execution artifact lives (`wave-owns.json`, `enforcement.log`,
+  `attribution.jsonl`), and it keeps plan paths relative, which every other
+  subcommand takes as an argument. An out-of-repo directory would also collide
+  between two checkouts of the same repo. The cost is stated in the sentence
+  itself: `git clean -xdf` removes it.
+- **The ignore probe asks about a file, not the directory** — and this is the
+  part that matters. A `docs/plans/` ignore pattern is directory-only, so
+  `git check-ignore docs/plans` on a directory that does not exist yet reports
+  **not ignored**: the first implementation would have passed happily in exactly
+  the repos the feature exists for. Probing `docs/plans/000-probe.md` is also the
+  real question — can a plan be committed here?
+
+Five new cases (47 total), each driving a real repo whose `.gitignore` forbids
+the plans directory. Proven failable: neutering the fallback fails three. The
+directory-vs-file probe bug was found by those cases, not by review.
+
+**Unexercised:** the planwright half is skill prose and session-cached. The
+resolver is tested; the instruction to call it is not.
+
 ## 0.8.2 — 2026-09-01
 
 **A gate froze its environment at planning time and then tested whatever

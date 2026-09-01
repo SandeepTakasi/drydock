@@ -14,6 +14,14 @@ contract. Task IDs are `T<phase>.<wave>.<n>` and never change once assigned.
 One markdown file at `{plans_dir}/NNN-<feature-slug>.md` (NNN = zero-padded
 sequence; `plans_dir` from plugin config, default `docs/plans`).
 
+**Where it goes is resolved, not reasoned about.** `drydock-audit.mjs
+resolve-plans-dir` reports the directory and whether the repo will carry the
+file: a repo that gitignores `plans_dir` — house rules against committing tool
+artifacts — gets `.drydock/plans/` instead, beside the other execution
+artifacts. The plan carries that command's one-line `**Plan location:**`
+sentence verbatim under its title and nothing more. A plan arguing its own
+location in prose is a plan whose reasoning differs from the next plan's.
+
 ## Header (yaml frontmatter)
 
 ```yaml

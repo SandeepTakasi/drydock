@@ -29,7 +29,7 @@
  */
 
 import { readFileSync, writeFileSync, appendFileSync, mkdirSync, existsSync } from "node:fs";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { dirname, join, matchesGlob } from "node:path";
 
 // 3 adds the optional `enforcement:` frontmatter key. 2 stays supported: plans
@@ -867,6 +867,58 @@ function taskClose(planPath, taskId) {
   console.log(`\nwrote ${manifestPath}`);
 }
 
+// ---------------------------------------------------- resolve-plans-dir ----
+
+// `plans_dir` defaults to `docs/plans`, which some repos forbid outright: house
+// rules against committing tool or planning artifacts make that path
+// uncommittable, plans end up somewhere else, and every plan then carries a
+// hand-written paragraph justifying its own location. The rationale was being
+// improvised per plan by whichever session authored it, so it varied, and a
+// reader had to reconstruct why the plan sat where it sat. Issue #6.
+//
+// The fix is not a cleverer default — it is removing the improvisation. This
+// resolves the directory mechanically and hands back ONE fixed sentence for the
+// plan to quote, so the answer is the same every time and is never argued for.
+const PLANS_FALLBACK = ".drydock/plans";
+
+// Ignored means "this repo will not carry the file", which is the whole
+// question. Probe a FILE PATH INSIDE the directory, not the directory: a
+// `docs/plans/` pattern is directory-only, and `git check-ignore docs/plans`
+// on a directory that does not exist yet reports NOT ignored — the check would
+// have passed happily in exactly the repos it exists for. A plan file path is
+// also the real question: can a plan be committed here?
+function isIgnored(root, rel) {
+  const probe = rel.replace(/[\/]+$/, "") + "/000-probe.md";
+  const r = spawnSync("git", ["check-ignore", "-q", "--", probe], { cwd: root, encoding: "utf8" });
+  return r.status === 0;
+}
+
+function resolvePlansDir(preferred) {
+  const root = repoRoot();
+  const want = preferred || "docs/plans";
+
+  // The fallback lives INSIDE the repo but gitignored, rather than outside it.
+  // A repo that forbids committing an artifact has not forbidden having one, and
+  // `.drydock/` is already where every other execution artifact lives
+  // (`wave-owns.json`, `enforcement.log`, `attribution.jsonl`), so this keeps one
+  // convention instead of inventing a second home. It also keeps plan paths
+  // relative, which every other subcommand takes as an argument.
+  const ignored = isIgnored(root, want);
+  const dir = ignored ? PLANS_FALLBACK : want;
+
+  // The fixed sentence. Planwright quotes this verbatim into the plan instead of
+  // writing its own justification — that improvisation is the actual defect.
+  const sentence = ignored
+    ? `**Plan location:** \`${dir}/\` — \`${want}/\` is gitignored in this repo, so this plan is NOT committed. It lives with the other execution artifacts under \`.drydock/\`, and \`git clean -xdf\` will remove it.`
+    : `**Plan location:** \`${dir}/\` — committed with the repo.`;
+
+  console.log(`resolve-plans-dir: ${dir}`);
+  console.log(`  preferred:   ${want}`);
+  console.log(`  gitignored:  ${ignored ? "yes — falling back" : "no"}`);
+  console.log(`  committable: ${ignored ? "no" : "yes"}`);
+  console.log(`\n${sentence}`);
+}
+
 // ---------------------------------------------------------------- report ----
 
 function report(what, path, errors, notes, summary) {
@@ -890,11 +942,13 @@ else if (command === "audit-wave" && rest[0] && rest[1]) auditWave(rest[0], rest
 else if (command === "wave-start" && rest[0] && rest[1]) waveStart(rest[0], rest[1]);
 else if (command === "task-close" && rest[0] && rest[1]) taskClose(rest[0], rest[1]);
 else if (command === "plan-status" && rest[0]) planStatus(rest[0], argv.includes("--write"));
+else if (command === "resolve-plans-dir") resolvePlansDir(rest[0]);
 else {
   console.error("usage: drydock-audit.mjs wave-start   <plan.md> <wave>      # arm the ownership hook");
   console.error("       drydock-audit.mjs task-close   <plan.md> <task-id>  # record HEAD as this task's work");
   console.error("       drydock-audit.mjs audit-wave   <plan.md> <wave>      # audit it afterwards");
   console.error("       drydock-audit.mjs plan-status   [--write] <plan.md>  # derive status from the wavecheck reports");
+  console.error("       drydock-audit.mjs resolve-plans-dir [<preferred>]   # where plans go, and whether they can be committed");
   console.error("       drydock-audit.mjs validate-plan [--strict] <plan.md>");
   process.exit(2);
 }

@@ -495,6 +495,50 @@ cases.push(
     (out) => !out.includes("as the driver, but seatrial drives")]
 );
 
+// --------------------------------------------------------------------------
+// Where a plan goes is resolved, not argued for (issue #6). A repo whose house
+// rules forbid committing tool artifacts gitignores the plans directory, and
+// every plan then carried its own hand-written justification for living
+// somewhere else — different reasoning each time.
+
+// A repo that forbids committed planning artifacts, which is the whole case.
+const ignoringRepo = (name, ignore) => {
+  const dir = join(DIR, `plansdir-${name}`);
+  mkdirSync(dir, { recursive: true });
+  git(dir, ["init", "-q", "-b", "main"]);
+  writeFileSync(join(dir, ".gitignore"), ignore);
+  git(dir, ["add", "-A"]);
+  git(dir, ["commit", "-q", "-m", "chore: house rules"]);
+  return dir;
+};
+
+cases.push(
+  ["a committable plans dir is used as-is", () => {
+    const dir = ignoringRepo("open", "node_modules/\n");
+    return cli(dir, ["resolve-plans-dir"]);
+  }, (out) => out.includes("resolve-plans-dir: docs/plans") && out.includes("committable: yes")],
+
+  ["a gitignored plans dir falls back instead of being written where it cannot be committed", () => {
+    const dir = ignoringRepo("closed", "docs/plans/\n");
+    return cli(dir, ["resolve-plans-dir"]);
+  }, (out) => out.includes("resolve-plans-dir: .drydock/plans") && out.includes("gitignored:  yes")],
+
+  ["the fallback states plainly that the plan is not committed", () => {
+    const dir = ignoringRepo("wording", "docs/plans/\n");
+    return cli(dir, ["resolve-plans-dir"]);
+  }, (out) => out.includes("**Plan location:**") && out.includes("NOT committed") && out.includes("git clean -xdf")],
+
+  ["the committable case gets the same sentence, different clause", () => {
+    const dir = ignoringRepo("wording2", "node_modules/\n");
+    return cli(dir, ["resolve-plans-dir"]);
+  }, (out) => out.includes("**Plan location:**") && out.includes("committed with the repo")],
+
+  ["a repo-specific plans dir can be passed and is checked too", () => {
+    const dir = ignoringRepo("custom", "planning/\n");
+    return cli(dir, ["resolve-plans-dir", "planning"]);
+  }, (out) => out.includes("preferred:   planning") && out.includes("resolve-plans-dir: .drydock/plans")]
+);
+
 let failed = 0;
 for (const [name, run, ok] of cases) {
   const out = run();
