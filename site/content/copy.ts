@@ -95,7 +95,7 @@ const BLOB = `${REPO}/blob/main`;
 export const site = {
   title: "Drydock -- plan-first parallel execution for Claude Code",
   description:
-    "Plan-first parallel execution for Claude Code: a rigorous plan document as the source of truth, subagents executing it in parallel waves with disjoint file ownership, a conformance audit gating every wave, and a reconcile loop that feeds execution learnings back into your docs.",
+    "Plan-first execution for Claude Code: a rigorous plan document as the source of truth, subagents executing it in parallel waves with disjoint file ownership -- or one session executing it in sequence and saying so -- a conformance audit gating every wave, and a reconcile loop that feeds execution learnings back into your docs.",
   status: "open pilot -- field benchmarks pending",
   version: VERSION,
   selfAuditHref: `${BLOB}/docs/self-audit.md`,
@@ -126,9 +126,9 @@ export const hero = {
   kicker: "CLAUDE CODE PLUGIN",
   headline: "Drydock",
   promise:
-    "Subagents that cannot quietly rewrite each other, on a plan that is checked against the diff.",
+    "A plan that is checked against the diff -- run in parallel by subagents, or alone by one session.",
   thesis: "NOTHING SAILS UNTIL IT LEAVES THE DOCK",
-  sub: "A plan document is the source of truth. Subagents execute it in parallel waves with disjoint file ownership. A conformance gate audits every wave against the actual diff, never against what the executors report.",
+  sub: "A plan document is the source of truth. Subagents run it in parallel waves with disjoint file ownership, or one session runs it in sequence and says so. Either way the gate audits the wave against the actual diff, never against what the executor reports.",
   badges: [`v${VERSION} -- OPEN PILOT`, "MIT", "PLAN FORMAT v3"],
   ctaPrimary: "Install it",
   wave: {
