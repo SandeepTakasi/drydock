@@ -43,14 +43,33 @@ Guessing is never the third option.
 
 ## Checkpoint commit (default mode)
 
-Commit as `drydock(<task-id>): <task name>`, staging ONLY files within your
-`owns` patterns. This commit is how the auditor attributes changes — skipping it
-or staging unowned files makes the wave unauditable and will BLOCK it.
+Commit the moment your owned files satisfy the acceptance criterion, staging
+ONLY files within your `owns` patterns. This commit is how the auditor
+attributes changes — skipping it or staging unowned files makes the wave
+unauditable and will BLOCK it.
 
-**Commit the moment your owned files satisfy the acceptance criterion — before
-writing your completion report, and before any further narration or
-investigation.** The commit is not the last step of your task; it is the first
-thing you do once the work is verified.
+**How the commit is attributed depends on the plan's `attribution:` mode** —
+read it from the plan frontmatter before you commit:
+
+- **`commit-prefix`, or the key is absent:** the subject IS the attribution.
+  Commit as `drydock(<task-id>): <task name>`.
+- **`manifest`:** the subject is the host repository's business — follow its
+  conventions. Then record the commit:
+
+  ```
+  node ${CLAUDE_PLUGIN_ROOT}/scripts/drydock-audit.mjs task-close <plan> <task-id>
+  ```
+
+  Run it immediately after committing, in the same breath. It reads HEAD and
+  appends the entry itself; do not write `.drydock/attribution.jsonl` by hand.
+  A task with no entry is unattributable and BLOCKs the wave exactly as a
+  missing commit does. If it warns that you committed a file outside your
+  `owns`, fix it now — the wave audit will BLOCK on the same file later, when
+  it is far more expensive.
+
+**Commit before writing your completion report, and before any further
+narration or investigation.** The commit is not the last step of your task; it
+is the first thing you do once the work is verified.
 
 Why this ordering is a rule and not a style preference: **if you stop for any
 reason between finishing the work and committing it, the work is

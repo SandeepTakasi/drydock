@@ -57,10 +57,14 @@ Run in this order; stop early only on check 1 failure.
    a file, and a rogue edit to a file owned by a sibling task passes a naive
    union check (defect confirmed in dry-run 2026-08-18). Mechanism by mode:
    - `isolation: worktree` → `git diff --name-only` per worktree.
-   - default mode → per-task commits (`drydock(<task-id>): ...` per the plan's
-     checkpointing policy): audit each commit's file set with
-     `git show --name-only`. Missing per-task commits = BLOCK on check 1
-     grounds (audit is impossible), not a judgment call.
+   - default mode → per-task commits, audited with `git show --name-only`.
+     Which commit belongs to which task is the plan's `attribution:` mode: the
+     subject `drydock(<task-id>): ...` under `commit-prefix` or the key's
+     absence, or a `task-close` entry in `.drydock/attribution.jsonl` under
+     `manifest` (v0.7.2), where the subject follows the host repo's own policy.
+     A task the mode cannot attribute — no commit, or no manifest entry — is a
+     BLOCK on check 1 grounds (audit is impossible), not a judgment call. The
+     mode changes only the lookup; every check below is identical either way.
    Every task's changed set must ⊆ its `owns` patterns. Files changed that no
    task owns = violation. Two tasks changing the same file = violation and a
    PLAN defect. Uncommitted working-tree changes after all task commits =

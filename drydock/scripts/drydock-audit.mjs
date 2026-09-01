@@ -28,7 +28,7 @@
  * pointing forwards — are always errors, because those are wrong in any version.
  */
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, appendFileSync, mkdirSync, existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { dirname, join, matchesGlob } from "node:path";
 
@@ -36,6 +36,7 @@ import { dirname, join, matchesGlob } from "node:path";
 // written before it default to `none` and audit exactly as they always did, so
 // the version bump retires nothing.
 const SUPPORTED_FORMAT_VERSIONS = [2, 3];
+const ATTRIBUTION_MODES = ["commit-prefix", "manifest"];
 
 const REQUIRED_SECTIONS = [
   "Requirement",
@@ -184,6 +185,20 @@ function validatePlan(path, strict) {
   if (!plan.frontmatter.plan) errors.push("frontmatter: no `plan:` key — is this a Drydock plan?");
   if (!SUPPORTED_FORMAT_VERSIONS.includes(fv)) {
     errors.push(`frontmatter: format_version ${plan.frontmatter.format_version ?? "(absent)"} unsupported (supported: ${SUPPORTED_FORMAT_VERSIONS.join(", ")})`);
+  }
+
+  // --- attribution mode ------------------------------------------------------
+  // Absent means `commit-prefix`, which is every plan written before 0.7.1 and
+  // is why plans 001-004 audit exactly as they always did. A typo must not fall
+  // through to that default silently: `attribution: manfiest` would look armed
+  // and behave as the old mode, which is the failure shape issue #8 just cost us.
+  const attribution = plan.frontmatter.attribution;
+  if (attribution !== undefined) {
+    if (!ATTRIBUTION_MODES.includes(attribution)) {
+      errors.push(`frontmatter: attribution ${JSON.stringify(attribution)} unknown (expected: ${ATTRIBUTION_MODES.join(" | ")})`);
+    } else if (attribution === "manifest" && fv < 3) {
+      errors.push(`frontmatter: attribution: manifest needs format_version 3 or later — the key did not exist at v${fv}, so an older reader ignores it and silently audits by commit subject instead`);
+    }
   }
 
   // --- task ids are never reused, superseded ones included ------------------
@@ -377,25 +392,58 @@ function auditWave(path, wave) {
     process.exit(1);
   }
 
-  // Task ids are unique WITHIN a plan, and the checkpoint-commit subject
-  // `drydock(<task-id>): …` carries no plan id — so `drydock(T2.0.1)` matches a
-  // commit in every plan that ever had a T2.0.1. Scope the search to commits
-  // after this plan's baseline SHA, which T0 records for exactly this kind of
-  // "what belongs to this run" question. Without a baseline the search is
-  // repo-wide and says so, because a silently over-broad match invents
-  // violations against commits from an unrelated plan.
-  const baseline = plan.text.match(/\*\*Baseline SHA:\*\*\s*`([0-9a-f]{7,40})`/)?.[1];
-  const range = baseline ? [`${baseline}..HEAD`] : ["-n", "2000"];
-  if (!baseline) {
-    notes.push("plan records no `**Baseline SHA:**` — searching the whole history, so a task id reused by another plan can match here");
+  // How a task's commits are FOUND. The mode decides only that; how they are
+  // JUDGED is identical below, which is the whole point of issue #2 — the commit
+  // subject was never part of the ownership check, only its lookup key, and it
+  // was the one part of the contract a host repo's commit policy could reject.
+  const mode = plan.frontmatter.attribution ?? "commit-prefix";
+  const planId = plan.frontmatter.plan ?? null;
+  let commitsFor;
+
+  if (mode === "manifest") {
+    // Written by `task-close`, never by hand: a manifest the executor types is
+    // the same prose-compliance that `wave-start` deleted in 0.7.0, where the
+    // hook was armed only if a model remembered to arm it.
+    const manifestPath = join(repoRoot(), ".drydock", "attribution.jsonl");
+    const entries = existsSync(manifestPath)
+      ? readFileSync(manifestPath, "utf8")
+          .split(/\r?\n/)
+          .filter(Boolean)
+          .map((l) => { try { return JSON.parse(l); } catch { return null; } })
+          .filter((e) => e && (e.plan == null || planId == null || e.plan === planId))
+      : [];
+    if (entries.length === 0) {
+      notes.push(`plan declares \`attribution: manifest\` and ${manifestPath} holds no entries for this plan — every task below will read as unattributed`);
+    }
+    commitsFor = (id) => entries.filter((e) => e.task === id).map((e) => e.sha);
+  } else {
+    // Task ids are unique WITHIN a plan, and the checkpoint-commit subject
+    // `drydock(<task-id>): …` carries no plan id — so `drydock(T2.0.1)` matches a
+    // commit in every plan that ever had a T2.0.1. Scope the search to commits
+    // after this plan's baseline SHA, which T0 records for exactly this kind of
+    // "what belongs to this run" question. Without a baseline the search is
+    // repo-wide and says so, because a silently over-broad match invents
+    // violations against commits from an unrelated plan.
+    const baseline = plan.text.match(/\*\*Baseline SHA:\*\*\s*`([0-9a-f]{7,40})`/)?.[1];
+    const range = baseline ? [`${baseline}..HEAD`] : ["-n", "2000"];
+    if (!baseline) {
+      notes.push("plan records no `**Baseline SHA:**` — searching the whole history, so a task id reused by another plan can match here");
+    }
+
+    const log = git(["log", "--format=%H%x1f%s", ...range]).split(/\r?\n/).filter(Boolean);
+    commitsFor = (id) =>
+      log
+        .map((l) => l.split("\x1f"))
+        .filter(([, subject]) => subject.startsWith(`drydock(${id}):`))
+        .map(([sha]) => sha);
   }
 
-  const log = git(["log", "--format=%H%x1f%s", ...range]).split(/\r?\n/).filter(Boolean);
-  const commitsFor = (id) =>
-    log
-      .map((l) => l.split("\x1f"))
-      .filter(([, subject]) => subject.startsWith(`drydock(${id}):`))
-      .map(([sha]) => sha);
+  // A manifest names a sha; history can move under it (amend, rebase, drop) and
+  // the commit-prefix path cannot have this failure because it reads the log it
+  // is matching against. An unreachable sha must be said out loud, not skipped.
+  const reachable = (sha) => {
+    try { git(["cat-file", "-e", `${sha}^{commit}`]); return true; } catch { return false; }
+  };
 
   const rows = [];
   const claimed = new Map();
@@ -403,15 +451,28 @@ function auditWave(path, wave) {
   for (const task of tasks) {
     const shas = commitsFor(task.id);
     if (shas.length === 0) {
-      errors.push(`task ${task.id}: no \`drydock(${task.id}): …\` checkpoint commit — attribution is impossible, which BLOCKs the wave rather than being a judgment call`);
+      errors.push(
+        mode === "manifest"
+          ? `task ${task.id}: no entry in \`.drydock/attribution.jsonl\` — attribution is impossible, which BLOCKs the wave rather than being a judgment call. The executor runs \`drydock-audit.mjs task-close <plan> ${task.id}\` immediately after its checkpoint commit.`
+          : `task ${task.id}: no \`drydock(${task.id}): …\` checkpoint commit — attribution is impossible, which BLOCKs the wave rather than being a judgment call`
+      );
       rows.push({ id: task.id, sha: "—", files: [], owns: task.owns, strays: [] });
       continue;
     }
     if (shas.length > 1) {
-      errors.push(`task ${task.id}: ${shas.length} commits share its subject (${shas.map((s) => s.slice(0, 7)).join(", ")}) — ambiguous attribution is what per-task commits exist to prevent`);
+      errors.push(
+        mode === "manifest"
+          ? `task ${task.id}: ${shas.length} manifest entries claim it (${shas.map((s) => s.slice(0, 7)).join(", ")}) — ambiguous attribution is what per-task attribution exists to prevent`
+          : `task ${task.id}: ${shas.length} commits share its subject (${shas.map((s) => s.slice(0, 7)).join(", ")}) — ambiguous attribution is what per-task commits exist to prevent`
+      );
     }
 
     for (const sha of shas) {
+      if (!reachable(sha)) {
+        errors.push(`task ${task.id}: manifest names \`${sha}\`, which is not a commit in this repository — history moved under the manifest (amend, rebase or drop) and the recorded attribution no longer describes anything`);
+        rows.push({ id: task.id, sha: `${sha.slice(0, 7)} (gone)`, files: [], owns: task.owns, strays: [] });
+        continue;
+      }
       const files = git(["show", "--name-only", "--format=", sha]).split("\n").map((s) => s.trim()).filter(Boolean);
       const strays = files.filter((f) => !task.owns.some((glob) => matchesGlob(f, glob) || f === glob));
       for (const f of files) {
@@ -500,7 +561,66 @@ function auditWave(path, wave) {
   }
   console.log(`\nWorking tree: ${dirty ? "DIRTY" : "clean"}`);
 
-  report(`audit-wave ${wave}`, path, errors, notes, () => `${tasks.length} task(s), ${rows.length} commit(s)`);
+  report(`audit-wave ${wave}`, path, errors, notes, () => `${tasks.length} task(s), ${rows.length} commit(s), attribution: ${mode}`);
+}
+
+// ----------------------------------------------------------- task-close ----
+
+// Records which commit belongs to which task, so attribution stops depending on
+// the commit SUBJECT — the one part of the contract a host repo's commit policy
+// can reject outright (issue #2). The entry is DERIVED from HEAD, never typed:
+// a manifest a model writes by hand is the same prose-compliance that 0.7.0's
+// `wave-start` deleted, where the ownership hook was armed only if somebody
+// remembered to arm it. Because the files come from the commit itself, the
+// manifest cannot disagree with what it names.
+//
+// Appending rather than rewriting is deliberate: a second entry for one task is
+// evidence of ambiguity, and audit-wave reports it. Silently replacing the first
+// would erase the thing worth seeing.
+function taskClose(planPath, taskId) {
+  const plan = parsePlan(planPath);
+  const task = plan.tasks.find((t) => t.id === taskId);
+
+  if (!task) {
+    console.error(`task-close: ${planPath} declares no task ${taskId}`);
+    process.exit(1);
+  }
+  if (task.superseded) {
+    console.error(`task-close: ${taskId} is superseded — its files belong to its replacement, and recording it would attribute work twice`);
+    process.exit(1);
+  }
+
+  const sha = git(["rev-parse", "HEAD"]);
+  const files = git(["show", "--name-only", "--format=", sha]).split("\n").map((s) => s.trim()).filter(Boolean);
+
+  // The audit re-derives this from the sha and will catch a mismatch anyway, so
+  // this is a fast local signal at the moment it is still cheap to fix — not the
+  // enforcement boundary.
+  const strays = files.filter((f) => !task.owns.some((glob) => matchesGlob(f, glob) || f === glob));
+
+  const root = repoRoot();
+  const manifestPath = join(root, ".drydock", "attribution.jsonl");
+  mkdirSync(dirname(manifestPath), { recursive: true });
+  appendFileSync(
+    manifestPath,
+    JSON.stringify({
+      plan: plan.frontmatter.plan ?? null,
+      task: task.id,
+      wave: waveOf(task.id),
+      sha,
+      files,
+      at: new Date().toISOString(),
+    }) + "\n"
+  );
+
+  console.log(`task-close: ${task.id} -> ${sha.slice(0, 7)} (${files.length} file(s))`);
+  for (const f of files) console.log(`  ${f}`);
+  if (strays.length > 0) {
+    console.error(`\ntask-close: WARNING — ${strays.length} file(s) outside this task's \`owns\`:`);
+    for (const f of strays) console.error(`  ${f}`);
+    console.error(`audit-wave will BLOCK the wave on these. Fix the commit now, before the wave closes.`);
+  }
+  console.log(`\nwrote ${manifestPath}`);
 }
 
 // ---------------------------------------------------------------- report ----
@@ -524,9 +644,11 @@ const [command, ...rest] = argv.filter((a) => a !== "--strict");
 if (command === "validate-plan" && rest[0]) validatePlan(rest[0], strict);
 else if (command === "audit-wave" && rest[0] && rest[1]) auditWave(rest[0], rest[1]);
 else if (command === "wave-start" && rest[0] && rest[1]) waveStart(rest[0], rest[1]);
+else if (command === "task-close" && rest[0] && rest[1]) taskClose(rest[0], rest[1]);
 else {
-  console.error("usage: drydock-audit.mjs wave-start   <plan.md> <wave>   # arm the ownership hook");
-  console.error("       drydock-audit.mjs audit-wave   <plan.md> <wave>   # audit it afterwards");
+  console.error("usage: drydock-audit.mjs wave-start   <plan.md> <wave>      # arm the ownership hook");
+  console.error("       drydock-audit.mjs task-close   <plan.md> <task-id>  # record HEAD as this task's work");
+  console.error("       drydock-audit.mjs audit-wave   <plan.md> <wave>      # audit it afterwards");
   console.error("       drydock-audit.mjs validate-plan [--strict] <plan.md>");
   process.exit(2);
 }

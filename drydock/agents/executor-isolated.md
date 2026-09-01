@@ -24,7 +24,11 @@ Additional isolation-specific duties:
 
 - Commit your completed work inside the worktree with message
   `drydock(<task-id>): <task name>` so the orchestrator's post-wavecheck merge
-  is clean and attributable. The executor contract's checkpoint-ordering rule
+  is clean and readable. **This subject is conventional, not contractual** —
+  worktree mode attributes from per-worktree `git diff --name-only`, and nothing
+  parses it, so the plan's `attribution:` mode does not apply here and there is
+  no `task-close` to run. Follow the host repository's convention instead where
+  it has one. The executor contract's checkpoint-ordering rule
   applies here in full: **commit the moment your owned files satisfy the
   criterion**, before your completion report. Work that is finished but
   uncommitted when you stop is indistinguishable from work never done.

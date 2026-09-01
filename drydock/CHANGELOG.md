@@ -1,5 +1,58 @@
 # Changelog
 
+## 0.7.2 — 2026-09-01
+
+**A repo's own commit policy could make Drydock unusable, and the part doing the
+damage was carrying no weight.** Attribution found a task's work by matching the
+commit subject `drydock(<task-id>): …` — but the ownership check is
+`git show --name-only` against the task's `owns`, so the subject was a lookup
+key and nothing more. It was also the only part of the contract a host
+repository's rules could reject, and rejecting it BLOCKed every wave, with no
+way out but a hand-written attribution table and a human escalation each time.
+
+- **`attribution: commit-prefix | manifest` in the plan header**
+  ([#2](https://github.com/SandeepTakasi/drydock/issues/2)). Under `manifest`,
+  wavecheck reads `.drydock/attribution.jsonl` instead of the commit subject, so
+  the subject follows the host repo's own convention and Drydock stops arguing
+  with it. **The default is `commit-prefix`, not `manifest`** as the issue
+  proposed: defaulting the other way would retroactively break plans 001–004,
+  including the `audit-wave 004 2.0` invocation `docs/plans/README.md` documents
+  as a live fixture. planwright writes `manifest` on new plans — the same shape
+  as `enforcement: required` in 0.7.0.
+- **`drydock-audit.mjs task-close <plan> <task-id>` writes the manifest, and the
+  executor never does.** The entry is derived from `HEAD` — sha and file list
+  come from the commit itself, so the manifest cannot disagree with what it
+  names. A manifest an executor types by hand would be the same
+  prose-compliance that `wave-start` deleted in 0.7.0, where the hook was armed
+  only if somebody remembered to arm it. `task-close` also warns immediately
+  when the commit holds a file outside the task's `owns`, at the point it is
+  still cheap to fix rather than at the wave gate.
+- **Two entries for one task is ambiguity, not last-wins**, reported exactly as
+  two commits sharing a subject already were. And a manifest can name a sha that
+  history has since dropped — amend, rebase, drop — which the commit-prefix path
+  cannot do, because it reads the log it matches against. An unreachable sha is
+  an error naming it, never a silent skip.
+- **The ownership check did not move.** Same `git show --name-only`, same stray
+  computation, same cross-task collision detection, same table. The mode decides
+  only how a task's commits are *found*. **Neither mode removes the per-task
+  commit**: attributing from a combined working-tree diff cannot tell which task
+  touched a file — the defect the 2026-08-18 dry-run found, and the reason
+  per-task commits became mandatory in v0.3.0. `manifest` replaces the subject
+  convention, not the commit.
+- **`validate-plan` rejects an unknown `attribution:` value** rather than
+  falling through to the default, and rejects `manifest` on `format_version: 2`
+  where the key does not exist. A typo that silently keeps the old behaviour is
+  the failure shape 0.7.1 had just finished paying for.
+
+Worktree mode is untouched: it attributes from per-worktree
+`git diff --name-only` and never parsed the subject, so `attribution:` does not
+apply there and `executor-isolated` now says so.
+
+Nine new cases in `drydock/scripts/drydock-audit.test.mjs`, each driving a real
+throwaway git repo through the CLI. Proven failable: forcing the mode back to
+`commit-prefix` fails five of them, including the headline case where a commit
+subject like `fix(parser): …` is attributed through the manifest.
+
 ## 0.7.1 — 2026-09-01
 
 One parser bug, and the reason it survived four plans: **a truncated ownership

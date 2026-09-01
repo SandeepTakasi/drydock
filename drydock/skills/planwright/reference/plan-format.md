@@ -23,6 +23,7 @@ format_version: 3
 status: DRAFT | APPROVED | EXECUTING | BLOCKED | DONE | RECONCILED
 isolation: none | worktree          # opt-in worktree isolation, default none
 enforcement: required | none        # v3; default none when the key is absent
+attribution: commit-prefix | manifest   # v3; default commit-prefix when absent
 created: YYYY-MM-DD
 approved_by: <name> | unapproved
 ---
@@ -38,6 +39,30 @@ version bump retires nothing, and both v2 and v3 are supported.
 The distinction is the whole reason the key exists: "a config file was present"
 is satisfied by a hook that never ran, so the plan states its own standard and
 the audit checks the standard the plan stated.
+
+**`attribution:`** decides how wavecheck FINDS a task's commit — never how it
+judges it. The ownership check is `git show --name-only` against the task's
+`owns` either way.
+
+- **`commit-prefix`** (the default, and every plan written before v0.7.2) reads
+  the commit subject: `drydock(<task-id>): <task name>`.
+- **`manifest`** reads `.drydock/attribution.jsonl`, appended by
+  `drydock-audit.mjs task-close <plan> <task-id>` immediately after each task's
+  checkpoint commit. The subject is then free, so a host repo whose commit policy
+  forbids tool names or task ids in subjects can run Drydock unmodified. Write
+  `manifest` on every new plan.
+
+The manifest is **generated from HEAD, never hand-written** — same rule as
+`wave-start`, for the same reason: a record a model types is armed only if
+somebody remembers to type it, and a derived record cannot disagree with the
+commit it names. Two entries for one task is ambiguity, not last-wins, and the
+audit says so.
+
+**Neither mode removes the per-task commit.** Attribution from a combined
+working-tree diff cannot tell which task touched a file — a rogue edit to a
+sibling's file passes a naive union check (confirmed in the 2026-08-18 dry-run),
+which is why per-task commits became mandatory in v0.3.0. `manifest` replaces
+the subject convention, not the commit.
 
 Status transitions are one-way except BLOCKED (may return to EXECUTING after
 replan or human decision). Only a human sets APPROVED. Executors MUST NOT run
@@ -257,10 +282,13 @@ plan. Write the unmet form while the phase is open; amend it when it closes.
 ```
 
 Checkpointing rule (load-bearing, not stylistic): in default (non-worktree)
-mode, every executor MUST commit its completed task as
-`drydock(<task-id>): <task name>` touching only its owned files — per-task
-commits are wavecheck's only sound attribution mechanism. Plans may not relax
-this to per-wave commits unless isolation is worktree.
+mode, every executor MUST commit its completed task touching only its owned
+files, and the commit MUST be attributable to exactly one task — per-task
+commits are wavecheck's only sound attribution mechanism. How the commit is
+attributed is the plan's `attribution:` mode: the subject
+`drydock(<task-id>): <task name>` under `commit-prefix`, or a `task-close`
+entry under `manifest`, where the subject is the host repo's business. Plans may
+not relax this to per-wave commits unless isolation is worktree.
 
 Ownership rules:
 - `Files owned` sets within a wave MUST be disjoint (planwright validates at
