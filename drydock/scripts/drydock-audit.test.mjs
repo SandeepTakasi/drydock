@@ -150,6 +150,68 @@ cases.push(
 );
 
 // --------------------------------------------------------------------------
+// A task id encodes a wave, but the format contract says ids NEVER change once
+// assigned while a wave assignment may move — so the `### Wave` heading a task
+// sits under is where it actually runs, and the id is only a fallback.
+//
+// Plan 001 is the live case: deviation 44 moved integration into a new
+// `### Wave 2.4 — Integration` and kept the id `T2.3.1`, citing that contract
+// rule. Reading the wave off the id put T2.3.1 back beside the repair task
+// `T2.3.2` it depends on, and --strict reported a same-wave dependency the
+// document does not contain. The plan followed the contract; the parser did not.
+
+const movedTask = `
+### Wave 2.3 — Repair
+#### T2.3.2 — the repair
+- **Files owned:** \`a.txt\`
+- **Acceptance criterion:** \`true\` exits 0.
+
+### Wave 2.4 — Integration
+#### T2.3.1 — verify the repaired tree
+- **Depends on:** T2.3.2
+- **Files owned:** \`b.txt\`
+- **Acceptance criterion:** \`true\` exits 0.
+`;
+
+// Same ids, same dependency, both left under ONE heading. This is plan 004's
+// shape and must still report — the fix must not blanket-excuse the defect.
+const notMoved = `
+### Wave 2.3 — Repair and integration together
+#### T2.3.2 — the repair
+- **Files owned:** \`a.txt\`
+- **Acceptance criterion:** \`true\` exits 0.
+
+#### T2.3.1 — verify the repaired tree
+- **Depends on:** T2.3.2
+- **Files owned:** \`b.txt\`
+- **Acceptance criterion:** \`true\` exits 0.
+`;
+
+cases.push(
+  ["a task moved to a later wave keeps its id and depends backwards",
+    () => validate("moved", movedTask),
+    (out) => out.includes("validate-plan: PASS")],
+
+  ["two tasks left under one heading still report the dependency",
+    () => validate("notmoved", notMoved),
+    (out) => out.includes("depends on T2.3.2 in the SAME wave 2.3")],
+
+  // Ownership disjointness is per wave, so it has to follow the heading too —
+  // otherwise a moved task collides with the wave it used to be in.
+  ["ownership collision follows the heading, not the id", () => validate("movedowns", `
+### Wave 2.3 — Repair
+#### T2.3.2 — the repair
+- **Files owned:** \`shared.txt\`
+- **Acceptance criterion:** \`true\` exits 0.
+
+### Wave 2.4 — Integration
+#### T2.3.1 — verify
+- **Files owned:** \`shared.txt\`
+- **Acceptance criterion:** \`true\` exits 0.
+`), (out) => out.includes("validate-plan: PASS")],
+);
+
+// --------------------------------------------------------------------------
 // Testing Gate: fields are required PER CASE, and `video` is only a defect when
 // a case actually declares it as evidence.
 

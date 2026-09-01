@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.8.10 — 2026-09-02
+
+**One of the two "same-wave dependency" defects was the validator's, not the
+plan's.** Both were going to be logged as accepted. Reading them first showed
+they are different failures, and only one is a failure of a plan.
+
+- **A task's wave now comes from the `### Wave` heading it sits under, with the
+  id as fallback.** The format contract says ids NEVER change once assigned
+  while a wave assignment may move, so the two are allowed to diverge and the
+  heading is the one that says where a task runs. Plan 001 is exactly that case:
+  deviation 44 moved integration into a new `### Wave 2.4 — Integration` and
+  kept the id `T2.3.1`, citing the rule. Deriving the wave from the id put
+  T2.3.1 back beside the repair task `T2.3.2` it depends on and reported a
+  same-wave dependency **the document does not contain** — the dependency points
+  from wave 2.4 to wave 2.3, which is correct. The plan followed the contract;
+  the parser did not implement it. Ownership disjointness follows the heading
+  too, so a moved task no longer collides with the wave it left.
+- Plan 004's is real and stays reported: `T2.1.2` depends on `T2.1.1` and both
+  sit under one `### Wave 2.1` heading. It is **logged as an accepted deviation
+  (15) in the plan** rather than repaired — the tasks ran in the order the
+  dependency states, both criteria passed, and editing a closed record to
+  satisfy a validator written afterwards would make the plan describe an
+  execution that did not happen. It is the shape `execution: solo` was invented
+  for in v0.8.0, so it stays a permanent `--strict` failure on that one line, as
+  the record of why the key exists.
+
+Three tests, including the one that matters: two tasks left under a single
+heading must still report, so the fix cannot blanket-excuse the defect.
+
 ## 0.8.9 — 2026-09-02
 
 **The A3 compliance figure was published two different ways, and the gate built

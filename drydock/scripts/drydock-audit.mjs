@@ -197,11 +197,26 @@ function parsePlan(path) {
   let spanOpen = false;
   const flush = () => { if (current) tasks.push(current); current = null; ownsOpen = spanOpen = false; };
 
+  // The `### Wave x.y` heading a task sits under. A task id encodes a wave, and
+  // usually the two agree — but the format contract says ids NEVER change once
+  // assigned, while a wave assignment may move, so they are allowed to diverge
+  // and the heading is the one that says where the task actually runs.
+  //
+  // Plan 001 is exactly this: deviation 44 moved integration into a new
+  // `### Wave 2.4 — Integration` and kept its id `T2.3.1`, citing the contract.
+  // Reading the wave off the id put T2.3.1 back in wave 2.3 beside the repair
+  // task T2.3.2 it depends on, and `--strict` reported a same-wave dependency
+  // the document does not contain. The plan followed the contract; the parser
+  // did not implement it.
+  let heading = null;
+
   for (const line of lines) {
+    const w = line.match(/^### Wave (\d+\.(?:\d+|R))\b/);
+    if (w) heading = w[1];
     const head = line.match(/^#### (~~)?\s*(T[0-9][\w.]*)\b/);
     if (head) {
       flush();
-      current = { id: head[2], superseded: Boolean(head[1]), owns: [], ownsSpan: [], dependsOn: [], fields: new Set(), body: [] };
+      current = { id: head[2], superseded: Boolean(head[1]), wave: heading, owns: [], ownsSpan: [], dependsOn: [], fields: new Set(), body: [] };
       continue;
     }
     if (/^#{1,4} /.test(line)) { flush(); continue; }
@@ -265,10 +280,16 @@ function globsOverlap(a, b) {
 }
 
 // `T2.1.3` -> wave `2.1`. `T0` is the pre-flight baseline and sits in no wave.
-const waveOf = (id) => {
+// Fallback only: the `### Wave` heading a task sits under wins where it exists,
+// because an id outlives its wave assignment by contract. See `parsePlan`.
+const waveOfId = (id) => {
   const m = id.match(/^T(\d+)\.(\d+|R)\./);
   return m ? `${m[1]}.${m[2]}` : null;
 };
+
+// The wave a task actually runs in. Every caller wants this, never the id form.
+const waveOf = (task) =>
+  typeof task === "string" ? waveOfId(task) : task.wave ?? waveOfId(task.id);
 
 // Wave ordering for the "dependencies point backwards" check. Review waves
 // (`p.R`) close a phase, so they sort after every numbered wave in it.
@@ -382,7 +403,7 @@ function validatePlan(path, strict) {
   const byWave = new Map();
   for (const t of plan.tasks) {
     if (t.superseded) continue;
-    const wave = waveOf(t.id);
+    const wave = waveOf(t);
     if (!wave) continue;
     if (!byWave.has(wave)) byWave.set(wave, []);
     byWave.get(wave).push(t);
@@ -433,10 +454,10 @@ function validatePlan(path, strict) {
         notes.push(`task ${t.id}: depends on ${dep}, which is not a task in this plan`);
         continue;
       }
-      if (waveOf(dep)?.endsWith(".R")) continue; // repair after review
+      if (waveOf(seen.get(dep) ?? dep)?.endsWith(".R")) continue; // repair after review
       if (seen.get(dep).superseded) continue; // supersession pointer
-      if (waveRank(waveOf(dep)) >= waveRank(waveOf(t.id))) {
-        const same = waveOf(dep) === waveOf(t.id);
+      if (waveRank(waveOf(seen.get(dep) ?? dep)) >= waveRank(waveOf(t))) {
+        const same = waveOf(seen.get(dep) ?? dep) === waveOf(t);
         // The prohibition exists because SIMULTANEOUS tasks cannot depend on
         // each other. Under `execution: solo` there is no simultaneity — the
         // orchestrator runs the wave in sequence — so a same-wave dependency is
@@ -447,8 +468,8 @@ function validatePlan(path, strict) {
         if (same && execution === "solo") continue;
         errors.push(
           same
-            ? `task ${t.id}: depends on ${dep} in the SAME wave ${waveOf(t.id)} — same-wave tasks run in parallel, so this dependency cannot hold. Split the wave.`
-            : `task ${t.id}: depends on ${dep} in wave ${waveOf(dep) ?? "—"}, which is not earlier than its own wave ${waveOf(t.id) ?? "—"}`
+            ? `task ${t.id}: depends on ${dep} in the SAME wave ${waveOf(t)} — same-wave tasks run in parallel, so this dependency cannot hold. Split the wave.`
+            : `task ${t.id}: depends on ${dep} in wave ${waveOf(seen.get(dep) ?? dep) ?? "—"}, which is not earlier than its own wave ${waveOf(t) ?? "—"}`
         );
       }
     }
@@ -735,7 +756,7 @@ function planStatus(path, write) {
 // surviving.
 function waveStart(planPath, wave) {
   const plan = parsePlan(planPath);
-  const tasks = plan.tasks.filter((t) => !t.superseded && waveOf(t.id) === wave);
+  const tasks = plan.tasks.filter((t) => !t.superseded && waveOf(t) === wave);
 
   if (tasks.length === 0) {
     console.error(`wave-start: no tasks found for wave ${wave} in ${planPath}`);
@@ -836,7 +857,7 @@ function auditWave(path, wave) {
     notes.push("plan declares `isolation: worktree` — attribution there comes from per-worktree `git diff --name-only`; this subcommand audits default-mode per-task commits only");
   }
 
-  const tasks = plan.tasks.filter((t) => !t.superseded && waveOf(t.id) === wave);
+  const tasks = plan.tasks.filter((t) => !t.superseded && waveOf(t) === wave);
   if (tasks.length === 0) {
     console.error(`audit-wave: no tasks found for wave ${wave} in ${path}`);
     process.exit(1);
@@ -1122,7 +1143,7 @@ function taskClose(planPath, taskId) {
     JSON.stringify({
       plan: plan.frontmatter.plan ?? null,
       task: task.id,
-      wave: waveOf(task.id),
+      wave: waveOf(task),
       sha,
       files,
       at: new Date().toISOString(),

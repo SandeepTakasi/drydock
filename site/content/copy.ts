@@ -78,7 +78,7 @@ export const meta: Record<
   },
 };
 
-const VERSION = "0.8.9";
+const VERSION = "0.8.10";
 
 /**
  * Docs live in the repo, not in the export — only `site/out` is deployed. So
