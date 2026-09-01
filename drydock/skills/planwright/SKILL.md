@@ -22,11 +22,19 @@ These four principles resolve every judgment call in this skill. When in doubt, 
 
 Before step 1, estimate how many files the change touches and say which track you are taking. This process has real overhead — one pilot plan reached 2,069 lines to rebuild a page that already existed as 240 lines of hand-written HTML — and applying all of it to a small change is the failure this section exists to prevent.
 
-| Files touched | Track |
-|---|---|
-| **under ~5** | Say plainly that this is below the useful boundary and why, and offer to just do the work instead. If the user still wants a plan, write one — this is advice, not a refusal. |
-| **~5–15** | Short form: one phase, no adversarial pressure test, no separate phase review, plan under ~100 lines. Everything else in this skill still applies — ownership, acceptance criteria, the Decision Log, the Testing Gate. |
-| **over ~15** | The full workflow below. |
+| Files touched | Lane | Write in the header |
+|---|---|---|
+| **under ~5** | Say plainly that this is below the useful boundary and why, and offer to just do the work instead. If the user still wants a plan, write one — this is advice, not a refusal. | `lane: small` |
+| **~5–15** | **Small lane:** one phase, **one wave, one gate**, no `Wave x.R` quality review, no adversarial pressure test, plan under ~100 lines. Everything else in this skill still applies — ownership, acceptance criteria, the Decision Log, the Deviation Log, the Testing Gate. | `lane: small` |
+| **over ~15** | The full workflow below. | `lane: full` |
+
+**Escalate to `full` for concurrency, not for size alone.** The lane exists
+because gate overhead was tracking the shape of the template rather than the
+risk of the change — one field report measured ~20 five-check wave gates for a
+single feature with no parallel critical path. If tasks will not actually run
+concurrently, the machinery that exists to keep concurrent tasks apart is
+ceremony. `validate-plan` holds a `lane: small` plan to one implementation wave
+and no review wave, so the key is a commitment rather than a label.
 
 These thresholds are `(assumed — flag if wrong)` and belong in the Decision Log as such: they are judgment, not measurement, and should be revised once there is a published cost figure to set them against. What is *not* judgment is the direction — the parts that scale with risk (ownership, criteria, gates) stay at every size; the parts that scale with cost (pressure test, phase review, phase structure) are what a smaller change drops.
 
@@ -42,7 +50,9 @@ Then interview the user about the practices the plan must abide by. Read `refere
 
 **If the change touches a UI or API surface, the interview must also produce testable acceptance criteria** — the base URL and the command that starts the app, the auth approach for a test run, evidence retention, and which outcomes are blockers. That is what makes the **Testing Gate** (step 6) writable at plan time instead of invented afterwards by whoever happens to be looking at the screen. The question block is in `reference/practices-interview.md` under *End-to-end verification*. A user answering "there is no browser-drivable surface here" is a complete answer: it becomes the section's `N/A — <reason>`.
 
-Record every answer in the plan's *Practices in effect* section. These are constraints, not suggestions: if the user works TDD, tests appear as the first task of every wave; if they require a browser confirmation gate, it appears as an explicit human-gate task.
+Record every answer in the plan's *Practices in effect* section. These are constraints, not suggestions: if the user works TDD, the failing test comes before the implementation it drives; if they require a browser confirmation gate, it appears as an explicit human-gate task.
+
+**TDD does not mean a RED wave and a GREEN wave.** A wave boundary is a synchronisation point with a five-check gate attached, and red/green does not need one — splitting them turns every parallel wave into a sequential pair and buys nothing. Put the failing test and the code that satisfies it in **one task** (the task's acceptance criterion is the test passing, and the executor is told to watch it fail first). Where the user genuinely wants them as separate tasks, that ordering is legal in a single wave only under `execution: solo`, where tasks run in sequence; under `fleet` the two tasks are simultaneous, the dependency cannot hold, and `validate-plan` rejects it.
 
 ### Step 2: Explore the codebase
 
@@ -71,6 +81,7 @@ Parallelism rules — these prevent the two classic failure modes (agents collid
 - A task is only in a wave if **all** its dependencies completed in earlier waves.
 - **Ownership enforcement (on by default).** Write `format_version: 3` and `enforcement: required` in the plan header. That commits the plan to being executed with the ownership hook live, and `drydock:wavecheck` then BLOCKs any wave with no hook decisions recorded — an unenforced wave stops being invisible. Only write `enforcement: none` when the user's host cannot run `PreToolUse` hooks or is on Node < 22, and record that as a Decision with the reason, because it downgrades every ownership claim the plan makes to prose.
 - **Attribution (ask the host repo, not the default).** Write `attribution: manifest` in the plan header unless the user's repo is happy with `drydock(<task-id>): ...` commit subjects. Under `manifest` each executor runs `drydock-audit.mjs task-close` after its checkpoint commit and the subject follows the host repo's own convention, so a repo whose policy forbids tool names or task ids in subjects can run the plan unmodified — that policy is otherwise a hard BLOCK on every wave, with no workaround but a hand-written attribution table. `commit-prefix` (the default when the key is absent) stays correct for repos with no such policy. Neither mode removes the per-task commit: attribution from a combined diff is unsound, which is why per-task commits are mandatory at all.
+- **Solo execution (ask, do not assume).** Step 1 asks whether `drydock:executor` subagents will actually be spawned. If they will not — a standing rule against unprompted agents, a host without subagents, or simply a user who intends to run the tasks themselves — write `execution: solo` in the header. Two things follow. Same-wave dependencies become legal, because the prohibition exists for simultaneity and there is none. And the plan states **once** that the session writing the diff is the session auditing it, instead of asserting a fleet and then logging the same Deviation 1 on every wave: *"tasks executed in-session by the orchestrator"* was the opening deviation of every plan run this way. `solo` relaxes no gate, no ownership boundary and no acceptance criterion — it removes a claim the plan was making falsely, and nothing else. Default is `fleet`.
 - **Worktree isolation (opt-in).** If the user opted in during step 1, or tasks are high-collision-risk (generated code, lockfiles, sweeping renames), set `isolation: worktree` in the plan header. Tasks then run via `drydock:executor-isolated`, each in its own git worktree, merged per the procedure in the format contract. It adds a merge step per wave — do not default to it.
 
 **Atomicity test** — a task is atomic when all four hold; if any fails, split it:
@@ -123,7 +134,7 @@ Write the plan as a file in the plans directory (plugin config `plans_dir`, defa
 Before presenting the plan to the user, run this self-review checklist and fix anything that fails:
 
 - [ ] Zero implementation was performed; the only new file is the plan.
-- [ ] Every practice from step 1 is visibly enforced in the tasks (e.g., TDD → test task precedes implementation task in every wave; manual gates appear as explicit tasks).
+- [ ] Every practice from step 1 is visibly enforced in the tasks (e.g., TDD → the failing test and its implementation are one task, or two sequential tasks under `execution: solo`; manual gates appear as explicit tasks). A RED wave followed by a GREEN wave is not TDD compliance, it is a gate you added for nothing.
 - [ ] Every task passes the four-part atomicity test.
 - [ ] No file is owned by two tasks in the same wave; every dependency points to an earlier wave.
 - [ ] Every task has a runnable acceptance criterion, a context brief, and a model/executor assignment; Complex/Judgment tasks have implementation sketches.
