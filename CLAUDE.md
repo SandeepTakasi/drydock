@@ -198,6 +198,16 @@ work — plan 001's has 49 entries and most are still live constraints.
   wavecheck report. Measured 2026-09-01, plan 005 deviation 2. Widening `owns`
   to include the plan file is the wrong fix and is what the denial message says
   not to do — it is the mixture behind plan 004's deviation 13.
+- **`.drydock/` is gitignored, so a wave's receipts do not survive a clean —
+  re-run `audit-wave` before deleting it if you want the strong claim.** From
+  v0.8.7 a sealed wave still re-audits: `audit-wave` recovers the task→commit
+  lookup from the wavecheck report already pasted into the plan, and re-derives
+  every file set from `git show`, so a recovered ownership verdict is exactly as
+  strong as the original. The enforcement receipt is **not** recoverable — a
+  count in a report is a record that the hook ran, not a receipt of it — and the
+  audit says so rather than claiming the hook never ran. Measured 2026-09-01:
+  plan 005 went `RECONCILED` → re-audit `FAIL (7)` → (v0.8.7) `PASS` with both
+  provenance downgrades stated.
 - **Per task: edit (file tool) → commit only owned files →
   `drydock-audit.mjs task-close <plan> <task-id>`.** Under
   `attribution: manifest` the commit subject is free; the manifest carries

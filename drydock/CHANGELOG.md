@@ -1,5 +1,45 @@
 # Changelog
 
+## 0.8.7 — 2026-09-01
+
+**A closed wave's verdict could not be re-derived, and the tool blamed the wrong
+cause for it.** `.drydock/` is gitignored — correctly, since Testing Gate
+evidence is binary and committing it to history is permanent — so a wave's
+receipts do not survive a clean. Plan 005 read `status: RECONCILED` behind a
+PASS report; re-running its own gate afterwards gave **FAIL (7)**: six tasks
+"unattributed" and an `enforcement: required` breach, entirely because the
+artifacts were gone.
+
+Worse than the failure was the explanation. The three-way diagnosis added in
+0.8.4 has no branch for *"the evidence was discarded after the wave closed"*, so
+it picked the nearest one and stated, of a wave whose own report records the
+hook **denying a write**, that *"the hook never ran here"*. A diagnosis that
+cannot say "I do not know" will confidently say something false instead.
+
+Nothing needed building. Wavecheck already pastes the audit's evidence table
+into the plan, and the plan is committed — the task→commit lookup that
+`attribution.jsonl` held is in git, beside the code it describes.
+
+- **Attribution is recovered from the sealed wavecheck report** when the live
+  manifest is gone. Plan 005 re-audits **PASS** again.
+- **That recovery is not a rubber stamp, and the distinction is the whole
+  point.** The report supplies only the *lookup*; every file set is still
+  re-derived with `git show` and re-compared against the plan's `owns`. A sealed
+  row naming a commit that broke its boundary still FAILs — there is a test that
+  fails if it ever stops doing so. Stated ceiling: the report is hand-editable
+  where the manifest is tool-written.
+- **The enforcement receipt is treated as strictly weaker, because it is.** A
+  count in a document is a **record** that the hook ran, never a **receipt** of
+  it: the hook wrote the log, a human wrote the report. So this is a note, not a
+  pass — and not an error either, since the claim was met while it was checkable
+  and no re-run can ever restore the file. Failing a wave forever over a deleted
+  temp file would make `enforcement: required` mean "audited within one session".
+- **An unsealed wave with no log still gets the original three-way diagnosis.**
+  Recovery is not an escape hatch for a wave that was never gated.
+
+If you want the strong claim rather than the on-record one, re-run the gate
+before `.drydock/` is cleaned. That is now the only difference between them.
+
 ## 0.8.6 — 2026-09-01
 
 **The plugin being run and the plugin in the repo were four releases apart, and

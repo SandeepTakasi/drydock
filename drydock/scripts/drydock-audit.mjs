@@ -671,10 +671,63 @@ const repoRoot = () => git(["rev-parse", "--show-toplevel"]);
 
 const git = (args) => execFileSync("git", args, { encoding: "utf8" }).trim();
 
+// ------------------------------------------------------ sealed record ------
+//
+// `.drydock/` is gitignored — deliberately, since Testing Gate evidence is
+// binary and committing it to history is permanent. The cost only shows up
+// later: once that directory is cleaned, a CLOSED wave's verdict cannot be
+// re-derived. Plan 005 reads `status: RECONCILED` with a PASS report, and
+// re-running its own gate afterwards produced FAIL (7) — six tasks
+// "unattributed" and an `enforcement: required` breach — purely because the
+// artifacts behind the original PASS were gone.
+//
+// Nothing needed building. Wavecheck already pastes the audit's evidence table
+// into the plan, and the plan is committed, so the task -> sha lookup that
+// `attribution.jsonl` supplied is sitting in git alongside the code it
+// describes. This reads it back.
+//
+// WHAT THAT IS AND IS NOT WORTH. The table supplies only the lookup; every file
+// set is still re-derived with `git show` and re-compared against the plan's
+// `owns`, so a recovered ownership verdict is exactly as strong as the original
+// — a doctored table naming the wrong commits produces wrong file sets and
+// FAILs. The enforcement receipt is the opposite: a count in a document is a
+// RECORD of what the hook did, never a receipt, because the hook did not write
+// it. The two are labelled differently below for that reason, and a sealed
+// record is never allowed to read as a live one.
+const SEALED_ROW = /^\|\s*(T[0-9][\w.]*)\s*\|\s*`([0-9a-f]{7,40})`\s*\|/;
+
+function sealedRecord(plan, wave) {
+  const start = plan.lines.findIndex((l) => new RegExp(`^### Wavecheck ${wave.replace(".", "\\.")}\\b`).test(l));
+  if (start === -1) return null;
+  const rest = plan.lines.slice(start + 1);
+  const end = rest.findIndex((l) => /^#{1,3} /.test(l));
+  const body = end === -1 ? rest : rest.slice(0, end);
+
+  const commits = new Map();
+  for (const line of body) {
+    const m = line.match(SEALED_ROW);
+    if (m && !commits.has(m[1])) commits.set(m[1], m[2]);
+  }
+  // `note: enforcement active: 13 hook decision(s) recorded for wave 1.0 (1 denied)`
+  const enforcement = body
+    .join("\n")
+    .match(/enforcement active:\s*(\d+)\s*hook decision\(s\) recorded for wave [\d.]+\s*\((\d+) denied\)/);
+
+  if (commits.size === 0 && !enforcement) return null;
+  const verdict = plan.lines[start].match(/—\s*([A-Z]+)/)?.[1] ?? "?";
+  return {
+    commits,
+    verdict,
+    decisions: enforcement ? Number(enforcement[1]) : null,
+    denied: enforcement ? Number(enforcement[2]) : null,
+  };
+}
+
 function auditWave(path, wave) {
   const plan = parsePlan(path);
   const errors = [];
   const notes = [];
+  const sealed = sealedRecord(plan, wave);
 
   if (plan.frontmatter.isolation === "worktree") {
     notes.push("plan declares `isolation: worktree` — attribution there comes from per-worktree `git diff --name-only`; this subcommand audits default-mode per-task commits only");
@@ -706,10 +759,25 @@ function auditWave(path, wave) {
           .map((l) => { try { return JSON.parse(l); } catch { return null; } })
           .filter((e) => e && (e.plan == null || planId == null || e.plan === planId))
       : [];
-    if (entries.length === 0) {
-      notes.push(`plan declares \`attribution: manifest\` and ${manifestPath} holds no entries for this plan — every task below will read as unattributed`);
+    if (entries.length === 0 && sealed?.commits.size > 0) {
+      // The live manifest is gone and the wave is already sealed. Recover the
+      // lookup from the committed report rather than reporting six tasks as
+      // unattributed when git still holds every commit they name.
+      notes.push(
+        `\`${manifestPath}\` holds no entries, but wavecheck ${wave} is sealed in this plan (${sealed.verdict}) ` +
+          `with ${sealed.commits.size} task->commit row(s) — ATTRIBUTION RECOVERED FROM THE SEALED REPORT. ` +
+          `Every file set below is still re-derived with \`git show\` and re-compared against the plan's \`owns\`, ` +
+          `so this verdict is as strong as the original; the report supplied the lookup, not the evidence. ` +
+          `Ceiling: the report is hand-editable where the manifest is tool-written, and a table naming the wrong ` +
+          `commits shows the wrong file sets and FAILs rather than passing quietly.`
+      );
+      commitsFor = (id) => (sealed.commits.has(id) ? [sealed.commits.get(id)] : []);
+    } else {
+      if (entries.length === 0) {
+        notes.push(`plan declares \`attribution: manifest\` and ${manifestPath} holds no entries for this plan — every task below will read as unattributed`);
+      }
+      commitsFor = (id) => entries.filter((e) => e.task === id).map((e) => e.sha);
     }
-    commitsFor = (id) => entries.filter((e) => e.task === id).map((e) => e.sha);
   } else {
     // Task ids are unique WITHIN a plan, and the checkpoint-commit subject
     // `drydock(<task-id>): …` carries no plan id — so `drydock(T2.0.1)` matches a
@@ -807,7 +875,26 @@ function auditWave(path, wave) {
           .filter((e) => e && e.wave === wave)
       : [];
 
-    if (entries.length === 0) {
+    if (entries.length === 0 && sealed?.decisions !== null && sealed?.decisions !== undefined) {
+      // A FOURTH cause, and the one the three below could not distinguish: the
+      // wave closed with receipts and the gitignored log was cleaned afterwards.
+      // Diagnosing that as "the hook never ran here" is a confident false
+      // statement about a wave whose own sealed report records the hook denying
+      // a write — which is exactly what this tool said about plan 005 on
+      // 2026-09-01, and the reason a diagnosis has to be able to say it does not
+      // know. Not an error: the claim was met when it was checkable, and there
+      // is no version of this the repo can re-run, so failing the wave forever
+      // over a deleted temp file would make `enforcement: required` mean
+      // "audited within one session only".
+      notes.push(
+        `\`${logPath}\` holds no entries for wave ${wave}, but this plan's sealed wavecheck ${wave} report ` +
+          `records ${sealed.decisions} hook decision(s), ${sealed.denied} denied. The live receipt is gone — ` +
+          `\`.drydock/\` is gitignored, so it does not survive a clean — and it CANNOT be reconstructed. ` +
+          `What stands is a RECORD that enforcement ran, not a RECEIPT of it: the hook wrote the log, a human ` +
+          `wrote the report. Treat this wave as enforced-on-record, and re-run the gate before the artifacts ` +
+          `are cleaned if you need the stronger claim.`
+      );
+    } else if (entries.length === 0) {
       // Which of the three sub-cases this is, decided from evidence the tool
       // already holds rather than handed to a model as "one innocent cause
       // exists, consider it". That instruction was prose-compliance of exactly

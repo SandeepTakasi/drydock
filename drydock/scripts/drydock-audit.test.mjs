@@ -14,7 +14,7 @@
  */
 
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -593,6 +593,45 @@ const enforcedRepo = (name, log) => {
 
 const OTHER_WAVE = JSON.stringify({ ts: "x", plan: "900-fixture", wave: "9.9", decision: "allow", path: "z.txt", owns: ["z.txt"] }) + "\n";
 
+// A CLOSED wave as it looks months later: the task's commit is in history, the
+// plan carries the wavecheck report wavecheck wrote, and `.drydock/` has been
+// cleaned away. `rm`-ing the directory after `task-close` is the whole point —
+// it reproduces the state that made plan 005's own gate fail.
+const sealedRepo = (name, files = ["a.txt"]) => {
+  const dir = join(DIR, `sealed-${name}`);
+  mkdirSync(dir, { recursive: true });
+  git(dir, ["init", "-q", "-b", "main"]);
+  writeFileSync(join(dir, ".gitignore"), ".drydock/\n");
+  writeFileSync(join(dir, "plan.md"), enforcedPlan);
+  git(dir, ["add", "-A"]);
+  git(dir, ["commit", "-q", "-m", "chore: baseline"]);
+  commitAs(dir, files, "fix(a): do the thing");
+  const sha = git(dir, ["rev-parse", "--short=7", "HEAD"]);
+
+  // The report exactly as wavecheck appends it, evidence table and all.
+  writeFileSync(
+    join(dir, "plan.md"),
+    `${enforcedPlan}
+## Wavecheck reports
+
+### Wavecheck 1.0 — PASS — 2026-09-01
+
+\`\`\`
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.0.1 | \`${sha}\` | \`${files.join("`<br>`")}\` | \`a.txt\` | none |
+
+Working tree: clean
+  note: enforcement active: 13 hook decision(s) recorded for wave 1.0 (1 denied)
+\`\`\`
+`
+  );
+  git(dir, ["add", "plan.md"]);
+  git(dir, ["commit", "-q", "-m", "docs: wavecheck report"]);
+  rmSync(join(dir, ".drydock"), { recursive: true, force: true }); // the clean
+  return dir;
+};
+
 cases.push(
   ["no log at all is diagnosed as the hook never having run",
     () => cli(enforcedRepo("nolog", null), ["audit-wave", "plan.md", "1.0"]),
@@ -613,6 +652,47 @@ cases.push(
   ["every audit states which layer verified ownership",
     () => cli(enforcedRepo("layer", null), ["audit-wave", "plan.md", "1.0"]),
     (out) => out.includes("independently of the hook — detection, not prevention")],
+
+  // --- a sealed wave, re-audited after `.drydock/` was cleaned --------------
+  //
+  // `.drydock/` is gitignored, so a closed wave's receipts do not survive a
+  // clean. Measured 2026-09-01: plan 005 read `status: RECONCILED` behind a PASS
+  // report, and re-running its own gate gave FAIL (7) — six tasks
+  // "unattributed" plus an `enforcement: required` breach — entirely because the
+  // artifacts were gone. Nothing had to be built to fix it: wavecheck already
+  // pastes the audit's evidence table into the plan, and the plan is committed.
+  //
+  // The two halves are worth different amounts and the tests say so separately.
+  ["a sealed report recovers attribution once the manifest is gone", () => {
+    const dir = sealedRepo("recover");
+    return cli(dir, ["audit-wave", "plan.md", "1.0"]);
+  }, (out) => out.includes("ATTRIBUTION RECOVERED FROM THE SEALED REPORT") && out.includes("audit-wave 1.0: PASS")],
+
+  // The recovery must not be a rubber stamp. The report supplies the LOOKUP; the
+  // file sets are still re-derived from git and re-compared to `owns`, so a
+  // sealed row pointing at a commit that broke its boundary still FAILs. If this
+  // case ever passes, the fallback has become a way to launder a bad wave.
+  ["a sealed row naming a boundary-breaking commit still FAILs", () => {
+    const dir = sealedRepo("dirty", ["a.txt", "unowned.txt"]);
+    return cli(dir, ["audit-wave", "plan.md", "1.0"]);
+  }, (out) => out.includes("`unowned.txt`, which is outside its `owns`") && out.includes("audit-wave 1.0: FAIL")],
+
+  // The false diagnosis this whole case exists for: the tool told plan 005 "the
+  // hook never ran here" about a wave whose own report records the hook denying
+  // a write. A record is not a receipt, and the note says which it is.
+  ["a cleaned log with a sealed receipt count is not 'the hook never ran'", () => {
+    const dir = sealedRepo("receipt");
+    return cli(dir, ["audit-wave", "plan.md", "1.0"]);
+  }, (out) =>
+    out.includes("records 13 hook decision(s), 1 denied") &&
+    out.includes("RECORD that enforcement ran, not a RECEIPT") &&
+    !out.includes("the hook never ran here")],
+
+  // ...and with no sealed report to lean on, the original three-way diagnosis is
+  // untouched. Recovery must not become a way for an unsealed wave to escape.
+  ["an unsealed wave with no log still gets the old diagnosis",
+    () => cli(enforcedRepo("unsealed", null), ["audit-wave", "plan.md", "1.0"]),
+    (out) => out.includes("exists at all, so the hook never ran here") && out.includes("audit-wave 1.0: FAIL")],
 
   // --- version drift between the running script and the installed plugin ----
   //
