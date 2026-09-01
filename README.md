@@ -29,11 +29,11 @@ executor while all tests were green, and exposed + fixed a defect in our own
 attribution design) and an honest
 [compatibility checklist](docs/compatibility.md) of what's verified vs pending.
 
-Homepage: <https://takasivenkatasandeep-08.github.io/drydock/> ·
+Homepage: <https://sandeeptakasi.github.io/drydock/> ·
 Plugin: [`drydock/`](drydock/) ·
 Lifecycle, pieces, and philosophy: [`drydock/README.md`](drydock/README.md)
 
 ```
-/plugin marketplace add TakasiVenkataSandeep-08/drydock
+/plugin marketplace add SandeepTakasi/drydock
 /plugin install drydock@drydock
 ```

@@ -1,11 +1,11 @@
 blank_issues_enabled: true
 contact_links:
   - name: What is and is not verified
-    url: https://github.com/TakasiVenkataSandeep-08/drydock/blob/main/docs/compatibility.md
+    url: https://github.com/SandeepTakasi/drydock/blob/main/docs/compatibility.md
     about: Every claim Drydock makes, with its evidence and its gaps stated plainly.
   - name: The plan format contract
-    url: https://github.com/TakasiVenkataSandeep-08/drydock/blob/main/drydock/skills/planwright/reference/plan-format.md
+    url: https://github.com/SandeepTakasi/drydock/blob/main/drydock/skills/planwright/reference/plan-format.md
     about: What a valid plan document has to contain, section by section.
   - name: Homepage
-    url: https://takasivenkatasandeep-08.github.io/drydock/
+    url: https://sandeeptakasi.github.io/drydock/
     about: What Drydock is, and the failure modes it exists for.

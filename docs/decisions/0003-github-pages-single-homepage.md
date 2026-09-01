@@ -12,7 +12,7 @@ a hand-written root `index.html` and the `site/` export — deliberately differe
 by plan 001's Decision 1, with neither retired.
 
 Both conditions have now changed. The remote is
-`TakasiVenkataSandeep-08/drydock`, which fixes the URL, and the plugin is being
+`SandeepTakasi/drydock`, which fixes the URL, and the plugin is being
 shown to people, which makes two divergent homepages a liability rather than an
 open option: whichever one a visitor lands on, the other contradicts it.
 
@@ -21,7 +21,7 @@ open option: whichever one a visitor lands on, the other contradicts it.
 1. **`site/` is the only homepage.** Root `index.html` is deleted. It stays
    recoverable in git history; nothing links to it.
 2. **GitHub Pages project site**, served at
-   `https://takasivenkatasandeep-08.github.io/drydock/`.
+   `https://sandeeptakasi.github.io/drydock/`.
 3. **`basePath: '/drydock'`** in `site/next.config.ts`, declared once as a
    single named constant, because a project site is served from a subdirectory.
 4. **Publishing runs through the gate.** `.github/workflows/deploy.yml` runs

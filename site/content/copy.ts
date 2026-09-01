@@ -89,7 +89,7 @@ const VERSION = "0.7.0";
  * tree. On GitHub Pages `../` escapes the basePath to the domain root: all four
  * were 404s in production. `assert-copy.mjs` now rejects any `../` href.
  */
-const REPO = "https://github.com/TakasiVenkataSandeep-08/drydock";
+const REPO = "https://github.com/SandeepTakasi/drydock";
 const BLOB = `${REPO}/blob/main`;
 
 export const site = {
@@ -109,8 +109,8 @@ export const site = {
    * `/drydock/drydock/opengraph-image.png` — measured, and a 404 on every share.
    * metadataBase takes `origin`; anything absolute (og:url) takes `url`.
    */
-  origin: "https://takasivenkatasandeep-08.github.io",
-  url: "https://takasivenkatasandeep-08.github.io/drydock/",
+  origin: "https://sandeeptakasi.github.io",
+  url: "https://sandeeptakasi.github.io/drydock/",
   repo: REPO,
 };
 
@@ -355,7 +355,7 @@ export const install: {
   copiedLabel: string;
 } = {
   commands: [
-    "/plugin marketplace add TakasiVenkataSandeep-08/drydock",
+    "/plugin marketplace add SandeepTakasi/drydock",
     "/plugin install drydock@drydock",
   ],
   scopeNote: "Add --scope project to share it with your team.",

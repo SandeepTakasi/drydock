@@ -10,7 +10,7 @@ depth: `git log --diff-filter=D --format=%H -- index.html`, then
 `git show <sha>^:index.html`.
 
 **Deployment is resolved** (ADR 0003, superseding ADR 0002). GitHub Pages
-project site at <https://takasivenkatasandeep-08.github.io/drydock/>, built and
+project site at <https://sandeeptakasi.github.io/drydock/>, built and
 published by `.github/workflows/deploy.yml` on every push touching `site/**`.
 The workflow runs `npm run verify` before it uploads anything, so a failing gate
 blocks the deploy rather than shipping past it.

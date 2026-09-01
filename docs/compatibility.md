@@ -40,7 +40,7 @@ than a measured result, and the page says so rather than estimating.
 
 ## 2026-08-20 — published as an open pilot
 
-The homepage went live at <https://takasivenkatasandeep-08.github.io/drydock/>
+The homepage went live at <https://sandeeptakasi.github.io/drydock/>
 and the repo went public with **A3 unresolved and stated on the page**, rather
 than holding the release until it passes.
 

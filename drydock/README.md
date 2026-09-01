@@ -95,7 +95,7 @@ relying on it.
 ## Install (internal, team scope)
 
 ```
-/plugin marketplace add TakasiVenkataSandeep-08/drydock
+/plugin marketplace add SandeepTakasi/drydock
 /plugin install drydock@drydock
 ```
 
