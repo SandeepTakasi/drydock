@@ -187,6 +187,13 @@ function validatePlan(path, strict) {
     errors.push(`frontmatter: format_version ${plan.frontmatter.format_version ?? "(absent)"} unsupported (supported: ${SUPPORTED_FORMAT_VERSIONS.join(", ")})`);
   }
 
+  // --- frontmatter status vs what the gates actually recorded ---------------
+  // Not style: a plan that says EXECUTING after every wave passed is why closure
+  // never happens, and a plan that says DONE over a BLOCK is worse than one with
+  // no status at all. Issue #5.
+  const contradiction = statusContradiction(plan);
+  if (contradiction) errors.push(contradiction);
+
   // --- attribution mode ------------------------------------------------------
   // Absent means `commit-prefix`, which is every plan written before 0.7.1 and
   // is why plans 001-004 audit exactly as they always did. A typo must not fall
@@ -320,6 +327,141 @@ function sectionBody(plan, name) {
   const rest = plan.lines.slice(start + 1);
   const end = rest.findIndex((l) => /^## /.test(l));
   return (end === -1 ? rest : rest.slice(0, end)).join("\n");
+}
+
+// --------------------------------------------------------- plan state ------
+
+// Five surfaces claim to hold a plan's state — frontmatter `status:`, per-task
+// `Status:`, the Progress log, the wavecheck reports, the Deviation Log — and in
+// the field only the last two are maintained. A reader who trusts the first
+// three is misled, and closure never happens because nothing forces it
+// (issue #5).
+//
+// Only ONE of the five is written by a gate rather than by whoever remembered:
+// the wavecheck reports. So they are the ground truth, and every other surface
+// is either derived from them or deleted. This function derives.
+//
+// It reads the plan's own text, which is also what
+// `docs/a3-gate-compliance.md` proposes as its falsification check — and it
+// inherits that check's stated limit: a retroactively written report is a
+// heading like any other, so this can tell you a wave has no report and never
+// that a gate was skipped at its boundary. Status is what it answers; gate
+// compliance is not.
+const WAVE_RE = /^### Wave (\d+)\.(\d+|R)\b/;
+// `### Wavecheck 2.1 (re-audit after Decision 12) — PASS — 2026-08-20`.
+// The parenthetical is free text and re-audits are ordinary headings, so the
+// LAST verdict for a wave is the one that stands.
+const WAVECHECK_RE = /^### Wavecheck (\d+)\.(\d+)\b[^—]*—\s*([A-Z]+)/;
+
+function derivePlanState(plan) {
+  const waves = [];
+  const verdicts = new Map();
+
+  for (const line of plan.lines) {
+    const w = line.match(WAVE_RE);
+    // Review waves take no wavecheck by design and are excluded, exactly as the
+    // A3 ledger excludes them.
+    if (w && w[2] !== "R") {
+      const id = `${w[1]}.${w[2]}`;
+      if (!waves.includes(id)) waves.push(id);
+      continue;
+    }
+    const c = line.match(WAVECHECK_RE);
+    if (c) verdicts.set(`${c[1]}.${c[2]}`, c[3]);
+  }
+
+  const reported = waves.filter((w) => verdicts.has(w));
+  const blocked = reported.filter((w) => verdicts.get(w) !== "PASS");
+  const started = reported.length > 0;
+  const complete = waves.length > 0 && reported.length === waves.length && blocked.length === 0;
+
+  // Two different questions, deliberately not one set. `expected` is what a
+  // stored status may legitimately say — permissive, because a plan can sit at
+  // BLOCKED for a reason no wavecheck reports (plan 004 was BLOCKED on an open
+  // question with every wave green). `writable` is the single status --write may
+  // set, and is null wherever the reports genuinely cannot choose: DONE vs
+  // RECONCILED is `reconcile`'s call, and writing DONE over a RECONCILED it
+  // earned would be this tool inventing a verdict.
+  let expected, writable, reason;
+  if (blocked.length > 0) {
+    expected = ["BLOCKED"];
+    writable = "BLOCKED";
+    reason = `wave ${blocked[0]} last reported ${verdicts.get(blocked[0])}`;
+  } else if (complete) {
+    expected = ["DONE", "RECONCILED"];
+    writable = null;
+    reason = `all ${waves.length} implementation wave(s) have a PASS report`;
+  } else if (started) {
+    expected = ["EXECUTING", "BLOCKED"];
+    writable = "EXECUTING";
+    reason = `${reported.length} of ${waves.length} wave(s) reported`;
+  } else {
+    expected = ["DRAFT", "APPROVED", "EXECUTING", "BLOCKED", "DONE", "RECONCILED"];
+    writable = null;
+    reason = "no wavecheck reports — the plan has not been gated, so its status is unconstrained";
+  }
+
+  return { waves, verdicts, reported, blocked, started, complete, expected, writable, reason };
+}
+
+// The contradiction, phrased once and reused by validate-plan, audit-wave and
+// plan-status. Returns null when the stored status is consistent with what the
+// gates recorded.
+function statusContradiction(plan) {
+  const state = derivePlanState(plan);
+  const status = plan.frontmatter.status;
+  if (!status || state.expected.includes(status)) return null;
+  return (
+    `frontmatter says \`status: ${status}\`, but ${state.reason} — ` +
+    `the wavecheck reports are the only state a gate writes, so they win. Expected ${state.expected.join(" or ")}.`
+  );
+}
+
+function planStatus(path, write) {
+  const plan = parsePlan(path);
+  const state = derivePlanState(plan);
+  const status = plan.frontmatter.status ?? "(absent)";
+
+  console.log(`\n### plan-status — ${path}\n`);
+  console.log("| Wave | Last verdict |");
+  console.log("|------|--------------|");
+  for (const w of state.waves) console.log(`| ${w} | ${state.verdicts.get(w) ?? "— none —"} |`);
+  console.log(`\nfrontmatter: ${status}`);
+  console.log(`derived:     ${state.expected.join(" or ")}  (${state.reason})`);
+
+  const bad = statusContradiction(plan);
+  if (!bad) {
+    console.log(`\nplan-status: PASS — ${path} (status agrees with ${state.reported.length} wavecheck report(s))`);
+    return;
+  }
+  if (!write) {
+    console.error(`\nplan-status: FAIL — ${path}`);
+    console.error(`  - ${bad}`);
+    process.exit(1);
+  }
+
+  // Write only what the reports prove. Where two statuses are both consistent
+  // the tool has no opinion and says so rather than picking one — an automatic
+  // DONE would quietly overwrite a RECONCILED that reconcile earned.
+  if (!state.writable) {
+    console.error(`\nplan-status: FAIL — ${path}`);
+    console.error(`  - ${bad}`);
+    console.error(`  --write cannot resolve this: ${state.expected.join(" or ")} are both consistent with the reports. Set it by hand.`);
+    process.exit(1);
+  }
+
+  const next = state.writable;
+  // Targeted, on the raw text: the plans in this repo are CRLF, and splitting on
+  // /\r?\n/ then joining with "\n" would rewrite every line ending in the file to
+  // change one word. Non-global, so it hits the frontmatter's `status:` — the
+  // first one in the file — and nothing further down.
+  const updated = plan.text.replace(/^status:[^\r\n]*/m, `status: ${next}`);
+  if (updated === plan.text) {
+    console.error(`\nplan-status: FAIL — ${path}\n  - no \`status:\` line to update`);
+    process.exit(1);
+  }
+  writeFileSync(path, updated);
+  console.log(`\nplan-status: WROTE — ${path} (${status} -> ${next})`);
 }
 
 // ------------------------------------------------------------ wave-start ---
@@ -540,6 +682,13 @@ function auditWave(path, wave) {
     }
   }
 
+  // Surfaced at the gate rather than only in validate-plan, because the wave
+  // boundary is where the status is supposed to move and where somebody is
+  // already reading. A note, not an error: this subcommand audits a wave, and
+  // failing it over a frontmatter word would conflate two different verdicts.
+  const staleStatus = statusContradiction(plan);
+  if (staleStatus) notes.push(`plan status is stale — ${staleStatus} Fix with \`plan-status --write\`, or by hand.`);
+
   const dirty = git(["status", "--porcelain"]);
   const head = git(["rev-parse", "HEAD"]);
   const live = rows.some((r) => r.sha !== "—" && head.startsWith(r.sha));
@@ -639,16 +788,18 @@ function report(what, path, errors, notes, summary) {
 
 const argv = process.argv.slice(2);
 const strict = argv.includes("--strict");
-const [command, ...rest] = argv.filter((a) => a !== "--strict");
+const [command, ...rest] = argv.filter((a) => a !== "--strict" && a !== "--write");
 
 if (command === "validate-plan" && rest[0]) validatePlan(rest[0], strict);
 else if (command === "audit-wave" && rest[0] && rest[1]) auditWave(rest[0], rest[1]);
 else if (command === "wave-start" && rest[0] && rest[1]) waveStart(rest[0], rest[1]);
 else if (command === "task-close" && rest[0] && rest[1]) taskClose(rest[0], rest[1]);
+else if (command === "plan-status" && rest[0]) planStatus(rest[0], argv.includes("--write"));
 else {
   console.error("usage: drydock-audit.mjs wave-start   <plan.md> <wave>      # arm the ownership hook");
   console.error("       drydock-audit.mjs task-close   <plan.md> <task-id>  # record HEAD as this task's work");
   console.error("       drydock-audit.mjs audit-wave   <plan.md> <wave>      # audit it afterwards");
+  console.error("       drydock-audit.mjs plan-status   [--write] <plan.md>  # derive status from the wavecheck reports");
   console.error("       drydock-audit.mjs validate-plan [--strict] <plan.md>");
   process.exit(2);
 }

@@ -1,5 +1,51 @@
 # Changelog
 
+## 0.7.3 — 2026-09-01
+
+**A plan had five surfaces claiming to hold its state and maintained two of
+them.** Frontmatter `status:`, per-task `Status:`, the Progress log, the
+wavecheck reports, the Deviation Log — and in the field every executed plan sat
+at `EXECUTING` forever while per-task `Status:` was wrong in 40 of 40 cases. A
+reader who trusted the first three was misled, and closure never happened
+because nothing forced it. Only one of the five is written by a *gate* rather
+than by whoever remembered: the wavecheck reports. So they become the ground
+truth and the rest is derived or deleted
+([#5](https://github.com/SandeepTakasi/drydock/issues/5)).
+
+- **`drydock-audit.mjs plan-status [--write] <plan>` derives the status from the
+  plan's own wavecheck reports.** A wave's LAST verdict stands, so a BLOCK
+  re-audited to PASS closes correctly; review waves (`x.R`) are excluded, as
+  they are in the A3 ledger. `validate-plan` now FAILs on a status the reports
+  contradict and `audit-wave` notes one at the wave boundary — so a plan cannot
+  quietly sit at `EXECUTING` after its last wave passed, or claim `DONE` over a
+  `BLOCK`. Run against this repo's four plans, all four derive to exactly the
+  status they already carried.
+- **`--write` sets only what the reports prove, and `DONE` vs `RECONCILED` is
+  not one of those things.** Closing a plan is `drydock:reconcile`'s call; an
+  automatic `DONE` would overwrite a `RECONCILED` that reconcile earned. Note
+  the two questions are kept apart deliberately: what a status may legitimately
+  *say* is permissive, because a plan can sit at `BLOCKED` for a reason no
+  wavecheck reports — plan 004 was BLOCKED on an open question with every wave
+  green — while what `--write` may *set* is a single unambiguous value or
+  nothing.
+- **The per-task `Status:` field is deleted from the plan format.** Nothing ever
+  maintained it: every mechanism that knows a task finished — the wavecheck
+  report, the Progress log, the checkpoint commit — writes somewhere else. A
+  field that is always stale is worse than an absent one, because it reads like
+  state. Plans 001–004 keep theirs; execution history is not a draft.
+- **`wavecheck` runs `plan-status --write` as part of its verdict step**, rather
+  than being told in prose to remember. Same reasoning as `wave-start` in 0.7.0
+  and `task-close` in 0.7.2: state a model has to remember to write is state
+  that will not be written.
+
+Inherited limit, stated rather than discovered later: this derives status from
+report headings, so it shares the ceiling `docs/a3-gate-compliance.md` already
+documents — a retroactively written report is an ordinary heading, so it can
+tell you a wave has **no** report and never that a gate was **skipped** at its
+boundary. Status is what it answers; gate compliance is not.
+
+Eleven new cases. Proven failable: neutering the check fails six of them.
+
 ## 0.7.2 — 2026-09-01
 
 **A repo's own commit policy could make Drydock unusable, and the part doing the

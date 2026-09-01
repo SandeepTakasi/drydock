@@ -223,6 +223,98 @@ cases.push(
     (out) => out.includes(`attribution "manfiest" unknown`)]
 );
 
+// --------------------------------------------------------------------------
+// Plan status derived from the wavecheck reports (issue #5). The reports are
+// the only state a gate writes; frontmatter `status:` is a thing somebody has
+// to remember, which in the field it was not.
+
+const statusPlan = (status, body) => `---
+plan: 900-fixture
+format_version: 3
+status: ${status}
+---
+
+#### T1.0.1 — first
+- **Files owned:** \`a.txt\`
+- **Acceptance criterion:** \`true\` exits 0.
+
+#### T2.0.1 — second
+- **Files owned:** \`b.txt\`
+- **Acceptance criterion:** \`true\` exits 0.
+
+### Wave 1.0 — one
+### Wave 1.R — review
+### Wave 2.0 — two
+
+## Wavecheck reports
+${body}
+`;
+
+const BOTH_PASS = `### Wavecheck 1.0 — PASS — 2026-09-01
+### Wavecheck 2.0 — PASS — 2026-09-01`;
+const ONE_PASS = `### Wavecheck 1.0 — PASS — 2026-09-01`;
+// A BLOCK later re-audited to PASS: the last verdict for the wave stands, and
+// the parenthetical is free text a heading regex must not choke on.
+const REAUDIT = `### Wavecheck 1.0 — PASS — 2026-09-01
+### Wavecheck 2.0 — BLOCK — 2026-09-01
+### Wavecheck 2.0 (re-audit after Decision 4) — PASS — 2026-09-01`;
+
+const status = (name, full, args = []) => {
+  const file = join(DIR, `${name}.md`);
+  writeFileSync(file, full);
+  const r = spawnSync("node", [CLI, "plan-status", ...args, file], { encoding: "utf8" });
+  return { out: `${r.stdout}${r.stderr}`, file };
+};
+
+cases.push(
+  ["EXECUTING after every wave passed is a contradiction",
+    () => status("stale", statusPlan("EXECUTING", BOTH_PASS)).out,
+    (out) => out.includes("plan-status: FAIL") && out.includes("all 2 implementation wave(s) have a PASS report")],
+
+  ["DONE over a BLOCK is a contradiction",
+    () => status("overclaim", statusPlan("DONE", `### Wavecheck 1.0 — BLOCK — 2026-09-01`)).out,
+    (out) => out.includes("plan-status: FAIL") && out.includes("last reported BLOCK")],
+
+  ["DONE with only half the waves reported is a contradiction",
+    () => status("half", statusPlan("DONE", ONE_PASS)).out,
+    (out) => out.includes("plan-status: FAIL") && out.includes("1 of 2 wave(s) reported")],
+
+  ["the last verdict for a wave wins, so a re-audited BLOCK is closed",
+    () => status("reaudit", statusPlan("DONE", REAUDIT)).out,
+    (out) => out.includes("plan-status: PASS")],
+
+  ["review waves are excluded from the wave count",
+    () => status("reviewwave", statusPlan("DONE", BOTH_PASS)).out,
+    (out) => out.includes("plan-status: PASS") && out.includes("all 2 implementation wave(s)")],
+
+  ["RECONCILED is accepted where DONE is, and never guessed at",
+    () => status("reconciled", statusPlan("RECONCILED", BOTH_PASS)).out,
+    (out) => out.includes("plan-status: PASS")],
+
+  ["an ungated plan's status is unconstrained",
+    () => status("ungated", statusPlan("DRAFT", "")).out,
+    (out) => out.includes("plan-status: PASS") && out.includes("has not been gated")],
+
+  ["--write sets the status the reports prove", () => {
+    const { file } = status("writeme", statusPlan("DONE", ONE_PASS), ["--write"]);
+    return readFileSync(file, "utf8");
+  }, (out) => /^status: EXECUTING$/m.test(out)],
+
+  ["--write refuses where two statuses are both consistent",
+    () => status("writeambig", statusPlan("EXECUTING", BOTH_PASS), ["--write"]).out,
+    (out) => out.includes("cannot resolve this") && out.includes("DONE or RECONCILED")],
+
+  ["--write leaves CRLF line endings alone", () => {
+    const { file } = status("crlf", statusPlan("DONE", ONE_PASS).replace(/\n/g, "\r\n"), ["--write"]);
+    const after = readFileSync(file, "utf8");
+    return `lf-only=${(after.match(/(?<!\r)\n/g) || []).length} crlf=${(after.match(/\r\n/g) || []).length}`;
+  }, (out) => out.startsWith("lf-only=0 ") && !out.endsWith("crlf=0")],
+
+  ["validate-plan fails on a status the reports contradict",
+    () => validateRaw("statusvalidate", statusPlan("DONE", ONE_PASS)),
+    (out) => out.includes("validate-plan: FAIL") && out.includes("the wavecheck reports are the only state a gate writes")]
+);
+
 let failed = 0;
 for (const [name, run, ok] of cases) {
   const out = run();

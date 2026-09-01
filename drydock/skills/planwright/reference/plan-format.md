@@ -239,9 +239,8 @@ seatrial HALTs and asks rather than testing written cases against a moved target
 ```markdown
 ## Phase 0: Pre-flight
 #### T0 — Baseline verification
-- Status: TODO — runs every quality-gate command on the untouched codebase,
-  records SHA + results in Baseline. Files owned: — (read-only).
-  Model: Mechanical / off.
+- Runs every quality-gate command on the untouched codebase, records SHA +
+  results in Baseline. Files owned: — (read-only). Model: Mechanical / off.
 
 ## Phase <p>: <milestone>
 **Exit state:** <verifiable, ideally shippable state>
@@ -259,7 +258,6 @@ plan. Write the unmet form while the phase is open; amend it when it closes.
 > order). Every phase with a parallel wave needs one.
 
 #### T<p>.<w>.<n> — <title>
-- **Status:** TODO | IN PROGRESS | DONE | BLOCKED(Qn)
 - **Description:** 2–4 sentences, one outcome, no "and also".
 - **Files owned:** explicit list/globs — disjoint from every other task in
   this wave; nothing else may be written.
@@ -296,6 +294,26 @@ Ownership rules:
 - A file owned in wave N may be owned again in wave N+1 (sequential handoff).
 - Task IDs are never reused; a replan-replaced task gets a suffixed id
   (`T2.1.3r1`) and the original is struck through with a pointer.
+
+**No per-task `Status:` field.** It was in this template until v0.7.3 and
+nothing ever maintained it — measured wrong in 40 of 40 tasks in the field,
+because every mechanism that knows a task finished (the wavecheck report, the
+Progress log, the checkpoint commit) writes somewhere else. A field that is
+always stale is worse than an absent one: it reads like state. Plans 001–004
+still carry theirs; execution history is not a draft.
+
+**Plan status is derived, not remembered.** The wavecheck reports are the only
+state a gate writes, so they are the ground truth and frontmatter `status:`
+must agree with them:
+
+```
+node drydock-audit.mjs plan-status [--write] <plan.md>
+```
+
+`validate-plan` fails on a contradiction and `audit-wave` notes one at the wave
+boundary, so a plan cannot sit at `EXECUTING` after its last wave passed, or
+claim `DONE` over a `BLOCK`. `--write` sets only what the reports prove;
+`DONE` vs `RECONCILED` is reconcile's business and it refuses to guess.
 
 ## Worktree merge procedure (isolation: worktree only)
 

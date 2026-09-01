@@ -108,6 +108,22 @@ Deviations logged: <n> (<m> discovered by wavecheck)
   (c) human decision. Do NOT fix anything yourself — an auditor who edits
   the code under audit is no auditor.
 
+**Then move the plan's status, with the script rather than by hand** — every
+plan in the field was still sitting at `EXECUTING` with its per-task `Status:`
+fields wrong in 40 of 40 cases, because status was a thing somebody had to
+remember (issue #5):
+
+```
+node ${CLAUDE_PLUGIN_ROOT}/scripts/drydock-audit.mjs plan-status --write <plan>
+```
+
+It derives the status from the wavecheck reports in the plan — including the one
+you just wrote — so it cannot disagree with the gates. It refuses to choose
+between `DONE` and `RECONCILED`: closing a plan is `drydock:reconcile`'s call,
+not a side effect of the last wave passing. `validate-plan` fails on a status
+the reports contradict, and `audit-wave` notes one, so a stale status is
+detectable rather than merely regrettable.
+
 ## Cost discipline
 
 Scope every command to the wave's owned paths where possible. Do not run the
