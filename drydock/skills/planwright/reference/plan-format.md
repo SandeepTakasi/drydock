@@ -24,6 +24,8 @@ status: DRAFT | APPROVED | EXECUTING | BLOCKED | DONE | RECONCILED
 isolation: none | worktree          # opt-in worktree isolation, default none
 enforcement: required | none        # v3; default none when the key is absent
 attribution: commit-prefix | manifest   # v3; default commit-prefix when absent
+lane: small | full                  # v3; default full when the key is absent
+execution: solo | fleet             # v3; default fleet when the key is absent
 created: YYYY-MM-DD
 approved_by: <name> | unapproved
 ---
@@ -63,6 +65,44 @@ working-tree diff cannot tell which task touched a file — a rogue edit to a
 sibling's file passes a naive union check (confirmed in the 2026-08-18 dry-run),
 which is why per-task commits became mandatory in v0.3.0. `manifest` replaces
 the subject convention, not the commit.
+
+**`lane:`** is how much ceremony this plan is buying. Default `full` when the
+key is absent, which is every plan written before v0.8.0.
+
+- **`full`** — phases, contract waves, `Wave x.R` quality reviews, a phase
+  review, and an adversarial pressure test.
+- **`small`** — **one phase, one implementation wave, one wavecheck gate, no
+  `Wave x.R` task, no phase review, no pressure test.** Everything that scales
+  with *risk* stays: ownership, acceptance criteria, the Decision Log, the
+  Deviation Log, the Testing Gate. Only what scales with *cost* is dropped.
+
+The lane is recorded rather than inferred so an auditor can see whether the
+ceremony matched the change. A plan measured in ~20 gates for one feature with
+no parallel critical path is the failure this exists to prevent: gate overhead
+should track risk and genuine concurrency, never the shape of the template.
+
+**`execution:`** is whether a fleet actually exists. Default `fleet`.
+
+- **`fleet`** — tasks are spawned as `drydock:executor` subagents, each in a
+  fresh context, so the auditor did not write the diff.
+- **`solo`** — the orchestrating session runs the tasks itself. State it in the
+  header **once**; it is a property of the plan, and logging it as a per-wave
+  deviation on every wave is bookkeeping, not information.
+
+Two things follow from `solo`, and both are load-bearing:
+
+1. **Same-wave dependencies are legal.** Tasks in one wave run in sequence, so
+   `T1.0.2` may depend on `T1.0.1`. The parallelism prohibition exists because
+   simultaneous tasks cannot depend on each other; without simultaneity there is
+   nothing to prohibit. `validate-plan` enforces the rule only under `fleet`.
+2. **Independence is reduced, and said once.** The session writing the diff is
+   the session auditing it. Wavecheck's mechanical checks are unaffected —
+   ownership per commit and acceptance criteria are evidence, not opinion — but
+   its judgement calls are weaker, and the plan states that plainly instead of
+   asserting a fleet and then caveating it every wave.
+
+`solo` does **not** relax ownership, per-task commits, acceptance criteria or
+any gate. It removes a claim the plan was making falsely, nothing else.
 
 Status transitions are one-way except BLOCKED (may return to EXECUTING after
 replan or human decision). Only a human sets APPROVED. Executors MUST NOT run
