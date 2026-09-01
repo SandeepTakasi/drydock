@@ -76,11 +76,20 @@ Ownership enforcement is armed per wave, from the plan, and closed when the wave
 closes:
 
 ```bash
-node scripts/drydock-audit.mjs wave-start docs/plans/005-x.md 2.1   # arm the hook
+node $DD/scripts/drydock-audit.mjs wave-start docs/plans/005-x.md 2.1   # arm the hook
 # ... the wave's executors run; the hook denies writes outside the boundary ...
-node scripts/drydock-audit.mjs audit-wave  docs/plans/005-x.md 2.1  # audit afterwards
-rm .drydock/wave-owns.json                                          # close the wave
+node $DD/scripts/drydock-audit.mjs audit-wave  docs/plans/005-x.md 2.1  # audit afterwards
+rm .drydock/wave-owns.json                                              # close the wave
 ```
+
+`$DD` is the plugin's install directory. **You do not have to find it by hand:**
+the host substitutes `${CLAUDE_PLUGIN_ROOT}` when it loads a skill body, so the
+commands `planwright`, `wavecheck` and `executor` hand you already carry the
+absolute path. It substitutes nothing in a file read from disk, and
+`$CLAUDE_PLUGIN_ROOT` is empty in a shell — so a command copied out of this
+README or out of `plan-format.md` with the placeholder still in it runs
+`node /scripts/…` and dies `MODULE_NOT_FOUND`. In a checkout of this repo,
+`$DD` is `drydock/`.
 
 `wave-start` derives the boundary from the plan — never write
 `.drydock/wave-owns.json` by hand. The hook records every decision to
@@ -95,8 +104,8 @@ are Node programs (`path.matchesGlob` is stdlib from 22). Before this release th
 plugin was markdown-only and ran wherever Claude Code ran; that is no longer
 true, and it is a real adoption cost rather than a footnote. The host must also
 support `PreToolUse` hooks, or ownership enforcement silently does nothing —
-run `node drydock/hooks/enforce-owns.test.mjs` to confirm the hook behaves before
-relying on it.
+run `node $DD/hooks/enforce-owns.test.mjs` to confirm the hook behaves before
+relying on it (`$DD` as above; `drydock/` in a checkout of this repo).
 
 ## Install (internal, team scope)
 

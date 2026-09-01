@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.8.5 — 2026-09-01
+
+**`${CLAUDE_PLUGIN_ROOT}` is substituted by the host, and only where the host
+loads the text itself.** Measured this release: invoking `drydock:wavecheck`
+returns its `audit-wave` line with a real absolute path already in it, so every
+command a skill hands you runs as given. The host substitutes nothing in a file
+read from disk, and `$CLAUDE_PLUGIN_ROOT` is **empty** in the shell — so the
+placeholder is correct in a skill body, an agent definition and `hooks.json`,
+and is a live defect anywhere else.
+
+It was live in exactly one place. `plan-format.md` — a reference file, read as
+data, byte for byte — printed `node ${CLAUDE_PLUGIN_ROOT}/scripts/drydock-audit.mjs
+wave-start` in a fenced block. Copied out, that runs `node /scripts/…` and dies
+`MODULE_NOT_FOUND`. It was invisible because it looked like every other command
+in the corpus and the three other mentions in the same file already wrote the
+script bare.
+
+- **The reference file now names the script bare**, as it already did in three
+  other places, and says once where the runnable path comes from.
+- **`drydock/README.md` writes `$DD/scripts/…`** and defines it, instead of a
+  relative `scripts/…` that resolves for nobody, and `$DD/hooks/…` for the hook
+  self-check instead of a repo-only `drydock/hooks/…` path.
+- **A test enforces the rule** rather than the convention being remembered:
+  `drydock-audit.test.mjs` walks the plugin and fails if the placeholder appears
+  inside a fenced block in any file the host does not substitute. Scoped to
+  fences on purpose — the prose explaining the mechanism has to be able to name
+  it. Proven failable: reintroducing the old line drops the suite to 52/53.
+
+**Not fixed here, and worth stating:** `agents/executor.md` uses the placeholder
+for its `task-close` command. Agent definitions are loaded by the host the same
+way skills are, so it is very likely substituted too — but that was not measured,
+only reasoned, and the test allows `agents/` on that reasoning. It is the one
+placeholder in the plugin whose expansion is assumed rather than observed.
+
 ## 0.8.4 — 2026-09-01
 
 **"Enforcement can only BLOCK on its own absence"**

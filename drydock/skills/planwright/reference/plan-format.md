@@ -22,6 +22,15 @@ artifacts. The plan carries that command's one-line `**Plan location:**`
 sentence verbatim under its title and nothing more. A plan arguing its own
 location in prose is a plan whose reasoning differs from the next plan's.
 
+**Invoking `drydock-audit.mjs`.** This file names it bare, and the runnable
+absolute path is the one the SKILL.md files print. The host substitutes
+`${CLAUDE_PLUGIN_ROOT}` when it loads a **skill body**, so those commands arrive
+ready to run. It does **not** substitute inside a file read from disk — this one
+— and `$CLAUDE_PLUGIN_ROOT` is empty in the shell, so a command copied from a
+reference file with the placeholder still in it runs `node /scripts/…` and dies
+`MODULE_NOT_FOUND`. Measured 2026-09-01. Take the path from the skill that sent
+you here, never from this page.
+
 ## Header (yaml frontmatter)
 
 ```yaml
@@ -160,7 +169,7 @@ the reconcile skill.
 **Ownership enforcement (arm before every wave, from v0.7.0):**
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/scripts/drydock-audit.mjs wave-start <plan> <wave>
+node drydock-audit.mjs wave-start <plan> <wave>     # absolute path: see above
 # ... the wave's executors run ...
 rm .drydock/wave-owns.json     # closing the wave
 ```

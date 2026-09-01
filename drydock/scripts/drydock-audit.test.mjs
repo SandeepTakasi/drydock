@@ -14,7 +14,7 @@
  */
 
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -598,7 +598,52 @@ cases.push(
 
   ["every audit states which layer verified ownership",
     () => cli(enforcedRepo("layer", null), ["audit-wave", "plan.md", "1.0"]),
-    (out) => out.includes("independently of the hook — detection, not prevention")]
+    (out) => out.includes("independently of the hook — detection, not prevention")],
+
+  // Not a plan check — a packaging one, and it lives here because this is the
+  // file that already runs on every change to the plugin.
+  //
+  // `${CLAUDE_PLUGIN_ROOT}` is substituted by the HOST, and only where the host
+  // loads the text itself: a skill body, an agent definition, `hooks.json`.
+  // Measured 2026-09-01: invoking `drydock:wavecheck` returned its audit-wave
+  // line with a real absolute path already in it, while `echo
+  // "$CLAUDE_PLUGIN_ROOT"` in the Bash tool printed empty and
+  // `node ${CLAUDE_PLUGIN_ROOT}/scripts/drydock-audit.mjs` died MODULE_NOT_FOUND.
+  //
+  // So the placeholder is correct in those three places and a live defect
+  // anywhere else — a reference file or a README is read as DATA, byte for byte,
+  // and whoever copies the command out of it gets `node /scripts/…`. That is
+  // exactly what `plan-format.md` shipped until this test existed. The failure
+  // is silent in the worst way: the command looks like every other command in
+  // the corpus, and only the runner finds out.
+  ["the plugin-root placeholder appears only where the host substitutes it",
+    () => {
+      const root = fileURLToPath(new URL("..", import.meta.url));
+      const substituted = (rel) =>
+        rel.endsWith("SKILL.md") || rel.startsWith("agents/") || rel === "hooks/hooks.json";
+      const offenders = readdirSync(root, { recursive: true, withFileTypes: true })
+        .filter((e) => e.isFile())
+        .map((e) => `${e.parentPath ?? e.path}/${e.name}`.slice(root.length).split("\\").join("/").replace(/^\/+/, ""))
+        .filter((rel) => !substituted(rel))
+        .filter((rel) => /\.(md|json|mjs)$/.test(rel))
+        .filter((rel) => {
+          // Inside a fenced block ONLY. A placeholder in prose is describing the
+          // mechanism — including the paragraph in `plan-format.md` that warns
+          // about this exact failure, and this comment. A placeholder inside a
+          // ``` fence is a command someone will copy and run, which is the bug.
+          // Keyword-excluding the prose instead was tried first and was wrong on
+          // its first run: the warning paragraph wraps, so the offending token
+          // and the word "substitutes" landed on different lines.
+          const text = readFileSync(join(root, rel), "utf8");
+          let fenced = false;
+          return text.split(/\r?\n/).some((l) => {
+            if (/^\s*```/.test(l)) { fenced = !fenced; return false; }
+            return fenced && l.includes("${CLAUDE_PLUGIN_ROOT}");
+          });
+        });
+      return offenders.length === 0 ? "clean" : `unsubstituted placeholder in: ${offenders.join(", ")}`;
+    },
+    (out) => out === "clean"]
 );
 
 let failed = 0;
