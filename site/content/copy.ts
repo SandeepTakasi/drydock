@@ -336,6 +336,13 @@ export const lifecycle: { flow: string[]; loop: string; pieces: Piece[] } = {
         "Drives the plan's written end-to-end cases through a real browser, captures the evidence each one declares, and writes a go/no-go sheet. Halts rather than degrades.",
     },
     {
+      name: "drydock-audit.mjs",
+      kind: "script",
+      invocation: "run by the skills, and by you",
+      detail:
+        "The mechanical half: validate-plan checks a plan for defects a reader cannot eyeball, wave-start derives the ownership boundary from the plan, task-close records which commit belongs to which task, audit-wave proves the diff stayed inside it, plan-status derives plan state from the gates.",
+    },
+    {
       name: "reconcile",
       kind: "skill",
       invocation: "final step of every plan",
@@ -360,7 +367,7 @@ export const install: {
   ],
   scopeNote: "Add --scope project to share it with your team.",
   configNote:
-    "Configured on enable: where plans live (default docs/plans), which docs reconcile may propose changes to, and where seatrial writes its generated specs (default e2e). Then run /drydock:planwright on something small.",
+    "Configured on enable: where plans live (default docs/plans), which docs reconcile may propose changes to, and where seatrial writes its generated specs (default e2e). If your repo forbids committing planning artifacts and gitignores that path, plans fall back to .drydock/plans and the plan says so in one fixed line rather than arguing its own case. Then run /drydock:planwright on something small.",
   requirement:
     "Requires Node 22 or newer on PATH -- the ownership hook and the plan audit are Node programs. On anything older the hook exits 0 with a message and ownership is not enforced.",
   copyLabel: "Copy",
@@ -371,11 +378,19 @@ export const install: {
 export const faq: FaqItem[] = [
   {
     q: "Is this overkill for a one-file change?",
-    a: "Yes, and then do not use it. Drydock earns its keep on multi-file changes, parallel execution, and teams. A single-wave plan is legitimate; inflating structure to look thorough is an anti-pattern the planner refuses.",
+    a: "Yes, and then do not use it. Drydock earns its keep on multi-file changes, parallel execution, and teams. For everything in between there is a small lane: one phase, one wave, one gate, no separate quality-review wave and no pressure test, declared as lane: small in the plan header and held to it by the validator. What scales with risk stays -- ownership, acceptance criteria, both logs. Only what scales with cost is dropped. Inflating structure to look thorough is an anti-pattern the planner refuses.",
   },
   {
     q: "How is this different from other planning plugins?",
     a: "The gate audits plan conformance, not code quality: did the wave do exactly what the plan said and nothing else, judged against the actual diff rather than against what the executors claim. From v0.6.0 disjoint file ownership is enforced rather than requested: wave-start generates the boundary from the plan, a hook denies every write outside it until the wave closes, and outside a wave it is inert. The audit is the backstop for what a hook cannot see -- see A6. Per-task model right-sizing lives in the plan instead of global config. And reconcile closes the loop by turning what execution learned into proposed doc diffs.",
+  },
+  {
+    q: "What if I do not run subagents at all?",
+    a: "Then say so, and the plan stops pretending otherwise. execution: solo in the header means the orchestrating session runs the tasks itself, which is what happens under a standing rule against spawning agents. It relaxes no gate, no ownership boundary and no acceptance criterion -- it removes a claim the plan was making falsely, and states once that the session writing the diff is the session auditing it, rather than logging that as a deviation on every wave. Same-wave dependencies also become legal, because the prohibition exists for simultaneity that solo does not have.",
+  },
+  {
+    q: "My repo forbids tool names in commit messages.",
+    a: "Then attribution comes from a manifest instead. Attribution used to be a commit-subject match, which made a house style the one thing that could block every wave with no way out but a hand-written table. With attribution: manifest the subject follows your convention and the task records which commit is its own; the ownership audit is unchanged, because it reads the files a commit touched, not its text. The same applies to plans themselves: a repo that gitignores the plans directory gets them under .drydock/plans instead.",
   },
   {
     q: "Does it review code quality?",
