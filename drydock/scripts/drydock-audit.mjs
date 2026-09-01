@@ -37,6 +37,8 @@ import { dirname, join, matchesGlob } from "node:path";
 // the version bump retires nothing.
 const SUPPORTED_FORMAT_VERSIONS = [2, 3];
 const ATTRIBUTION_MODES = ["commit-prefix", "manifest"];
+const LANES = ["small", "full"];
+const EXECUTION_MODES = ["solo", "fleet"];
 
 const REQUIRED_SECTIONS = [
   "Requirement",
@@ -208,6 +210,39 @@ function validatePlan(path, strict) {
     }
   }
 
+  // --- lane and execution mode ------------------------------------------------
+  // Both follow the `enforcement:`/`attribution:` shape: optional, closed
+  // enumeration, back-compatible default, and an unknown value is an error
+  // rather than a silent fall-through to the default.
+  const lane = plan.frontmatter.lane;
+  if (lane !== undefined) {
+    if (!LANES.includes(lane)) {
+      errors.push(`frontmatter: lane ${JSON.stringify(lane)} unknown (expected: ${LANES.join(" | ")})`);
+    } else if (lane === "small" && fv < 3) {
+      errors.push(`frontmatter: lane: small needs format_version 3 or later — the key did not exist at v${fv}`);
+    }
+  }
+  const execution = plan.frontmatter.execution;
+  if (execution !== undefined) {
+    if (!EXECUTION_MODES.includes(execution)) {
+      errors.push(`frontmatter: execution ${JSON.stringify(execution)} unknown (expected: ${EXECUTION_MODES.join(" | ")})`);
+    } else if (execution === "solo" && fv < 3) {
+      errors.push(`frontmatter: execution: solo needs format_version 3 or later — the key did not exist at v${fv}`);
+    }
+  }
+
+  // A small-lane plan has to actually stay small, or the key records an
+  // intention nobody kept. One implementation wave, and no `Wave x.R` review —
+  // those are the two things the lane drops.
+  if (lane === "small") {
+    const state = derivePlanState(plan);
+    if (state.waves.length > 1) {
+      errors.push(`lane: small declares ${state.waves.length} implementation waves (${state.waves.join(", ")}) — the small lane is one wave and one gate. Use lane: full, or merge the waves.`);
+    }
+    const reviewWaves = plan.lines.filter((l) => /^### Wave \d+\.R\b/.test(l)).length;
+    if (reviewWaves > 0) errors.push(`lane: small declares ${reviewWaves} \`Wave x.R\` quality-review wave(s) — the small lane has no separate quality review. Use lane: full.`);
+  }
+
   // --- task ids are never reused, superseded ones included ------------------
   const seen = new Map();
   for (const t of plan.tasks) {
@@ -277,6 +312,14 @@ function validatePlan(path, strict) {
       if (seen.get(dep).superseded) continue; // supersession pointer
       if (waveRank(waveOf(dep)) >= waveRank(waveOf(t.id))) {
         const same = waveOf(dep) === waveOf(t.id);
+        // The prohibition exists because SIMULTANEOUS tasks cannot depend on
+        // each other. Under `execution: solo` there is no simultaneity — the
+        // orchestrator runs the wave in sequence — so a same-wave dependency is
+        // execution order, not a contradiction. Absent key means fleet, so every
+        // plan written before v0.8.0 is judged exactly as it was.
+        // A dependency on a LATER wave stays an error in both modes: that one is
+        // impossible however the tasks are run.
+        if (same && execution === "solo") continue;
         errors.push(
           same
             ? `task ${t.id}: depends on ${dep} in the SAME wave ${waveOf(t.id)} — same-wave tasks run in parallel, so this dependency cannot hold. Split the wave.`

@@ -315,6 +315,79 @@ cases.push(
     (out) => out.includes("validate-plan: FAIL") && out.includes("the wavecheck reports are the only state a gate writes")]
 );
 
+// --------------------------------------------------------------------------
+// The small lane and solo execution (issues #4 and #1). The prohibition on
+// same-wave dependencies exists for SIMULTANEITY; solo has none, so the rule is
+// fleet-only. Everything written before v0.8.0 omits the key, defaults to
+// fleet, and is judged exactly as it was.
+
+const lanePlan = ({ fv = 3, lane, execution, waves = "", tasks }) => `---
+plan: 900-fixture
+format_version: ${fv}
+status: EXECUTING
+${lane ? `lane: ${lane}\n` : ""}${execution ? `execution: ${execution}\n` : ""}---
+
+${tasks}
+${waves}
+`;
+
+const twoTasks = (dep) => `#### T1.0.1 — first
+- **Files owned:** \`a.txt\`
+- **Acceptance criterion:** \`true\` exits 0.
+
+#### T1.0.2 — second
+- **Files owned:** \`b.txt\`
+- **Depends on:** ${dep}
+- **Acceptance criterion:** \`true\` exits 0.`;
+
+// T1.0.1 depending on T2.0.1 is a LATER wave: impossible however tasks are run.
+const forward = `#### T1.0.1 — first
+- **Files owned:** \`a.txt\`
+- **Depends on:** T2.0.1
+- **Acceptance criterion:** \`true\` exits 0.
+
+#### T2.0.1 — later
+- **Files owned:** \`b.txt\`
+- **Acceptance criterion:** \`true\` exits 0.`;
+
+cases.push(
+  ["a same-wave dependency is legal under execution: solo",
+    () => validateRaw("solo-dep", lanePlan({ execution: "solo", tasks: twoTasks("T1.0.1") })),
+    (out) => out.includes("validate-plan: PASS")],
+
+  ["the same dependency still FAILs when the key is absent (fleet is the default)",
+    () => validateRaw("fleet-dep", lanePlan({ tasks: twoTasks("T1.0.1") })),
+    (out) => out.includes("SAME wave 1.0")],
+
+  ["a dependency on a LATER wave FAILs even under solo",
+    () => validateRaw("solo-forward", lanePlan({ execution: "solo", tasks: forward })),
+    (out) => out.includes("which is not earlier than its own wave")],
+
+  ["lane: small refuses more than one implementation wave",
+    () => validateRaw("small-2waves", lanePlan({ lane: "small", execution: "solo", tasks: twoTasks("—"), waves: "### Wave 1.0 — one\n### Wave 2.0 — two" })),
+    (out) => out.includes("declares 2 implementation waves")],
+
+  ["lane: small refuses a Wave x.R quality review",
+    () => validateRaw("small-review", lanePlan({ lane: "small", execution: "solo", tasks: twoTasks("—"), waves: "### Wave 1.0 — one\n### Wave 1.R — review" })),
+    (out) => out.includes("quality-review wave(s)")],
+
+  ["lane: small with one wave and no review passes",
+    () => validateRaw("small-ok", lanePlan({ lane: "small", execution: "solo", tasks: twoTasks("T1.0.1"), waves: "### Wave 1.0 — one" })),
+    (out) => out.includes("validate-plan: PASS")],
+
+  ["an unknown lane is rejected, not defaulted",
+    () => validateRaw("lane-typo", lanePlan({ lane: "smal", tasks: twoTasks("—") })),
+    (out) => out.includes(`lane "smal" unknown`)],
+
+  ["an unknown execution mode is rejected, not defaulted",
+    () => validateRaw("exec-typo", lanePlan({ execution: "sole", tasks: twoTasks("—") })),
+    (out) => out.includes(`execution "sole" unknown`)],
+
+  ["execution: solo on format_version 2 is rejected",
+    () => validateRaw("solo-fv2", lanePlan({ fv: 2, execution: "solo", tasks: twoTasks("—") })),
+    (out) => out.includes("needs format_version 3 or later")]
+);
+
 let failed = 0;
 for (const [name, run, ok] of cases) {
   const out = run();
