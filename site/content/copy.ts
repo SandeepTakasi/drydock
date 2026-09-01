@@ -218,7 +218,7 @@ export const evidence: {
         "Orchestrator gate compliance (wavecheck invoked unprompted between waves)",
       status: "PUBLISHED, NOT PASSED",
       tone: "hold",
-      note: "27 of 28 wave gates invoked at their boundary across 4 pilot plans, with 1 skipped and 26 of 28 recorded before the next wave opened. The skip is the useful part: the following gate refused to open on the missing report, and the retroactive audit then blocked on a real ownership breach, so the recovery path is observed rather than assumed. Every session counted knew it was being observed, so read the figure as a ceiling, not a rate. The sample is 4 plans against the 5 to 10 this row asks for.",
+      note: "28 of 29 wave gates invoked at their boundary across 5 pilot plans, with 1 skipped and 27 of 29 recorded before the next wave opened. The skip is the useful part: the following gate refused to open on the missing report, and the retroactive audit then blocked on a real ownership breach, so the recovery path is observed rather than assumed. Every session counted knew it was being observed, so read the figure as a ceiling, not a rate. The sample now touches the bottom of the 5 to 10 this row asks for, on its weakest instance: one session planned, executed and audited the fifth plan, so the count moved and what it is evidence of did not.",
     },
     {
       id: "A5",
@@ -242,7 +242,7 @@ export const evidence: {
       note: "Run twice, 2026-08-20 and 2026-08-26, twelve commits apart, with identical verdicts: six cases, three passes, and three failures that the plan designed to fail -- a false expectation, an unperformable step that halted to ask rather than improvise, and a video clause this driver cannot satisfy. Both sheets closed NO-GO; seatrial writes no override for its own failures. The second run also halted on stale cases and on an unreachable target, and wrote nothing at all when the driver dropped mid-suite. Specs are GENERATED, NOT EXECUTED.",
     },
   ],
-  provenance: "This page is not a brochure for something built elsewhere. The site was planned, executed in parallel waves and gated with Drydock itself, across four plans whose deviation logs are in the repo.",
+  provenance: "This page is not a brochure for something built elsewhere. The site was planned, executed in parallel waves and gated with Drydock itself, across five plans whose deviation logs are in the repo.",
   planHref: `${BLOB}/docs/plans/001-drydock-homepage.md`,
   planLinkText: "Read the plan that built this",
 };
@@ -383,7 +383,7 @@ export const faq: FaqItem[] = [
   },
   {
     q: "Can the model skip the gates?",
-    a: "Honestly: gates are named as blocking instructions in every plan, and compliance is measured (A3), not asserted. The figure is 27 of 28 invoked at their boundary across 4 pilot plans -- and one was skipped. That skip is on the record because the next gate caught it and the retroactive audit found a real ownership breach behind it. Every one of those sessions knew it was being watched, so it is a ceiling rather than a rate. Two things are mechanically absolute. A human flips a plan to APPROVED, and replan cannot be model-invoked.",
+    a: "Honestly: gates are named as blocking instructions in every plan, and compliance is measured (A3), not asserted. The figure is 28 of 29 invoked at their boundary across 5 pilot plans -- and one was skipped. That skip is on the record because the next gate caught it and the retroactive audit found a real ownership breach behind it. Every one of those sessions knew it was being watched, so it is a ceiling rather than a rate. Two things are mechanically absolute. A human flips a plan to APPROVED, and replan cannot be model-invoked.",
   },
   {
     q: "Does anything actually touch a browser?",

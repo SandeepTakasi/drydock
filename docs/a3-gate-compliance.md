@@ -29,10 +29,20 @@ without being asked to.
 
 | 004-seatrial-e2e-gate | 6 | 5 | 5 | 1 | **1 gate SKIPPED at its boundary** — wave 2.0's gate was not run before wave 2.1 opened ([plan 004](plans/004-seatrial-e2e-gate.md) deviation 11); "continue" was read as authorisation to proceed rather than as a wave boundary. Caught by wavecheck 2.1's check 1 ("missing prior report = BLOCK") and run retroactively, where it **BLOCKed on a real ownership breach** (deviation 13, commit `5a32ac9`). Both waves converted to PASS on re-audit after Decision 12. Waves 1.R and 2.R excluded as review waves. |
 
-**Final total: 27 of 28 gates invoked at their boundary, 1 skipped, 26 of 28 recorded
-before the next wave opened, across 4 plans.** Unprompted on 26 of 27 invoked (the
+| 005-small-lane-and-solo-mode | 1 | 1 | 1 | 0 | First plan on the `lane: small` / `execution: solo` track (v0.8.0), so **one wave and one gate by design** — the count is small because the ceremony was, which is the point of the lane. Gate invoked at its boundary on a bare "execute the plan", recorded before the phase gate. **Read this row as the weakest evidence in the table, not the strongest:** one session planned it, executed it, audited it and knew A3 was under measurement, so it fails both halves of this row's stated close condition at once. It is recorded because the ledger is appended as things happen, not because the sample got better. |
+
+**Final total: 28 of 29 gates invoked at their boundary, 1 skipped, 27 of 29 recorded
+before the next wave opened, across 5 plans.** Unprompted on 27 of 28 invoked (the
 exception is bookkeeping, not prompting: gate 1.0 of plan 003 was invoked unprompted
 but not written down).
+
+**Reaching 5 plans is not progress toward PASSED, and saying so is the point of
+this line.** This ledger has argued from the start that the bias is structural and
+*not resolved by adding more plans run under the same conditions*. Plan 005 is run
+under the same conditions, only more so — the session that authored it also
+executed and audited it. Counting it as the fifth of "5 to 10" would convert an
+argument this file already made into a number that contradicts it. The sample size
+moved; what the sample is evidence *of* did not.
 
 **The skip is the most informative row in this ledger, and it is not a footnote.**
 Plans 001–003 produced 22 clean gates under observation, which is the weakest kind of

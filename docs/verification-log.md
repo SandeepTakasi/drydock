@@ -1003,3 +1003,47 @@ what is still *not* true, alongside the Bash-ceiling literal that was already
 required. Proven failable the same day: rewriting that phrase in the export to
 "fully enforced everywhere" fails the gate naming the missing literal, and
 `npm run verify` is green with the export restored.
+
+
+### A6 addendum — 2026-09-01, second live denial (plan 005, v0.8.4)
+
+**Not a stronger run than 2026-08-22 — a second occasion, on weaker independence,
+whose raw receipt no longer exists.** Recorded because it is the first denial that
+happened during real plan execution rather than during a probe designed to cause
+one.
+
+**Method:** not a probe. Plan 005 wave 1.0 was armed by `wave-start` from the
+plan (10 owned paths across 6 tasks), six tasks were executed and committed, and
+the orchestrator then attempted to write the plan's own Deviation Log **while the
+wave was still armed**.
+
+**Result — 13 hook decisions for wave 1.0: 12 allow, 1 deny.**
+
+The deny refused `Edit` to `docs/plans/005-small-lane-and-solo-mode.md` with the
+hook's verbatim payload, naming the 10 owned paths and ending *"If correct
+implementation needs this file, that is a deviation — report it rather than
+widening your own boundary."* The edit did not land. Closing the wave
+(`rm .drydock/wave-owns.json`) and repeating the same edit succeeded.
+
+**Why this one is worth recording.** The plan document is owned by no task, by
+design. Staging it alongside a task's owned file is exactly what produced plan
+004's deviation 13 (`5a32ac9`), which was caught only by a retroactive audit
+after a skipped gate. The same class of breach was refused here at the tool
+boundary, before it landed, without anyone looking for it.
+
+### Two limits, stated rather than discovered later
+
+1. **Independence is weaker than the 2026-08-22 run.** That run was measured by a
+   session that had written none of the code. This one was triggered by the
+   session that wrote it, during its own execution. It shows the mechanism fires
+   in ordinary use; it does not add an independent observer.
+2. **The raw receipt is gone.** `.drydock/` is gitignored, and it was removed at
+   some point later in the same session — cause unestablished; no `git clean` was
+   run deliberately. The durable record is the wavecheck report committed inside
+   plan 005, which quotes the counts, plus this entry. **The log file itself
+   cannot be re-read**, which is a fair illustration of what gitignored evidence
+   is worth after the fact, and why the audit reads commits rather than logs.
+
+**Both ceilings from 2026-08-22 stand, unchanged and unretested here:**
+Bash-mediated writes bypass file-tool hooks entirely, and paths outside the
+project directory are not enforced.
