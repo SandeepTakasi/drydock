@@ -1,7 +1,7 @@
 ---
 plan: 005-small-lane-and-solo-mode
 format_version: 3
-status: DONE
+status: RECONCILED
 isolation: none
 enforcement: required
 attribution: manifest
@@ -350,4 +350,149 @@ step is the human phase gate, then `drydock:reconcile` — there is no wave 1.R.
 
 ## Reconcile report
 
-*Appended once by `drydock:reconcile` at completion.*
+**Plan:** 005-small-lane-and-solo-mode · **Reconciled:** 2026-09-01 ·
+**Precondition:** 1 implementation wave, 1 wavecheck report, PASS, zero BLOCK.
+`lane: small` takes no `Wave x.R` by design. Phase gate CLOSED, approved by
+sandeep — 2026-09-01. Testing Gate is `N/A` with a reason, so no verdict sheet
+is required. Proceeding.
+
+## Deviation synthesis
+
+Four deviations, three root causes, and **none of them is cluster (b) ambiguous
+instructions or (d) executor overreach** — the two that would indict the plan or
+its executor. All three are (a) *a false assumption about the environment*,
+which is the cluster that produces doc proposals.
+
+| Cluster | Deviations | Root cause |
+|---|---|---|
+| (a) assumption false — tool mediation | 1, 2 | The ownership hook's real operating envelope was assumed rather than known: which writes it sees (not Bash's), and when it is armed (denying plan-document bookkeeping). |
+| (a) assumption false — skill caching | 3 | Known in general (CLAUDE.md documents it), unknown in the shape that bit here: a plan's **own gate** runs from cache, so a plan editing `wavecheck` cannot exercise that edit. |
+| (a) assumption false — tool design | 4 | v0.7.3's status derivation assumed *every wave passed* ⇒ *plan closed*, with no notion of an outstanding human phase gate. |
+
+## Assumption postmortem
+
+| Assumption | Verdict | Evidence |
+|---|---|---|
+| D3 — accept that the plan is invalid until its own T1.0.2 lands | **HELD** | The criterion failed before the task (`exit=1`) and passed after (`exit=0`). The self-referential gate worked as designed. |
+| D4 — plans 001–004 unchanged by the new keys | **HELD** | Post-change sweep: 002/003 PASS, 001/004 FAIL on exactly their one documented same-wave dependency. Verified, not assumed. |
+| D6 — short-form track: skip the pressure test and phase review | **NEVER EXERCISED, and not gradeable from this run.** | The wave passed and no post-hoc defect surfaced — but "no pressure test found nothing" is not evidence, because none was run. Recorded honestly rather than counted as a win. |
+
+## New knowledge
+
+1. **Enforcement fired for real, in a fresh context, unprompted.** 13 hook
+   decisions for wave 1.0 — 12 allow, 1 **deny**. The deny refused an edit to
+   the plan document while the wave was armed. Same mixture that produced plan
+   004's deviation 13 (`5a32ac9`), refused at the tool boundary this time
+   instead of caught by a retroactive audit.
+2. **Manifest attribution works end to end.** Six task commits, **not one
+   carrying a `drydock(<task-id>):` subject**, all attributed by `audit-wave`
+   from `.drydock/attribution.jsonl`. First live exercise of v0.7.2.
+3. **The per-task sequence is: edit with a file tool → commit only owned files →
+   `task-close`.** Bash-mediated edits drop silently out of step one.
+4. **`.drydock/` now holds three runtime artifacts**, and no repo doc names any
+   of them.
+
+## Proposals
+
+#### Proposal R1 — target: CLAUDE.md — kind: addition
+Finding: Nothing in the repo's context tells a session how to operate the
+ownership hook while executing a plan here, and both mediation assumptions cost
+something this run (deviations 1 and 2).
+Confidence: high
+
+```diff
+ ## Plans
+ 
+ `docs/plans/`. Read a completed plan's Deviation Log before planning adjacent
+ work — plan 001's has 49 entries and most are still live constraints.
++
++## Executing a plan here
++
++- **A session told to prefer Bash for file edits will silently produce no
++  enforcement receipts.** `PreToolUse` hooks see Write/Edit and never see a
++  `python` heredoc, a `>` redirect or `sed -i`. A wave whose edits all go
++  through Bash leaves `.drydock/enforcement.log` empty, and on a plan declaring
++  `enforcement: required` that is a wavecheck BLOCK — indistinguishable from a
++  hook that was never armed. **Use Write/Edit for the owned files of an
++  executing wave**, whatever the session's general preference. Measured
++  2026-09-01, plan 005 deviation 1: one changelog write went through Bash and
++  left no receipt while the wave's other 13 decisions were logged.
++- **Close the wave before writing the plan document.** The plan file is owned by
++  no task, so while `.drydock/wave-owns.json` is armed the hook **denies** edits
++  to it — including the orchestrator's own bookkeeping. Order is: finish the
++  tasks, `rm .drydock/wave-owns.json`, then write the Deviation Log and the
++  wavecheck report. Measured 2026-09-01, plan 005 deviation 2. Widening `owns`
++  to include the plan file is the wrong fix and is what the denial message says
++  not to do — it is the mixture behind plan 004's deviation 13.
++- **Per task: edit (file tool) → commit only owned files →
++  `drydock-audit.mjs task-close <plan> <task-id>`.** Under
++  `attribution: manifest` the commit subject is free; the manifest carries
++  attribution, and a task with no entry BLOCKs the wave exactly as a missing
++  commit does.
+```
+
+#### Proposal R2 — target: CLAUDE.md — kind: correction
+Finding: The skill-cache bullet warns that a same-session test proves nothing,
+but not that a plan's **own gate** is subject to it — so a plan that edits
+`wavecheck` or `planwright` ships those edits unexercised by its own run
+(deviation 3).
+Confidence: high
+
+```diff
+   same-session test of a just-edited skill exercises the stale copy and proves
+   nothing** — restart before verifying, and treat any skill this session wrote
+-  as unexercised until a later session runs it. See plan 004, deviation 7.
++  as unexercised until a later session runs it. See plan 004, deviation 7.
++  **This includes the plan's own gate.** A plan whose tasks edit
++  `wavecheck/SKILL.md` or `planwright/SKILL.md` cannot exercise those edits when
++  its wave closes: `drydock:wavecheck` runs from the copy cached at session
++  start. Plan 005 changed wavecheck to read `execution:` and was then gated by a
++  wavecheck that could not read it (deviation 3). Such a task is shipped, gated
++  on its mechanical criteria, and **still unproven** — say so in the wavecheck
++  report rather than letting a PASS imply otherwise.
+```
+
+#### Proposal R3 — target: docs/architecture.md — kind: addition
+Finding: The repo-shape table omits `.drydock/` entirely, though it now holds
+three runtime artifacts plan execution depends on, and no doc says they exist.
+Confidence: high
+
+```diff
+ | `docs/self-audit.md` | adversarial dry-run of the auditor |
+ | `docs/plans/` | Drydock plan documents |
++| `.drydock/` | plan-execution runtime state, **gitignored**: `wave-owns.json` (the armed ownership boundary; deleting it closes the wave), `enforcement.log` (one JSONL receipt per hook decision), `attribution.jsonl` (task → commit manifest under `attribution: manifest`), `testing/` (seatrial evidence) |
+```
+
+#### Proposal R4 — target: docs/architecture.md — kind: addition
+Finding: The Gates table covers only `site/` gates. The plan-execution gates are
+now the more load-bearing half of this repo and appear nowhere — including the
+one that produced this plan's most useful result.
+Confidence: medium
+
+```diff
+ | `.github/workflows/deploy.yml` | runs `verify` before any publish, so a red gate cannot reach Pages | anything `verify` is blind to |
++| `enforce-owns.mjs` (PreToolUse) | Write/Edit to a path the armed wave does not own — denied at the tool boundary, before the edit lands | **Bash-mediated writes entirely**, and paths outside the project directory |
++| `drydock-audit.mjs audit-wave` | per-task ownership against the real diff, unattributable tasks, a dirty tree, and whether enforcement actually ran | intent, quality, anything a commit does not record |
++| `drydock-audit.mjs validate-plan --strict` | plan defects a reader cannot eyeball: duplicate ids, same-wave collisions and dependencies, section order, Testing Gate completeness | whether the plan is a *good* plan |
+ | human browser check | typography metrics, grid legibility, optical spacing | — |
+```
+
+## Feedback, not proposals
+
+Outside `docs_targets`, so handed over rather than diffed:
+
+- **Tool defect, v0.7.3 (deviation 4).** `plan-status` derives *every wave has a
+  PASS report* ⇒ *DONE or RECONCILED*, with no notion of an outstanding human
+  phase gate — so it reported a contradiction while `status: EXECUTING` was
+  correct. **Recommend a GitHub issue.** The fix is to treat an unsigned
+  `**Phase gate:**` as a legitimate reason to stay `EXECUTING`; `reconcile`
+  already parses that line, so the reader exists.
+- **`wavecheck/SKILL.md` check 1 still says `format_version` supported "(v2)"**
+  while the script supports `[2, 3]` and plans are written at v3. Logged in §9 as
+  out of scope and deliberately left unfixed (T1.0.5 was forbidden it). Still
+  true; still one word.
+- **Planwright's checklist demands `validate-plan --strict` exit 0 before the
+  pressure test**, which a plan that *changes the validator* cannot satisfy at
+  authoring time. Plan 005 resolved it by making the passing state a task's
+  acceptance criterion (Decision 3); that pattern belongs in the skill rather
+  than being rediscovered.
