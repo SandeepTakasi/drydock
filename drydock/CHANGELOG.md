@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.7.1 — 2026-09-01
+
+One parser bug, and the reason it survived four plans: **a truncated ownership
+list raises no error anywhere.** It looks exactly like a shorter list.
+
+- **Multi-line `Files owned:` lists no longer parse truncated**
+  ([#8](https://github.com/SandeepTakasi/drydock/issues/8)). `parsePlan` read
+  only the bullet's first line, so a wrapped list lost every path below it. In
+  this repo's own plan 001, `T1.0.1` parsed **2 of its 14 owned files** —
+  `wave-start` would have armed the hook against 2 files and denied the task
+  writes to the other 12, and `audit-wave` would have reported 11 phantom
+  violations on a commit that was entirely compliant (`3ef082d`). Two more tasks
+  were truncated the same way. The fix consumes indented continuation lines
+  until a blank line, a new bullet or a heading closes the block, covering both
+  shapes the corpus uses — a wrapped comma list and a nested sub-list.
+- **`validate-plan --strict` now reports a block it could not fully read.** The
+  same `Files owned:` block is also read loosely — every line up to the next
+  labelled bullet, indentation ignored — and a count mismatch is an error naming
+  how many files the boundary would be short by. This is the part that matters
+  more than the fix: the failure mode here was silence, so the guard has to be a
+  check that a *future* unreadable shape trips, not a wider regex. A read-only
+  task (`Files owned: — (read-only)`) legitimately parses zero paths and does
+  not trip it.
+- **`drydock/scripts/drydock-audit.test.mjs`** — four cases, no framework,
+  asserting through the real CLI. Proven failable: reverting the parse makes the
+  first case fail, and the old code reports `PASS` on a plan with a genuine
+  same-wave ownership collision hiding on a continuation line.
+
+No behaviour change to `seatrial`, `reconcile` or `replan`, and no plan in
+`docs/plans/` changed status: 002 and 003 still PASS, 001 and 004 still FAIL on
+exactly their one documented same-wave dependency.
+
 ## 0.7.0 — 2026-08-22
 
 **0.6.0 shipped a claim its mechanism did not fully support.** An external review

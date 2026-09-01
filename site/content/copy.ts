@@ -78,7 +78,7 @@ export const meta: Record<
   },
 };
 
-const VERSION = "0.7.0";
+const VERSION = "0.7.1";
 
 /**
  * Docs live in the repo, not in the export — only `site/out` is deployed. So
@@ -401,7 +401,7 @@ export const footer: {
   links: { href: string; label: string }[];
 } = {
   tagline: "Nothing sails until it leaves the dock.",
-  meta: [`v${VERSION}`, "MIT", "2026-08-22"],
+  meta: [`v${VERSION}`, "MIT", "2026-09-01"],
   links: [
     { href: REPO, label: "GitHub" },
     { href: `${BLOB}/docs/self-audit.md`, label: "Self-audit" },

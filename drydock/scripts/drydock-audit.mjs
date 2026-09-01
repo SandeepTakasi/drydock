@@ -61,6 +61,9 @@ const TESTING_GATE_FIELDS = ["preconditions", "steps", "expected", "evidence", "
 
 // ---------------------------------------------------------------- parsing ---
 
+// Paths in a plan are backticked; anything else on the line is prose.
+const backticked = (s) => [...s.matchAll(/`([^`]+)`/g)].map((m) => m[1]);
+
 function parsePlan(path) {
   const text = readFileSync(path, "utf8");
   // Split on CRLF as well as LF. Not defensive padding: this repo's plans are
@@ -95,13 +98,23 @@ function parsePlan(path) {
   // replacement.
   const tasks = [];
   let current = null;
-  const flush = () => { if (current) tasks.push(current); current = null; };
+  // A `Files owned:` list wraps across indented continuation lines, and reading
+  // only the bullet's first line silently NARROWED the enforced boundary: this
+  // repo's own T1.0.1 parsed 2 of its 14 owned files, so `wave-start` would have
+  // denied writes to the other 12. Nothing errored — a short list looks exactly
+  // like a short list. Issue #8.
+  // `ownsSpan` is the same block read LOOSELY — every line up to the next labelled
+  // bullet, indentation ignored. `--strict` compares the two counts, so a shape
+  // this parser refuses to consume is reported instead of silently dropped.
+  let ownsOpen = false;
+  let spanOpen = false;
+  const flush = () => { if (current) tasks.push(current); current = null; ownsOpen = spanOpen = false; };
 
   for (const line of lines) {
     const head = line.match(/^#### (~~)?\s*(T[0-9][\w.]*)\b/);
     if (head) {
       flush();
-      current = { id: head[2], superseded: Boolean(head[1]), owns: [], dependsOn: [], fields: new Set(), body: [] };
+      current = { id: head[2], superseded: Boolean(head[1]), owns: [], ownsSpan: [], dependsOn: [], fields: new Set(), body: [] };
       continue;
     }
     if (/^#{1,4} /.test(line)) { flush(); continue; }
@@ -109,13 +122,22 @@ function parsePlan(path) {
 
     current.body.push(line);
     const bullet = line.match(/^-\s+\*\*([^:*]+):?\*\*\s*(.*)$/);
-    if (!bullet) continue;
+    if (!bullet) {
+      // Indented and non-empty = still inside the bullet. Covers both shapes the
+      // corpus uses — a wrapped comma list and a nested sub-list. Anything else
+      // (a blank line, a new unlabelled bullet, unindented prose) closes it.
+      if (spanOpen) current.ownsSpan.push(line);
+      if (ownsOpen && /^\s+\S/.test(line)) current.owns.push(...backticked(line));
+      else ownsOpen = false;
+      continue;
+    }
     const label = bullet[1].trim().toLowerCase();
     current.fields.add(label);
+    ownsOpen = spanOpen = label === "files owned";
 
     if (label === "files owned") {
-      // Paths are backticked; a trailing parenthetical qualifier is prose.
-      current.owns = [...bullet[2].matchAll(/`([^`]+)`/g)].map((m) => m[1]);
+      current.owns = backticked(bullet[2]);
+      current.ownsSpan = [bullet[2]];
     } else if (label === "depends on") {
       // May also name decisions and open questions — only task refs matter here.
       current.dependsOn = [...bullet[2].matchAll(/\bT[0-9][\w.]*/g)].map((m) => m[0]);
@@ -177,6 +199,13 @@ function validatePlan(path, strict) {
     if (!t.fields.has("files owned")) errors.push(`task ${t.id}: no **Files owned:** — ownership is not optional`);
     if (!t.fields.has("acceptance criterion")) errors.push(`task ${t.id}: no **Acceptance criterion:** — a task without a runnable criterion gates nothing`);
     if (strict && !t.fields.has("context brief")) errors.push(`task ${t.id}: no **Context brief:** (strict)`);
+    // The loose read of the same block found paths the strict read did not, so a
+    // wrapped or nested shape is being dropped and the enforced boundary is
+    // narrower than the plan says. Issue #8 shipped exactly this, silently.
+    if (strict && t.fields.has("files owned")) {
+      const seen = backticked(t.ownsSpan.join(" ")).length;
+      if (seen !== t.owns.length) errors.push(`task ${t.id}: **Files owned:** block holds ${seen} backticked path(s) but ${t.owns.length} parsed — the ownership boundary would be ${seen - t.owns.length} file(s) too narrow (strict)`);
+    }
   }
 
   // --- ownership disjoint within a wave -------------------------------------
