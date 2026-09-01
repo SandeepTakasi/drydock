@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.8.6 — 2026-09-01
+
+**The plugin being run and the plugin in the repo were four releases apart, and
+nothing said so.** The host loads skills from the installed plugin
+(`~/.claude/plugins/cache/…/<version>/`), never from a working tree. On
+2026-09-01 that install was **0.7.0, pinned at `d7de845` since 2026-08-22**,
+while the repo was at 0.8.4 — so every 0.8.x change had been exercised by no
+session at all, and plan 005 was executed by skills with no notion of the
+`lane` and `execution` keys it declares.
+
+It was not a cosmetic gap. Run against plan 005, the two copies **disagree about
+the plan**: 0.7.0 does not know `execution: solo`, so it reports four same-wave
+dependency errors and FAILS a plan 0.8.x correctly PASSES. Two verdicts, both
+looking authoritative, opposite conclusions, and no line of output anywhere
+naming the cause.
+
+- **Every verdict now carries the version and path that produced it.**
+  `validate-plan` and `audit-wave` print `drydock-audit.mjs vX.Y.Z — <path>`
+  above the verdict, on FAIL as well as PASS. A wavecheck report pastes that
+  output verbatim, so which program judged the wave travels with the judgment
+  instead of depending on whoever remembers what they had installed.
+- **A mismatch is stated outright.** When the running script is not the
+  installed copy and the versions differ, the output says `VERSION DRIFT`, names
+  both, and gives the reconciling command. A normal install runs this script
+  from the cache — its own path *is* the install path — so it prints one quiet
+  provenance line and nothing more. The warning only fires where the hazard is
+  real.
+- Best-effort throughout, and silent on every failure: no install record, a host
+  keeping config elsewhere, unreadable JSON. Bookkeeping must never change a
+  verdict — the same posture as the enforcement hook's receipt writer.
+
+**Known ceiling, stated because the check looks stronger than it is:** it
+compares **versions**. Editing the plugin without bumping produces two different
+programs reporting the same version, and this is blind to it. That is an
+argument for the release discipline, not for hashing the tree.
+
 ## 0.8.5 — 2026-09-01
 
 **`${CLAUDE_PLUGIN_ROOT}` is substituted by the host, and only where the host

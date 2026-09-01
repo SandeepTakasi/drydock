@@ -100,6 +100,20 @@ cd /tmp/dd && python3 -m http.server 5173   # then open /drydock/
   wavecheck that could not read it (deviation 3). Such a task is shipped, gated
   on its mechanical criteria, and **still unproven** — say so in the wavecheck
   report rather than letting a PASS imply otherwise.
+  **And a restart is not enough — this note understated the problem until
+  2026-09-01.** The host loads skills from the INSTALLED plugin
+  (`~/.claude/plugins/cache/drydock/drydock/<version>/`), never from this
+  working tree, so a fresh session re-reads the same stale copy. Measured that
+  day: the install sat at **0.7.0 pinned at `d7de845`** while the repo was at
+  0.8.4 — every 0.8.x change unexercised by any session, and plan 005 executed
+  by skills that cannot describe the `lane`/`execution` keys it declares. The
+  two copies also disagree on real plans: 0.7.0 does not know `execution: solo`
+  and FAILS plan 005 with four same-wave-dependency errors that 0.8.4 PASSES.
+  Cut a release and **`claude plugin marketplace update drydock && claude plugin
+  update drydock@drydock`**, then restart. `drydock-audit.mjs` now stamps its
+  version and path on every verdict and shouts `VERSION DRIFT` when the running
+  script and the installed plugin disagree — but note it compares versions, so
+  editing the plugin without bumping is drift it cannot see. Bump.
 - **`metadataBase` must NOT contain the basePath.** Next prepends `basePath` to
   every metadata-relative asset, so a base of `…github.io/drydock/` emits
   `/drydock/drydock/opengraph-image.png` — a 404 on every social share, and

@@ -31,6 +31,63 @@
 import { readFileSync, writeFileSync, appendFileSync, mkdirSync, existsSync } from "node:fs";
 import { execFileSync, spawnSync } from "node:child_process";
 import { dirname, join, matchesGlob } from "node:path";
+import { fileURLToPath } from "node:url";
+import { homedir } from "node:os";
+
+// ------------------------------------------------------- provenance --------
+//
+// WHICH COPY OF DRYDOCK PRODUCED THIS VERDICT. Not vanity: the skills that
+// invoke this script are loaded by the HOST from the installed plugin, while
+// the script itself is whatever path the command names — and in a checkout of
+// this repo those are two different copies that can be many releases apart.
+// Measured 2026-09-01: the install sat at 0.7.0 while the repo was at 0.8.4, and
+// the two disagreed about a real plan. 0.7.0 does not know `execution: solo`, so
+// it FAILED plan 005 with four same-wave-dependency errors that 0.8.4 correctly
+// PASSES. Nothing anywhere said the versions differed; the verdicts simply
+// contradicted each other and both looked authoritative.
+//
+// So every verdict now carries the version and path that produced it, and a
+// mismatch against the installed copy is stated outright. A normal install runs
+// this script FROM the cache, so its own path is the install path, the versions
+// match and this prints one quiet line. It only speaks up where the hazard is
+// real: someone running a checkout against a differently-versioned install.
+//
+// Bookkeeping must never change a verdict — same posture as the hook's receipt
+// writer. Every lookup here is best-effort and silent on failure.
+const SELF = fileURLToPath(new URL("./drydock-audit.mjs", import.meta.url));
+
+const readJSON = (p) => { try { return JSON.parse(readFileSync(p, "utf8")); } catch { return null; } };
+
+const selfVersion = () =>
+  readJSON(join(dirname(SELF), "..", ".claude-plugin", "plugin.json"))?.version ?? "unknown";
+
+// The host's own install record is authoritative about what the skills loaded —
+// far better than globbing the cache and guessing which copy is live.
+const installedVersion = () => {
+  const cfg = process.env.CLAUDE_CONFIG_DIR ?? join(homedir(), ".claude");
+  const rec = readJSON(join(cfg, "plugins", "installed_plugins.json"));
+  const entries = rec?.plugins?.["drydock@drydock"];
+  return Array.isArray(entries) && entries.length > 0 ? entries[0] : null;
+};
+
+// One line, always printed with the verdict. Returns a second line only when the
+// running copy is not the installed one AND the versions differ — a checkout at
+// the same version as the install is not drift, it is a developer up to date.
+function provenance() {
+  const mine = selfVersion();
+  const lines = [`drydock-audit.mjs v${mine} — ${SELF}`];
+  const inst = installedVersion();
+  if (inst && inst.version !== mine && !SELF.startsWith(inst.installPath)) {
+    lines.push(
+      `VERSION DRIFT: this script is v${mine}, but the installed plugin the skills load is ` +
+        `v${inst.version} (${inst.installPath}). The gate you ran and the gate your skills ` +
+        `describe are different programs. Reconcile with \`claude plugin update drydock@drydock\` ` +
+        `(restart to apply), or run the audit from the installed copy.`
+    );
+  }
+  return lines;
+}
+
 
 // 3 adds the optional `enforcement:` frontmatter key. 2 stays supported: plans
 // written before it default to `none` and audit exactly as they always did, so
@@ -948,6 +1005,11 @@ function resolvePlansDir(preferred) {
 
 function report(what, path, errors, notes, summary) {
   for (const n of notes) console.log(`  note: ${n}`);
+  // Stamped on FAIL as well as PASS, and above the verdict rather than below it:
+  // a wavecheck report pastes this output verbatim, so the record of which
+  // program judged the wave travels with the judgment instead of being
+  // reconstructable only from whoever remembers what they had installed.
+  for (const line of provenance()) console.log(`  ${line}`);
   if (errors.length > 0) {
     console.error(`\n${what}: FAIL (${errors.length}) — ${path}`);
     for (const e of errors) console.error(`  - ${e}`);

@@ -108,9 +108,23 @@ const GIT = ["-c", "user.email=t@t", "-c", "user.name=t", "-c", "commit.gpgsign=
 const git = (cwd, args) =>
   execFileSync("git", [...GIT, ...args], { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 
-const cli = (cwd, args) => {
-  const r = spawnSync("node", [CLI, ...args], { cwd, encoding: "utf8" });
+const cli = (cwd, args, env) => {
+  const r = spawnSync("node", [CLI, ...args], { cwd, encoding: "utf8", env: { ...process.env, ...env } });
   return `${r.stdout}${r.stderr}`;
+};
+
+// A throwaway `installed_plugins.json`, pointed at by CLAUDE_CONFIG_DIR. Written
+// with JSON.stringify rather than a heredoc: the Windows `installPath` is full
+// of backslashes and a shell heredoc eats them, which is how the first attempt
+// at this test silently produced unparseable JSON and a passing run.
+const fakeConfig = (name, version, installPath) => {
+  const cfg = join(DIR, `cfg-${name}`);
+  mkdirSync(join(cfg, "plugins"), { recursive: true });
+  writeFileSync(
+    join(cfg, "plugins", "installed_plugins.json"),
+    JSON.stringify({ version: 2, plugins: { "drydock@drydock": [{ scope: "user", installPath, version }] } })
+  );
+  return cfg;
 };
 
 const planText = (fv, attribution) => `---
@@ -599,6 +613,43 @@ cases.push(
   ["every audit states which layer verified ownership",
     () => cli(enforcedRepo("layer", null), ["audit-wave", "plan.md", "1.0"]),
     (out) => out.includes("independently of the hook — detection, not prevention")],
+
+  // --- version drift between the running script and the installed plugin ----
+  //
+  // The skills are loaded by the HOST from the installed plugin; this script is
+  // whatever path the command named. In a checkout those are two copies, and on
+  // 2026-09-01 they were four releases apart: the install sat at 0.7.0 while the
+  // repo was at 0.8.4, and 0.7.0 — which does not know `execution: solo` —
+  // FAILED plan 005 with four same-wave-dependency errors that 0.8.4 PASSES.
+  // Two authoritative-looking verdicts, opposite conclusions, nothing naming the
+  // cause.
+  ["a verdict states which copy of the audit produced it",
+    () => cli(closedWave("stamp"), ["audit-wave", "plan.md", "1.0"]),
+    (out) => /drydock-audit\.mjs v\d+\.\d+\.\d+ — .*drydock-audit\.mjs/.test(out)],
+
+  ["a differently-versioned install is reported as drift", () => {
+    const cfg = fakeConfig("drift", "0.7.0", "C:\\nowhere\\drydock\\0.7.0");
+    return cli(closedWave("drift"), ["audit-wave", "plan.md", "1.0"], { CLAUDE_CONFIG_DIR: cfg });
+  }, (out) => out.includes("VERSION DRIFT") && out.includes("v0.7.0")],
+
+  // The check must not cry drift at a developer who is simply up to date, or it
+  // becomes noise everyone learns to scroll past. Same version = silent.
+  ["a checkout matching the installed version is not drift", () => {
+    const mine = JSON.parse(
+      readFileSync(fileURLToPath(new URL("../.claude-plugin/plugin.json", import.meta.url)), "utf8")
+    ).version;
+    const cfg = fakeConfig("same", mine, "C:\\nowhere\\drydock\\current");
+    return cli(closedWave("same"), ["audit-wave", "plan.md", "1.0"], { CLAUDE_CONFIG_DIR: cfg });
+  }, (out) => !out.includes("VERSION DRIFT")],
+
+  // No install record at all — the plugin run straight from a clone, or a host
+  // that keeps its config elsewhere. Best-effort bookkeeping must never turn
+  // into a failure, so this stays quiet rather than guessing.
+  ["a missing install record is silent, not a warning", () => {
+    const cfg = join(DIR, "cfg-none");
+    mkdirSync(cfg, { recursive: true });
+    return cli(closedWave("none"), ["audit-wave", "plan.md", "1.0"], { CLAUDE_CONFIG_DIR: cfg });
+  }, (out) => !out.includes("VERSION DRIFT") && out.includes("audit-wave 1.0: PASS")],
 
   // Not a plan check — a packaging one, and it lives here because this is the
   // file that already runs on every change to the plugin.
