@@ -396,6 +396,33 @@ const WAVE_RE = /^### Wave (\d+)\.(\d+|R)\b/;
 // LAST verdict for a wave is the one that stands.
 const WAVECHECK_RE = /^### Wavecheck (\d+)\.(\d+)\b[^—]*—\s*([A-Z]+)/;
 
+// A phase gate spans its `**Phase gate:` line AND the wrapped lines under it.
+// This is not fussiness: plan 005 declared "plus human sign-off" three lines
+// below the marker, and plan 001's "human approval" sits on the second line, so
+// a single-line test misses the very thing it is looking for.
+function phaseGateBlocks(plan) {
+  const blocks = [];
+  let cur = null;
+  const flush = () => { if (cur) blocks.push(cur.join(" ")); cur = null; };
+  for (const line of plan.lines) {
+    if (/^\*\*Phase gate:/.test(line)) { flush(); cur = [line]; continue; }
+    if (!cur) continue;
+    if (line.trim() === "" || /^#{1,4} /.test(line)) { flush(); continue; }
+    cur.push(line);
+  }
+  flush();
+  return blocks;
+}
+
+// The frozen closed form from the format contract:
+// `**Phase gate: CLOSED, approved by <name> — <date>.**`
+const GATE_CLOSED = /Phase gate:\s*CLOSED,\s*approved by\s+\S+[\s\S]*?\d{4}-\d{2}-\d{2}/;
+const GATE_HUMAN = /\bhuman\b|sign-?off/i;
+
+// Gates that ask for a person and do not record one.
+const unsignedHumanGates = (plan) =>
+  phaseGateBlocks(plan).filter((g) => !GATE_CLOSED.test(g) && GATE_HUMAN.test(g));
+
 function derivePlanState(plan) {
   const waves = [];
   const verdicts = new Map();
@@ -431,9 +458,22 @@ function derivePlanState(plan) {
     writable = "BLOCKED";
     reason = `wave ${blocked[0]} last reported ${verdicts.get(blocked[0])}`;
   } else if (complete) {
-    expected = ["DONE", "RECONCILED"];
+    // Every wave passing is not the same as the plan being finished. An unsigned
+    // human phase gate is a legitimate reason to still read EXECUTING, and
+    // `reconcile` refuses to close a plan on exactly this ground — so without
+    // it the two tools disagreed about what a closed plan is. Issue #9.
+    //
+    // This only ever WIDENS what a status may legitimately say; it never adds a
+    // failure. That is deliberate: plans 001-003 declare human approval in prose
+    // that predates the frozen CLOSED form, and 004's phase 1 uses an older one,
+    // so a narrowing rule would retroactively fail all four.
+    const unsigned = unsignedHumanGates(plan);
+    expected = unsigned.length > 0 ? ["EXECUTING", "DONE", "RECONCILED"] : ["DONE", "RECONCILED"];
     writable = null;
-    reason = `all ${waves.length} implementation wave(s) have a PASS report`;
+    reason =
+      unsigned.length > 0
+        ? `all ${waves.length} implementation wave(s) have a PASS report, but ${unsigned.length} phase gate(s) ask for human approval and record none`
+        : `all ${waves.length} implementation wave(s) have a PASS report`;
   } else if (started) {
     expected = ["EXECUTING", "BLOCKED"];
     writable = "EXECUTING";

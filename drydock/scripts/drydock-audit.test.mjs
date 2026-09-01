@@ -388,6 +388,66 @@ cases.push(
     (out) => out.includes("needs format_version 3 or later")]
 );
 
+// --------------------------------------------------------------------------
+// An unsigned human phase gate is a legitimate reason to stay EXECUTING
+// (issue #9). Every wave passing is not the same as the plan being finished,
+// and `reconcile` refuses to close on exactly this ground.
+
+// The human declaration sits on the THIRD line on purpose: plan 005 wrote
+// "plus human sign-off" three lines below the marker, and a single-line test
+// misses it.
+const WRAPPED_OPEN_GATE = `**Phase gate:** \`npm test\` exits 0,
+\`npm run build\` exits 0, the full sweep,
+and \`npm run verify\` — plus human sign-off.`;
+const SIGNED_GATE = `**Phase gate: CLOSED, approved by sandeep — 2026-09-01.**
+Conditions met: everything the unmet form asked for.`;
+const NO_HUMAN_GATE = `**Phase gate:** \`npm test\` exits 0 and \`npm run build\` exits 0.`;
+
+const gatePlan = (status, gate) => `---
+plan: 900-fixture
+format_version: 3
+status: ${status}
+---
+
+## Phase 1: the only phase
+${gate}
+
+#### T1.0.1 — first
+- **Files owned:** \`a.txt\`
+- **Acceptance criterion:** \`true\` exits 0.
+
+### Wave 1.0 — one
+
+## Wavecheck reports
+### Wavecheck 1.0 — PASS — 2026-09-01
+`;
+
+cases.push(
+  ["EXECUTING is legitimate while a human phase gate is unsigned",
+    () => status("gate-open", gatePlan("EXECUTING", WRAPPED_OPEN_GATE)).out,
+    (out) => out.includes("plan-status: PASS") && out.includes("ask for human approval and record none")],
+
+  ["the human declaration is found on a wrapped continuation line",
+    () => status("gate-wrapped", gatePlan("EXECUTING", WRAPPED_OPEN_GATE)).out,
+    (out) => out.includes("1 phase gate(s) ask for human approval")],
+
+  ["once the gate is signed, EXECUTING is a contradiction again",
+    () => status("gate-signed", gatePlan("EXECUTING", SIGNED_GATE)).out,
+    (out) => out.includes("plan-status: FAIL") && out.includes("Expected DONE or RECONCILED")],
+
+  ["a gate that asks for no human does not excuse EXECUTING",
+    () => status("gate-nohuman", gatePlan("EXECUTING", NO_HUMAN_GATE)).out,
+    (out) => out.includes("plan-status: FAIL") && out.includes("Expected DONE or RECONCILED")],
+
+  ["DONE stays legitimate with an unsigned gate — the rule widens, never narrows",
+    () => status("gate-done", gatePlan("DONE", WRAPPED_OPEN_GATE)).out,
+    (out) => out.includes("plan-status: PASS")],
+
+  ["--write still refuses to close a plan whose human gate is unsigned",
+    () => status("gate-write", gatePlan("EXECUTING", WRAPPED_OPEN_GATE), ["--write"]).out,
+    (out) => out.includes("plan-status: PASS") && !out.includes("WROTE")]
+);
+
 let failed = 0;
 for (const [name, run, ok] of cases) {
   const out = run();

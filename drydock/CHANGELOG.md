@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.8.1 — 2026-09-01
+
+**`plan-status` and `reconcile` disagreed about what a closed plan is**
+([#9](https://github.com/SandeepTakasi/drydock/issues/9)). `reconcile` refuses to
+close a plan whose human phase gate is unsigned; `plan-status` insisted that same
+plan should already read `DONE`. Found by plan 005 tripping over it (deviation
+4) — a defect 0.7.3 introduced and 0.8.0's own execution then walked into.
+
+- **An unsigned human phase gate is now a legitimate reason to read
+  `EXECUTING`.** The derivation equated *every wave has a PASS report* with *the
+  plan is finished*; a plan waiting on a signature is neither. For the whole
+  window between the last wave passing and the human signing, `validate-plan`
+  used to FAIL a correctly-stated plan — and the pressure that creates is to set
+  `DONE` to make the tool green, which records a sign-off nobody gave. That is
+  the exact over-claim `reconcile`'s human-gate refusal exists to prevent.
+- **The rule only ever WIDENS what a status may say; it never adds a failure.**
+  Deliberate, and load-bearing: plans 001–003 declare human approval in prose
+  that predates the frozen `CLOSED, approved by <name> — <date>` form, and 004's
+  phase 1 uses an older closed form, so a narrowing rule would have retroactively
+  failed all four. All five plans in the repo report PASS before and after.
+- **A phase gate is read as a block, not a line.** Plan 005 declared "plus human
+  sign-off" three lines below the `**Phase gate:**` marker and plan 001's "human
+  approval" sits on the second — a single-line test misses the very thing it is
+  looking for.
+- **`--write` still refuses to close such a plan**, unchanged: `DONE` and
+  `RECONCILED` remain the tool's to decline and `reconcile`'s to decide.
+
+Six new cases (39 total). Proven failable: neutering the gate check fails three.
+The strongest evidence is not a fixture — the commit that originally exhibited
+the bug (`a57ed19~1`, plan 005 before its signature) now reports PASS with the
+reason naming the unsigned gate.
+
 ## 0.8.0 — 2026-09-01
 
 **Two field reports, one cause: the plan format assumed a fleet of parallel
