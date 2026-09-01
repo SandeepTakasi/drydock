@@ -52,7 +52,8 @@ something looks wrong, a written case notices that something stopped being true.
 - Any hooks already enforcing rules (pre-commit, PreToolUse/PostToolUse) the plan should assume rather than duplicate?
 
 ### Execution preferences
-- Appetite for parallelism: how many concurrent subagents/sessions is the user comfortable orchestrating?
+- **Will `drydock:executor` subagents actually be spawned, or will you run the tasks in-session?** *(A yes/no about intent, not the capacity question below. "In-session" is a completely normal answer — a standing rule against unprompted agents, a host without subagents, or simply preference — and it becomes `execution: solo` in the plan header. Ask it once, here: a plan that assumes a fleet it never gets spends every wave logging the same deviation, and its ownership boundaries have no second party to separate.)*
+- Appetite for parallelism: how many concurrent subagents/sessions is the user comfortable orchestrating? *(Capacity, given the answer above is yes. Skip it under `execution: solo`.)*
 - Model budget: any ceiling (e.g., "no Opus except reviews") or floor ("never below Sonnet for production code")?
 - Where should the plan file live, and does a plan/spec format already exist in the repo that should be matched?
 
