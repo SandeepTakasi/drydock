@@ -105,11 +105,21 @@ cd /tmp/dd && python3 -m http.server 5173   # then open /drydock/
   `/drydock/drydock/opengraph-image.png` — a 404 on every social share, and
   nothing in the build complains. `content/copy.ts` keeps `site.origin` (bare
   host, for `metadataBase`) separate from `site.url` (full address, for `og:url`).
-- **The OG image is a committed binary**, `app/opengraph-image.png`, rendered
-  from `scripts/og-card.html` by one headless-Chrome command in that file's
-  header comment. No `next/og`, no satori, no wasm in the build. Because no copy
-  assertion can read inside a PNG, `assert-copy.mjs` checks the card's promise
-  sentence is still on the page and tells you to re-render when it is not.
+- **The OG image is a committed binary**, `app/opengraph-image.png`, picked up by
+  Next's file convention. No `next/og`, no satori, no wasm in the build.
+  **It is logo art, not a text card, and that is why nothing gates it.** Until
+  `487e7b0` it was a synthetic card rendered from `scripts/og-card.html`, and
+  because that card restated page copy, `assert-copy.mjs` carried a drift guard
+  pinning its promise sentence to the page. Both were deleted together, on
+  purpose: *a logo restates no claim*, so there is nothing for a copy assertion
+  to keep honest. **Do not go looking for `scripts/og-card.html` or that guard —
+  neither exists, and re-adding a text card would reverse the decision.**
+  The only page string the image still carries is the thesis, "Nothing sails
+  until it leaves the dock", which `assert-copy` pins on its own account.
+  To re-derive it after a brand change, the source is
+  `assets/drydock-logo-full.png`: the art is 3:2 with empty top and bottom
+  margin, so trim the margin to 1536x806 and scale to 1200x630 — nothing cropped,
+  nothing letterboxed. `assets/` holds every source; everything else is derived.
 - **A misspelled animation state name compiles clean.** `Variants` from
   `motion/react` is an index-signature type, so `{ hidden: {…}, shwon: {…} }`
   passes `tsc`, passes lint, passes every gate, and simply does not animate. Only
