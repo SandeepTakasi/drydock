@@ -1,5 +1,51 @@
 # Changelog
 
+## 0.8.2 — 2026-09-01
+
+**A gate froze its environment at planning time and then tested whatever
+answered** ([#7](https://github.com/SandeepTakasi/drydock/issues/7)). Port,
+route and driver were written when the plan was written, and each drifts. The
+resulting failures describe the harness rather than the software — the most
+expensive kind of red, because it looks like a defect. This is the rule
+`planwright` already applies to evidence types, moved to the rest of the
+environment and to the moment the truth is knowable.
+
+- **`seatrial` preflight step 4 resolves the environment instead of trusting
+  it.** The origin comes from the repo's own dev config, not the gate header —
+  the config is the fact, the plan's port is a claim — and a disagreement is a
+  HALT printing both rather than a silent preference for either.
+- **A reachable URL is not evidence of the right app, and this is the failure
+  worth naming.** Nothing in the old preflight could see it: a dev server left
+  running from a **different checkout** answers on that port cheerfully, every
+  case runs against software nobody is testing, and the sheet comes out full and
+  confident. Preflight now asserts one thing that must be true of *this* build —
+  the commit SHA if the app exposes it, otherwise a string the current source
+  produces and the previous one does not. Cannot establish it, HALT: "it
+  answered" is not identity.
+- **New step 5: every route the cases name must exist**, checked before any case
+  runs. A route the application does not have is a **plan defect and a HALT,
+  never a FAIL** — reporting it as a failure blames the software for a slug the
+  plan invented.
+- **The driver is reconciled too.** What resolves at run time is the fact; a gate
+  naming something else is a HALT, because the run would produce a different kind
+  of evidence than the plan promised. That is how a case ends up substituting a
+  DOM transcript for the screenshot its `expected` clause asked for.
+- **`validate-plan --strict` catches the driver mismatch at plan time**, the same
+  shape as the existing `video` rule one field over. Guarded on the gate not also
+  naming Playwright, so "Playwright MCP (not Puppeteer)" — the way this repo
+  habitually writes what a thing is *not* — does not trip it.
+- **The verdict sheet's Environment row records provenance**, not just values: a
+  base URL with no provenance is indistinguishable from a guess that happened to
+  answer. Plus an `Identity:` line stating what was asserted and its result.
+
+Three new cases (42 total). Proven failable: neutering the driver check fails
+one, and both guard cases hold.
+
+**Unexercised, and stated rather than implied:** the `seatrial` and `planwright`
+changes are skill prose, which is session-cached. The validator half is tested;
+the preflight half is not, and cannot be from the session that wrote it. It
+stays unproven until a later session runs a Testing Gate.
+
 ## 0.8.1 — 2026-09-01
 
 **`plan-status` and `reconcile` disagreed about what a closed plan is**

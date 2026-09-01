@@ -448,6 +448,53 @@ cases.push(
     (out) => out.includes("plan-status: PASS") && !out.includes("WROTE")]
 );
 
+// --------------------------------------------------------------------------
+// A Testing Gate naming a driver seatrial will not use (issue #7). Same shape
+// as the `video` rule one field over: the run would produce a different kind of
+// evidence than the gate promises, and the case substitutes an artifact nobody
+// can compare. Caught at plan time because it is cheaper there.
+
+const gateSection = (browser) => `---
+plan: 900-fixture
+format_version: 3
+status: EXECUTING
+---
+
+#### T1.0.1 — first
+- **Files owned:** \`a.txt\`
+- **Acceptance criterion:** \`true\` exits 0.
+
+## Testing Gate
+
+| Field | Value |
+|---|---|
+| Target | http://localhost:3000 |
+| Browser | ${browser} |
+
+### TG1 — a case
+- preconditions: the app is up
+- steps: Given / When / Then
+- expected: it works
+- evidence: screenshot
+- severity: blocker
+
+## Deviation Log
+`;
+
+cases.push(
+  ["a Testing Gate naming a rival driver is rejected",
+    () => validateRaw("gate-cypress", gateSection("Cypress 13, Electron runner"), true),
+    (out) => out.includes("names `Cypress` as the driver")],
+
+  ["naming another driver only to exclude it does not trip the check",
+    () => validateRaw("gate-guarded", gateSection("Playwright MCP, Chromium (not Puppeteer)"), true),
+    (out) => !out.includes("as the driver, but seatrial drives")],
+
+  ["the supported driver alone is fine",
+    () => validateRaw("gate-ok", gateSection("Chromium via Playwright MCP"), true),
+    (out) => !out.includes("as the driver, but seatrial drives")]
+);
+
 let failed = 0;
 for (const [name, run, ok] of cases) {
   const out = run();

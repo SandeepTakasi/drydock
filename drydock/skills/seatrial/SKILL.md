@@ -71,12 +71,48 @@ exactly like a full one.
    not a headless-Chrome screenshot flag, not reading the built HTML off disk.
    Those answer different questions than "does this work in a browser", and a
    sheet that does not say which driver produced it is unusable as evidence.
-4. **The target answers.** One request to the declared base URL. Unreachable is
-   a HALT: name the URL and the error.
-5. **The evidence root is writable.** `.drydock/testing/<plan-id>/`. If it cannot
+4. **The environment is resolved now, not trusted from the plan.** The `Target`
+   and `Browser` header fields were written when the plan was written. They are
+   claims about an environment that has had every opportunity to move since, and
+   a mismatch here produces failures that describe your harness rather than the
+   software — the most expensive kind of red, because it looks like a defect.
+   Resolve all three and reconcile each against what the plan says:
+
+   - **Origin.** The repo's own dev configuration is the fact; the plan's port is
+     the claim. Read it from the config (`package.json` scripts, a compose file,
+     a framework config) rather than from the gate header. If the two disagree,
+     HALT and print both — do not silently prefer either. A plan naming a port
+     the repo no longer uses is a stale gate, which is step 2's problem wearing
+     different clothes.
+   - **Identity — a reachable URL is not evidence of the right app.** This is the
+     failure worth naming, because nothing else in this preflight can see it: a
+     dev server left running from a **different checkout** answers on that port
+     cheerfully, and every case then runs against software nobody is testing. The
+     suite produces a full sheet, passes or fails on the wrong build, and says
+     nothing is wrong. So assert one thing that must be true of *this* build
+     before the first case runs — the commit SHA if the app exposes it, otherwise
+     a string the current source produces and the previous one does not. If you
+     cannot establish it, HALT and say so. "It answered" is not identity.
+   - **Driver.** What actually resolved in step 3 is the fact. If the gate's
+     `Browser` field names something else, HALT: the run would produce a
+     different kind of evidence than the plan promised, which is how a case ends
+     up substituting a DOM transcript for the screenshot its `expected` clause
+     asked for — and a substituted artifact is not the declared evidence.
+
+   Everything resolved here goes into the sheet's Environment row **with how it
+   was resolved**. A base URL with no provenance is indistinguishable from a
+   guess that happened to answer.
+5. **Every route the cases name exists.** Collect the routes the steps navigate
+   to and check them against the application's actual route table — or against
+   the running app — before any case executes. A route the application does not
+   have is a **plan defect and a HALT, never a FAIL**: reporting it as a failure
+   blames the software for a slug the plan invented. Name the case and the route.
+   This is the same rule the evidence-type contract already applies at plan time,
+   moved to the moment the truth is knowable.
+6. **The evidence root is writable.** `.drydock/testing/<plan-id>/`. If it cannot
    be created, HALT — a case whose evidence cannot be written is not a passing
    case, because the declared evidence is part of the expected result.
-6. **Auth is settled.** If the gate's header declares an auth approach, perform
+7. **Auth is settled.** If the gate's header declares an auth approach, perform
    it once before the first case. If it declares `none`, proceed. If it declares
    nothing at all, HALT and ask rather than guessing that the target is public.
 
@@ -152,7 +188,8 @@ section has a verdict; a diagnostic subset run writes nothing. Shape:
 GO | NO-GO | GO-WITH-OVERRIDES
 
 ## Environment
-| Base URL | Browser | Driver | Commit SHA | Run at |
+| Base URL | Resolved from | Browser | Driver | Commit SHA | Run at |
+Identity: <what you asserted to prove this is the build under test, and its result>
 
 ## Cases
 | ID | Title | Severity | Verdict | Actual vs expected | Evidence |

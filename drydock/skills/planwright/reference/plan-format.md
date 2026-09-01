@@ -214,9 +214,9 @@ section body. "N/A" without a reason is not valid.
 
 | Field | Content |
 |---|---|
-| Target | Base URL under test, and how it is served (command, port, path) |
+| Target | Base URL under test, and how it is served (command, port, path). **A claim, not a fact:** `seatrial` re-resolves the origin from the repo's dev config at gate start and HALTs if they disagree, because a port written at plan time drifts. |
 | Auth | How a case authenticates, or `none` and why |
-| Browser | Engine and driver — Playwright MCP is the only supported driver |
+| Browser | Engine and driver — Playwright MCP is the only supported driver. Also re-resolved at gate start; a gate naming a different driver is a HALT, since the run would produce a different kind of evidence than the plan promised. |
 | Commit SHA | Recorded by seatrial at run time, not by the planner |
 | Evidence root | `.drydock/testing/<plan-id>/<case-id>/` — frozen, not a suggestion |
 

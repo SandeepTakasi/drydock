@@ -356,6 +356,18 @@ function validatePlan(path, strict) {
       }
       if (!/\bvideo\b/i.test(gate)) notes.push("Testing Gate: no `video` evidence declared — good; the Playwright MCP driver cannot capture it (A5)");
       else errors.push("Testing Gate: declares `video` evidence, which the supported driver cannot capture at all — that case fails its evidence clause on every possible run (plan 004's only NO-GO)");
+
+      // Same shape as the `video` rule, one field over: a gate naming a driver
+      // seatrial will not use produces evidence of a different kind than the
+      // plan promised, and the case ends up substituting an artifact nobody can
+      // compare. Caught here because plan time is cheaper than gate time.
+      // Guarded on the gate NOT naming Playwright, so "Playwright MCP (not
+      // Puppeteer)" — the way this repo habitually writes what a thing is not —
+      // does not trip it. Issue #7.
+      const rival = gate.match(/\b(selenium|cypress|puppeteer|webdriver|testcafe|nightwatch)\b/i);
+      if (rival && !/\bplaywright\b/i.test(gate)) {
+        errors.push(`Testing Gate: names \`${rival[1]}\` as the driver, but seatrial drives Playwright MCP and refuses to fall back — the run would produce a different kind of evidence than the gate promises`);
+      }
     }
   }
 
