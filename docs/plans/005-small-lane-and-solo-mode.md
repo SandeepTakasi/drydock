@@ -286,13 +286,64 @@ plugin ships as 0.8.0 with `npm run verify` green.
 | 1 | T1.0.6 | `drydock/CHANGELOG.md` was written through Bash (a `python` heredoc) rather than a file tool, so that write left **no entry in `.drydock/enforcement.log`**. | The session's standing instruction prefers Bash for file edits, and the long changelog entry was written with a heredoc out of habit. | **Minor, and it is the documented A6 ceiling rather than a surprise:** Bash-mediated writes bypass `PreToolUse` file-tool hooks entirely. The file is inside T1.0.6's `owns`, the ownership audit reads the commit rather than the log, and the wave carries 13 receipts from its other writes — so `enforcement: required` is satisfied. What is lost is one write's receipt, which is why `audit-wave` is the backstop. | orchestrator, at wave close |
 | 2 | — (orchestrator) | The hook **denied** an edit to this plan document while wave 1.0 was still armed. | Orchestrator bookkeeping was attempted before closing the wave; the plan file is owned by no task, by design. | **None — this is the mechanism working, and it is the wave's most useful result.** It is the same mixture that produced plan 004's deviation 13 (`5a32ac9` staged the plan document alongside a task's owned file), and here it was refused at the tool boundary instead of being caught by a retroactive audit. The correct response was to close the wave and then write, not to widen the boundary — which is what the denial message says to do. Receipt: 1 deny, 12 allows. | orchestrator, at wave close |
 | 3 | — (gate) | `drydock:wavecheck` for this wave runs from the **session-cached 0.7.0 copy** of the skill, which predates T1.0.5's solo handling. | Plugin skill files load at session start; T1.0.5 edited `wavecheck/SKILL.md` in this same session. | **Material for what the gate proves, not for its verdict.** T1.0.5 changes no mechanical check, so the ownership and criteria evidence stands. But **T1.0.5 is itself unexercised** — the gate that ran could not read `execution:` and so could not have honoured it. Shipped-but-unproven until a later session gates a solo plan; same rule as CLAUDE.md's skill-cache note. The same caveat applies to T1.0.3 and T1.0.4, which are planwright prose this session cannot re-invoke. | orchestrator, at wave close |
+| 4 | — (post-gate) | `plan-status` calls this plan's `status: EXECUTING` a contradiction once its only wave passed, and `--write` refuses because DONE and RECONCILED are both consistent. | **Discovered after wavecheck 1.0 was written.** The 0.7.3 derivation treats *every wave has a PASS report* as *the plan should be closed* — but this plan's §10 requires a **human-signed phase gate** before `reconcile`, and that gate is still open. | **Minor, and a real gap in v0.7.3 rather than in this wave.** The derived state has no notion of an outstanding human gate, so it reports a contradiction where `EXECUTING` is in fact correct. Status is deliberately left at `EXECUTING` pending the phase-gate signature; setting `DONE` to satisfy the tool would assert a gate nobody signed, which is the exact over-claim the check exists to prevent. Carried to `reconcile` as a proposed follow-up: the derivation should treat an unsigned phase gate as a legitimate reason to stay `EXECUTING`. | orchestrator, post-gate |
 
 ## Wavecheck reports
+
+### Wavecheck 1.0 — PASS — 2026-09-01
+
+**Independence, stated once (per `execution: solo`).** The session that wrote
+this diff is the session auditing it. The mechanical checks below are unaffected
+— ownership per commit and executed acceptance criteria are evidence, not
+opinion — but the judgement in check 3 carries less weight than a fresh-context
+auditor's would. This is the cost recorded in Decision 1, not a finding.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `format_version: 3`, `status: EXECUTING`, wave `1.0` exists, no prior waves to gate. **Noted, not blocking:** this skill's check-1 text still reads "supported (v2)" while the script's `SUPPORTED_FORMAT_VERSIONS` is `[2, 3]` and the plan validates at v3 — the stale string is §9's logged out-of-scope item, and T1.0.5 was forbidden to fix it. |
+| 2. Ownership audit | PASS | `audit-wave 1.0` → **PASS (6 tasks, 6 commits, attribution: manifest)**. Every task's changed set ⊆ its `owns`; **"Outside owns: none" on all six rows**; working tree clean. Table pasted below. |
+| 2b. Enforcement | PASS | `enforcement: required` satisfied: **13 hook decisions recorded for wave 1.0 — 12 allow, 1 deny.** The hook was genuinely live, not merely configured. The single deny is deviation 2 and is the mechanism working. One write (deviation 1) went through Bash and left no receipt — the documented A6 ceiling, considered and rejected as an innocent-cause explanation for the whole wave, since 13 other receipts exist. |
+| 3. Forbidden audit | PASS | T1.0.1: no existing key line removed, Worktree procedure untouched. T1.0.2: diff is purely additive — ownership audit, `task-close`, `plan-status` and the enforcement check have zero removed lines. T1.0.3: only removal is a table separator (the right-size table gained a column); model rubric and atomicity test intact. T1.0.4: only removal is the parallelism question, re-added with a qualifier; End-to-end block untouched. T1.0.5: purely additive, so checks 2–5 **and the stale `(v2)` it was forbidden to fix** are verifiably untouched. T1.0.6: `copy.ts` diff is exactly one line, `VERSION`. |
+| 4. Acceptance audit | PASS | All seven executed by the auditor, never taken on report: T0 `exit=0`, T1.0.1 `0`, T1.0.2 `0`, T1.0.3 `0`, T1.0.4 `0`, T1.0.5 `0`, T1.0.6 `0` (incl. `npm run verify` → `assert-copy: PASS … version matches plugin.json`). T1.0.2's criterion is the notable one: **it failed before its task and passes after** — this plan validates and 001 still does not. |
+| 5. Deviation reconciliation | PASS | 3 deviations logged, all by the orchestrator before the gate. No unlogged deviation found in the diff. |
+
+```
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.0.1 | `f397ad9` | `drydock/skills/planwright/reference/plan-format.md` | `drydock/skills/planwright/reference/plan-format.md` | none |
+| T1.0.2 | `f9cfdcc` | `drydock/scripts/drydock-audit.mjs`<br>`drydock/scripts/drydock-audit.test.mjs` | `drydock/scripts/drydock-audit.mjs`<br>`drydock/scripts/drydock-audit.test.mjs` | none |
+| T1.0.3 | `13399e4` | `drydock/skills/planwright/SKILL.md` | `drydock/skills/planwright/SKILL.md` | none |
+| T1.0.4 | `2fbeea2` | `drydock/skills/planwright/reference/practices-interview.md` | `drydock/skills/planwright/reference/practices-interview.md` | none |
+| T1.0.5 | `6222011` | `drydock/skills/wavecheck/SKILL.md` | `drydock/skills/wavecheck/SKILL.md` | none |
+| T1.0.6 | `8da47c7` | `README.md`<br>`drydock/.claude-plugin/plugin.json`<br>`drydock/CHANGELOG.md`<br>`site/content/copy.ts` | `drydock/CHANGELOG.md`<br>`drydock/.claude-plugin/plugin.json`<br>`site/content/copy.ts`<br>`README.md` | none |
+
+Working tree: clean
+  note: enforcement active: 13 hook decision(s) recorded for wave 1.0 (1 denied)
+```
+
+**Worth recording beyond the verdict:** not one of these six commits carries a
+`drydock(<task-id>):` subject — attribution came entirely from
+`.drydock/attribution.jsonl`. This is the first live exercise of `manifest`
+mode (v0.7.2), of `task-close`, and of the wrapped-`Files owned:` parse
+(v0.7.1), which read T1.0.2's two-line list correctly when arming the wave.
+
+Deviations logged: 3 (0 discovered by wavecheck)
+
+**Verdict: PASS.** `lane: small` means this is the plan's only wave, so the next
+step is the human phase gate, then `drydock:reconcile` — there is no wave 1.R.
 
 ## Progress log
 
 | Date | Task | Result | Notes |
 |------|------|--------|-------|
+| 2026-09-01 | T0 | DONE | Baseline green at `6797317`; 005 FAIL(9) as Decision 3 predicted. |
+| 2026-09-01 | T1.0.1 | DONE | `f397ad9` — both keys defined in the contract. |
+| 2026-09-01 | T1.0.2 | DONE | `f9cfdcc` — same-wave rule now fleet-only; 005 validates, 001 still does not. |
+| 2026-09-01 | T1.0.3 | DONE | `13399e4` — lanes named, RED/impl contradiction deleted. |
+| 2026-09-01 | T1.0.4 | DONE | `2fbeea2` — the spawn question added to the interview. |
+| 2026-09-01 | T1.0.5 | DONE | `6222011` — wavecheck reads `execution:`. Unexercised (deviation 3). |
+| 2026-09-01 | T1.0.6 | DONE | `8da47c7` — 0.8.0 cut, `npm run verify` green. |
+| 2026-09-01 | Wave 1.0 | **PASS** | wavecheck 1.0 PASS, 3 deviations, 0 discovered by wavecheck. |
 
 ## Reconcile report
 
