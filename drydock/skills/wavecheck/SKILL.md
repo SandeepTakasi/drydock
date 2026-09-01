@@ -27,6 +27,17 @@ Run in this order; stop early only on check 1 failure.
    `EXECUTING`, the wave id exists, all prior waves have PASS reports. Missing
    prior report = BLOCK (someone skipped a gate).
 
+   **Read `execution:` here too.** Under `execution: solo` (v0.8.0) the
+   orchestrating session ran the tasks itself rather than spawning
+   `drydock:executor` subagents. **That is not a deviation** — it is a declared
+   property of the plan, and demanding it be logged per wave produced the same
+   opening entry on every plan run this way. Say it once in your report, in the
+   form the plan already states: the mechanical checks below are unaffected,
+   because ownership per commit and executed acceptance criteria are evidence
+   rather than opinion, while your judgement calls carry less weight because the
+   session that wrote the diff is the session auditing it. Under `fleet`, or
+   when the key is absent, nothing changes.
+
 2. **Ownership audit — run the script, paste its evidence.**
 
    ```
