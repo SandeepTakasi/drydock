@@ -14,13 +14,24 @@
  *
  * Exits 1 with one line per failure naming exactly what drifted.
  *
- * Three checks:
+ * Four checks:
  *   1. A row marked PENDING has NO dated entry in the verification log.
  *   2. A row that cites the verification log HAS the entry it cites. Rows whose
  *      evidence is inline (A4) cite nothing and are skipped — the citation is
  *      the trigger, so the check maintains itself as rows are added.
  *   3. Every plan whose Deviation Log records a skipped wave gate is accounted
  *      for in the A3 ledger.
+ *   4. Every A3 figure stated in prose — in the ledger, in compatibility.md, on
+ *      the site — matches the ledger table's own arithmetic, as does every
+ *      restated plan count.
+ *
+ * Checks 1-3 compare a document against another document. Check 4 exists
+ * because the drift that actually happened was a document contradicting
+ * ITSELF: appending plan 005 moved the ledger's table and its "Final total" to
+ * 28 of 29 across 5 plans while the Status section three screens below kept
+ * saying 27 of 28 across 4 — including in the sentence naming "the honest
+ * claim" — and compatibility.md's release bullet repeated the stale pair while
+ * the site published the new one. Every check here stayed green throughout.
  *
  * KNOWN CEILING on check 3: it matches prose. There is no structured marker
  * for "a gate was skipped", so it looks for how the corpus actually phrases it
@@ -46,6 +57,8 @@ const fail = (msg) => failures.push(msg);
 const compat = readFileSync(join(DOCS, "compatibility.md"), "utf8");
 const vlog = readFileSync(join(DOCS, "verification-log.md"), "utf8");
 const a3 = readFileSync(join(DOCS, "a3-gate-compliance.md"), "utf8");
+// The site restates these figures too, and is the surface a reader actually sees.
+const copy = readFileSync(join(HERE, "..", "content", "copy.ts"), "utf8");
 
 // --- parse the compatibility matrix ----------------------------------------
 // | A1 | property | STATUS | notes |   — the id column may be an em dash for
@@ -118,10 +131,14 @@ for (const file of readdirSync(PLANS).filter((f) => f.endsWith(".md"))) {
 // The ledger is | Plan | Waves | Invoked | Unprompted | Skipped | Notes |
 let ledgerSkipped = 0;
 const ledgerPlans = [];
+const totals = { waves: 0, invoked: 0, unprompted: 0 };
 for (const line of a3.split("\n")) {
-  const m = line.match(/^\|\s*(\d{3}-[a-z0-9-]+)\s*\|([^|]*)\|([^|]*)\|([^|]*)\|\s*(\d+)\s*\|/);
+  const m = line.match(/^\|\s*(\d{3}-[a-z0-9-]+)\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|/);
   if (!m) continue;
   ledgerPlans.push(m[1]);
+  totals.waves += Number(m[2]);
+  totals.invoked += Number(m[3]);
+  totals.unprompted += Number(m[4]);
   ledgerSkipped += Number(m[5]);
 }
 
@@ -144,6 +161,89 @@ if (ledgerSkipped < loggedSkips) {
     `A3 ledger totals ${ledgerSkipped} skipped gate(s); the plans log ${loggedSkips}. ` +
       `The published compliance number is higher than the record supports.`
   );
+}
+
+// --- check 4: every stated A3 figure matches the ledger's own rows ----------
+//
+// Checks 1-3 compare a document against another document. Nothing compared a
+// document against ITSELF, and that is where A3 actually drifted: when plan 005
+// was appended, the ledger's table and its "Final total" line moved to 28 of 29
+// across 5 plans, while the Status section three screens below kept saying
+// 27 of 28 across 4 — three times, including in the sentence that names "the
+// honest claim". The release-criteria bullet in compatibility.md repeated the
+// stale pair, and the site published the new one. Three surfaces, two numbers,
+// and every existing check green, because a row still cited a log entry that
+// still existed.
+//
+// The ledger's table is the arithmetic; the prose only restates it. So the
+// prose is derived and compared, everywhere it appears.
+const legitimate = new Map([
+  [`${totals.invoked}/${totals.waves}`, "gates invoked at their boundary"],
+  [`${totals.unprompted}/${totals.waves}`, "gates recorded before the next wave opened"],
+  [`${totals.unprompted}/${totals.invoked}`, "unprompted, of the gates invoked"],
+]);
+
+// Which total a figure is claiming, taken from the words around it. A pair with
+// no keyword is only checked for being one of the legitimate three — the
+// keyworded cases are what carry the check, and a bare fraction is too weak a
+// signal to pin to a specific total.
+const CLAIMS = [
+  [/\bunprompted\b/i, () => `${totals.unprompted}/${totals.invoked}`],
+  [/\brecorded\b/i, () => `${totals.unprompted}/${totals.waves}`],
+  [/\b(boundar|invoked)/i, () => `${totals.invoked}/${totals.waves}`],
+  // "That makes 28/29 an upper bound on compliance, not a rate." A figure named
+  // as THE compliance number is the headline one, invoked-over-waves. Without
+  // this row that sentence carried no keyword at all, fell through to the weak
+  // "is it one of the three legitimate pairs" branch, and passed while saying
+  // 27/28 — which is a legitimate pair, just not this claim's. It was one of the
+  // three lines that actually drifted, so the ceiling was landing on the case
+  // the check exists for.
+  [/upper bound|\bcompliance\b|\brate\b/i, () => `${totals.invoked}/${totals.waves}`],
+];
+
+for (const [label, text] of [["a3-gate-compliance.md", a3], ["compatibility.md", compat], ["copy.ts", copy]]) {
+  for (const line of text.split(/\r?\n/)) {
+    if (!/\bgates?\b|\bboundar|\binvoked\b/i.test(line)) continue;
+    for (const m of line.matchAll(/\b(\d{1,3})\s*(?:of|\/)\s*(\d{1,3})\b/g)) {
+      const pair = `${m[1]}/${m[2]}`;
+      // A window around THIS figure, not the whole line. One sentence carries
+      // several: "28 of 29 gates invoked at their boundary, 1 skipped, 27 of 29
+      // recorded before the next wave opened" states two different totals, and
+      // classifying by line gave both the first keyword it found. The qualifier
+      // usually follows the figure ("27 of 29 recorded") but sometimes precedes
+      // it ("Unprompted on 27 of 28 invoked"), so both sides are read, and
+      // CLAIMS is ordered most-specific first for the overlaps.
+      const near =
+        line.slice(Math.max(0, m.index - 40), m.index) + " " + line.slice(m.index, m.index + 60);
+      const claim = CLAIMS.find(([re]) => re.test(near));
+      const expected = claim?.[1]();
+      if (expected && pair !== expected) {
+        fail(
+          `${label}: "${m[0]}" claims ${legitimate.get(expected) ?? expected}, but the A3 ledger's rows ` +
+            `total ${expected}. Line: ${line.trim().slice(0, 120)}`
+        );
+      } else if (!expected && !legitimate.has(pair)) {
+        fail(
+          `${label}: "${m[0]}" is not a figure the A3 ledger's rows support ` +
+            `(${[...legitimate.keys()].join(", ")}). Line: ${line.trim().slice(0, 120)}`
+        );
+      }
+    }
+  }
+}
+
+// The plan count is restated in prose too, and drifted the same way.
+for (const [label, text] of [["a3-gate-compliance.md", a3], ["compatibility.md", compat], ["copy.ts", copy]]) {
+  for (const m of text.matchAll(/\b(\d+)\s+(?:pilot\s+)?plans\b/gi)) {
+    const line = text.slice(text.lastIndexOf("\n", m.index) + 1, text.indexOf("\n", m.index));
+    if (!/\bgates?\b|\bboundar|\binvoked\b|\bledger\b|\bA3\b/i.test(line)) continue;
+    if (Number(m[1]) !== ledgerPlans.length) {
+      fail(
+        `${label}: "${m[0]}" but the A3 ledger holds ${ledgerPlans.length} plan row(s). ` +
+          `Line: ${line.trim().slice(0, 120)}`
+      );
+    }
+  }
 }
 
 // --- report ----------------------------------------------------------------

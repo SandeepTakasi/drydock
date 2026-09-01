@@ -22,11 +22,14 @@ Public release criteria — **3 of 4 met, 1 partial**:
 - ✅ One example plan ([001-drydock-homepage](plans/001-drydock-homepage.md)) and
   one field case study ([case-study-001-homepage](case-study-001-homepage.md)).
 - ⚠️ **A3 published with real numbers — half met, and deliberately stopped there.**
-  The numbers are real and published (27/28 across 4 plans, including one skipped
-  gate that the following gate caught). The sample is still short of the 5–10 this
-  row asks for, and every run was observed, so the figure is an upper bound rather
-  than a rate. Continuing under the same conditions would fix the count and not the
-  meaning, which is why measurement stopped at 4 rather than being extended.
+  The numbers are real and published (28 of 29 gates invoked at their boundary
+  across 5 plans, including one skipped gate that the following gate caught). The
+  sample has reached the bottom of the 5–10 this row asks for, on its least
+  independent instance — plan 005 was planned, executed and audited by one session
+  — and every run was observed, so the figure is an upper bound rather than a rate.
+  Continuing under the same conditions fixes the count and not the meaning, which
+  is why measurement stopped at 5 rather than being extended. Still half met: the
+  half that is missing is independence, not sample size.
 - ✅ **A2b verified** (2026-08-19, mechanically — see the row above for the method
   limit and the clean-merge caveat).
 

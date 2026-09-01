@@ -87,30 +87,38 @@ Review waves (`x.R`) take no wavecheck by design and are excluded from the count
 
 ## Status: REOPENED 2026-08-21 by plan 004. Still PUBLISHED, not PASSED.
 
-Measurement was closed at 3 plans on 2026-08-19 and reopened when plan 004 executed under gates and logged the first skip. It stops here again, at 4. What the numbers support and what
-they do not, stated so nobody has to re-derive it:
+Measurement was closed at 3 plans on 2026-08-19, reopened when plan 004 executed
+under gates and logged the first skip, and appended once more when plan 005 ran on
+the small lane. It stops here, at 5. What the numbers support and what they do not,
+stated so nobody has to re-derive it:
 
-**Supported.** Across 4 plans and 28 wave gates, the orchestrating session invoked
-`drydock:wavecheck` at 27 of 28 boundaries, including on bare "continue" and
-"go ahead" instructions that named no gate. **One gate was skipped** (plan 004,
-deviation 11) and one ran without being recorded (plan 003, deviation 2). Both were
-caught by the following gate rather than by a human noticing, which is the property
-worth having: the recovery path is observed, not assumed.
+**Supported.** Across 5 plans and 29 wave gates, the orchestrating session invoked
+`drydock:wavecheck` at 28 of 29 boundaries, including on bare "continue",
+"go ahead" and "execute the plan" instructions that named no gate. **One gate was
+skipped** (plan 004, deviation 11) and one ran without being recorded (plan 003,
+deviation 2). Both were caught by the following gate rather than by a human
+noticing, which is the property worth having: the recovery path is observed, not
+assumed.
 
 **Not supported — and not fixable by continuing.** Two independent reasons this is
-not a pass:
+not a pass. They were written when the sample was 4; only the first has changed,
+and it changed in the direction that matters least:
 
-1. **Sample is 4 plans against a stated bar of 5–10.** Publishing real numbers was
-   the release criterion; reaching the sample size was part of it. At 4 we publish
-   what we have and say it is short.
-2. **The bias is structural.** Every session in this ledger knew A3 was under
-   measurement, and one said so aloud at a gate. That makes 27/28 an **upper bound
-   on compliance, not a rate.** As the header has said from the start, this is
-   *not resolved by adding more plans run under the same conditions* — so plans 5
+1. **Sample has reached 5 against a stated bar of 5–10 — and that is the weakest
+   possible way to reach it.** Plan 005 was planned, executed and audited by one
+   session, on a one-wave lane. The count touched the bottom of the bar on the
+   least independent instance in the table. Treating that as the criterion being
+   met would contradict the argument the header of this file has made since it
+   opened, so it is recorded as a count that moved, not as a bar that was cleared.
+2. **The bias is structural, and it is the reason this is not a pass.** Every
+   session in this ledger knew A3 was under measurement, and one said so aloud at
+   a gate. That makes 28/29 an **upper bound on compliance, not a rate.** As the
+   header has said from the start, this is *not resolved by adding more plans run
+   under the same conditions* — plan 005 demonstrated exactly that, and plans 6
    through 10 under the same setup would raise the count and change nothing about
-   what it means. That is the substantive argument for stopping at 4 rather than
+   what it means. That is the substantive argument for stopping rather than
    grinding out a bigger biased number.
 
 **What would actually close A3 as PASSED:** one orchestrating session that has not
 been told the gate is observed, on a plan whose waves it did not plan. Until then the
-honest claim is "invoked at 27 of 28 observed boundaries, all under observation."
+honest claim is "invoked at 28 of 29 observed boundaries, all under observation."

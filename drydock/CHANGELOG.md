@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.8.9 — 2026-09-02
+
+**The A3 compliance figure was published two different ways, and the gate built
+to stop that could not see it.** Appending plan 005 moved the ledger's table and
+its "Final total" line to **28 of 29 gates across 5 plans**. The Status section
+three screens below kept saying **27 of 28 across 4** — three times, including
+in the sentence that names *"the honest claim"* — and `compatibility.md`'s
+release-criteria bullet repeated the stale pair while the site published the new
+one. Three surfaces, two numbers, every check green.
+
+Green because checks 1–3 of `assert-matrix.mjs` compare a document against
+*another* document: a row against the verification log, a plan's logged skips
+against the ledger. Nothing compared a document against **itself**, which is
+where this drifted. That is the same failure this script's own header describes
+— "the record of what is proven stopped tracking what was proven" — recurring
+one layer up, in the file named as the source of truth.
+
+- **The ledger's table is now the arithmetic and the prose is derived from it.**
+  Check 4 sums the rows (29 waves, 28 invoked, 27 unprompted, 1 skipped) and
+  compares every `N of M` stated anywhere in `a3-gate-compliance.md`,
+  `compatibility.md` and `site/content/copy.ts`, plus every restated plan count.
+  Figures are classified by the words around each one, not per line — a single
+  sentence states two different totals, and classifying by line gave both the
+  first keyword it found.
+- **Proven failable on all five drift shapes**, each reintroduced and caught:
+  the boundary figure, the bare `27/28`, the plan count, the recorded figure,
+  and the unprompted figure.
+- **The stale prose is corrected, and its argument is not.** The Status section
+  still concludes PUBLISHED-not-PASSED; what changed is that the reason is now
+  stated accurately. The sample reached 5 against a bar of 5–10 — on its least
+  independent instance, since one session planned, executed and audited plan
+  005. So the count moved and the bar was not cleared, and **the half that is
+  missing is independence, not sample size**. Saying "still short of 5" would
+  have been false; calling 5 a pass would have contradicted the argument this
+  ledger has made since it opened.
+
+A note on the first version of check 4: the bare `27/28` in *"That makes 27/28 an
+upper bound on compliance"* carries no keyword, fell through to a weak "is this
+one of the legitimate pairs" branch, and passed — 27/28 is legitimate, just not
+for that claim. The ceiling was landing on one of the three lines that actually
+drifted, so it was tightened rather than documented.
+
 ## 0.8.8 — 2026-09-02
 
 **Three checks in `validate-plan` asserted more than they tested.** Each one
