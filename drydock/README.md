@@ -54,8 +54,13 @@ planwright ──► [human approves] ──► execute waves ──► wavechec
   same-wave ownership collisions, dependencies on same-wave tasks, and Testing
   Gate defects; `audit-wave` computes the ownership audit from per-task commits
   and prints the SHAs and file lists it derived, so wavecheck's evidence is
-  reproducible rather than eyeballed. Its first run found a same-wave dependency
-  in two of this repo's four plans that reviews and pressure tests had missed.
+  reproducible rather than eyeballed. Its first run reported a same-wave
+  dependency in two of this repo's plans that reviews and pressure tests had
+  missed — **and one of the two turned out to be the checker's own defect**,
+  which is the more useful half of the story: the wave was read off the task id
+  when the format contract says an id outlives its wave assignment, so a
+  correctly-moved task looked like a cycle. One real defect (plan 004, accepted
+  and recorded as its deviation 15), one checker bug (fixed in v0.8.10).
 - **Per-task model right-sizing lives in the plan**, not in global config.
 - **The Testing Gate is written before the code.** A plan touching a UI or API
   surface carries its end-to-end cases from the start, with declared evidence

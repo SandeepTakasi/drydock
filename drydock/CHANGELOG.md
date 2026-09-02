@@ -1,5 +1,48 @@
 # Changelog
 
+## 0.8.12 — 2026-09-02
+
+**Three pieces of prose that told a reader something untrue.** None changes
+behaviour; all three would have misled whoever followed them.
+
+- **`replan` and `reconcile` both read an "Assumptions Register" that does not
+  exist.** Not in the format contract's 17 sections, not in any plan, nowhere
+  outside those two files. `replan`'s step 1 — "run every Assumptions Register
+  verification command" — is the input to its blast-radius computation, which
+  decides what it is allowed to touch, so the one skill that edits a live plan
+  was reading from a section that could not be found. This is the spine the
+  README claims: *everything interoperates through one contract.*
+
+  Both now read the **Decision Log** and **Findings & constraints**, which is
+  what `reconcile` already did in practice — plan 005's `## Assumption
+  postmortem` keys its rows on `D3`/`D4`/`D6`, Decision Log ids. The output
+  section keeps its name: it is real, is in the corpus, and is that step's
+  product rather than its input.
+
+  **The loss is stated where it will be read, not buried here.** The Decision
+  Log's columns are `| # | Question | Decision | Decided by | Rationale |` — no
+  verification command — so replan's sweep is judgement, not a command run.
+  `replan/SKILL.md` now says so and asks its report to distinguish assumptions
+  re-verified by running something from those re-verified by reading. A real
+  register with a command column is a contract change at `format_version: 4`
+  touching every consumer, and is deliberately not smuggled in here.
+
+- **Wavecheck's check 1 still said `format_version` supported `(v2)`** while the
+  script supported `[2, 3]` and every plan planwright writes is v3 — an auditor
+  following the skill's own text would reject the current format. Flagged in
+  plan 005's own wavecheck report, filed to §9 as out-of-scope, and left for two
+  releases. It now points at the script's `SUPPORTED_FORMAT_VERSIONS` as the
+  authority rather than restating a number, because restating it is the defect.
+
+- **Fixing the validator in 0.8.10 falsified the repo's claim about the
+  validator**, in `drydock/README.md` and `planwright/SKILL.md`: "found a
+  same-wave dependency in two of this repo's four plans". There are five plans,
+  and one of the two was the checker reading a task's wave off its id when the
+  contract says an id outlives its wave assignment. Both now say what is known —
+  one real defect (plan 004, accepted as its deviation 15), one checker bug — and
+  say it is worth knowing that the tool is not above being wrong. Nothing
+  detected that a code fix had invalidated a claim about the code.
+
 ## 0.8.11 — 2026-09-02
 
 **Four defects in code shipped hours earlier the same day, found by a second

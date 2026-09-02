@@ -449,8 +449,8 @@ function validatePlan(path, strict) {
 
   // --- dependencies point backwards ----------------------------------------
   // Two shapes look like forward dependencies and are not, both sanctioned by
-  // the format contract. Flagging them would fail three of the four plans in
-  // this repo on patterns they were told to use.
+  // the format contract. Flagging them would fail most of the plans in this
+  // repo on patterns they were told to use.
   //
   //   1. Depending on a review wave (`x.R`). A review rejects, and the repair
   //      wave is appended AFTER it — so wave 1.4 depending on 1.R is the normal

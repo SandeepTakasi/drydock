@@ -23,7 +23,10 @@ Contract: `${CLAUDE_PLUGIN_ROOT}/skills/planwright/reference/plan-format.md`.
 
 Run in this order; stop early only on check 1 failure.
 
-1. **Plan integrity.** Plan exists, `format_version` supported (v2), status is
+1. **Plan integrity.** Plan exists, `format_version` is supported — the script's
+   `SUPPORTED_FORMAT_VERSIONS` is the authority, never a number written here;
+   this line said `(v2)` for two releases after v3 shipped, which would have had
+   an auditor reject every plan planwright currently writes. Status is
    `EXECUTING`, the wave id exists, all prior waves have PASS reports. Missing
    prior report = BLOCK (someone skipped a gate).
 

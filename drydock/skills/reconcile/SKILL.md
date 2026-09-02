@@ -59,9 +59,19 @@ closer, not a verifier — and do not propose doc updates from an unverified pla
    Clusters (a) and (c) produce doc proposals; (b) produces planwright-skill
    feedback; (d) produces executor-contract feedback.
 
-2. **Assumption postmortem.** For every Assumptions Register entry: held /
-   failed / never-exercised. Failed assumptions that trace to a claim in a doc
-   (CLAUDE.md says X, reality was Y) are your highest-value findings.
+2. **Assumption postmortem.** For every load-bearing entry in the plan's
+   **Decision Log** and **Findings & constraints**: held / failed /
+   never-exercised, keyed by its id (`D3`, `D4`, …). Failed assumptions that
+   trace to a claim in a doc (CLAUDE.md says X, reality was Y) are your
+   highest-value findings, and `never-exercised` is a verdict, not a gap to
+   round up — plan 005 recorded D6 that way rather than counting an unrun
+   pressure test as a win.
+
+   This step read "every Assumptions Register entry" until 0.8.12, naming a
+   section the contract never defined. The Decision Log is what you were already
+   reading in practice; now it says so. The output section is unchanged and
+   keeps its name: `## Assumption postmortem` is real, is in the corpus, and is
+   this step's product rather than its input.
 
 3. **New-knowledge harvest.** Facts execution established that no doc states
    and the next planner would need: new module boundaries, new invariants,
