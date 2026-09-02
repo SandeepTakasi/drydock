@@ -1,0 +1,68 @@
+# The plugin's gate. Until this file existed there was none: `deploy.yml` is the
+# only other workflow, it is filtered to `site/**`, and it runs the site build
+# gate. So `drydock-audit.test.mjs` (75 cases) and `enforce-owns.test.mjs` (12)
+# had never run automatically — every release was verified only because somebody
+# chose to run them by hand — and `assert-matrix.mjs`, which exists to stop the
+# A3 figure drifting across documents, sat inside a workflow that ignores
+# `docs/**`. Editing `docs/a3-gate-compliance.md`, the exact edit that caused
+# that drift, triggered nothing.
+#
+# NO `paths:` FILTER, DELIBERATELY. A path filter is what broke the last gate,
+# and these jobs cost seconds: every script here imports Node builtins only, so
+# there is no `npm ci`, no lockfile, no `node_modules`. Filtering would save
+# nothing and reintroduce the one failure this file exists to fix.
+#
+# `assert-copy.mjs` is NOT here — it reads `out/index.html` and needs a real
+# build, so it stays in `deploy.yml` where the build already happens.
+name: Verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  plugin:
+    name: plugin tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Both ends of the supported range. 22 is the stated minimum
+        # (`path.matchesGlob` is stdlib from 22, per drydock/README.md); 24 is
+        # what the repo is developed on.
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: node drydock/scripts/drydock-audit.test.mjs
+      - run: node drydock/hooks/enforce-owns.test.mjs
+
+  docs:
+    name: honesty matrix
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node site/scripts/assert-matrix.mjs
+
+      # INFORMATIONAL, never a gate. Plan 004 fails `validate-plan` permanently
+      # and on purpose: its wave 2.1 same-wave dependency is accepted and
+      # recorded as deviation 15, because repairing a closed record to satisfy a
+      # validator written afterwards would make the plan describe an execution
+      # that did not happen. Gating on this would mean a red build nobody is
+      # allowed to fix, which is a build people learn to ignore. The output is
+      # here to be read; the exit code is not a verdict.
+      - name: validate the plan corpus (informational)
+        run: |
+          for p in docs/plans/*.md; do
+            node drydock/scripts/drydock-audit.mjs validate-plan "$p" || true
+          done
