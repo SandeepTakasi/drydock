@@ -140,6 +140,21 @@ cases.push(
     () => validate("ov-lits", twoOwners("`a.txt`", "`b.txt`")),
     (out) => out.includes("validate-plan: PASS")],
 
+  // A glob whose first wildcard sits at position 0 has an empty fixed prefix,
+  // and `x.startsWith("")` is true — so until 0.8.11 it collided with every
+  // other glob. `*` does not cross `/` (measured against `path.matchesGlob`),
+  // so these two file sets cannot intersect and must not be reported.
+  ["a root-anchored `*` glob does not reach into a subtree",
+    () => validate("ov-star", twoOwners("`*.md`", "`docs/**`")),
+    (out) => out.includes("validate-plan: PASS")],
+
+  // The same shape with `**`, which DOES cross `/`. `**/*.test.ts` really does
+  // match `src/a.test.ts`, so this one has to keep reporting — the fix must
+  // distinguish the two wildcards, not silence everything with an empty prefix.
+  ["a `**` glob does reach into a subtree, and still reports",
+    () => validate("ov-globstar", twoOwners("`**/*.test.ts`", "`src/**`")),
+    (out) => out.includes("describe overlapping file sets")],
+
   // One task may describe its own files with a glob AND a path inside it. That
   // is redundant, not a collision — there is no second writer.
   ["a task overlapping only itself is fine", () => validate("ov-self", `
@@ -800,7 +815,7 @@ const OTHER_WAVE = JSON.stringify({ ts: "x", plan: "900-fixture", wave: "9.9", d
 // plan carries the wavecheck report wavecheck wrote, and `.drydock/` has been
 // cleaned away. `rm`-ing the directory after `task-close` is the whole point —
 // it reproduces the state that made plan 005's own gate fail.
-const sealedRepo = (name, files = ["a.txt"]) => {
+const sealedRepo = (name, files = ["a.txt"], reaudited = false) => {
   const dir = join(DIR, `sealed-${name}`);
   mkdirSync(dir, { recursive: true });
   git(dir, ["init", "-q", "-b", "main"]);
@@ -811,12 +826,30 @@ const sealedRepo = (name, files = ["a.txt"]) => {
   commitAs(dir, files, "fix(a): do the thing");
   const sha = git(dir, ["rev-parse", "--short=7", "HEAD"]);
 
+  // A SUPERSEDED report ahead of the live one, when asked for. A re-audit is an
+  // ordinary heading, so a wave can carry two reports for the same id and only
+  // the last one stands — `derivePlanState` has always taken the last, and
+  // `sealedRecord` took the first until 0.8.11. Its placeholder sha is not a
+  // commit in this repo, so reading it produces a false "history moved under
+  // the recorded attribution" on a history that never moved.
+  const superseded = reaudited
+    ? `
+### Wavecheck 1.0 — BLOCK — 2026-08-20
+
+\`\`\`
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.0.1 | \`0000000\` | \`a.txt\` | \`a.txt\` | none |
+\`\`\`
+`
+    : "";
+
   // The report exactly as wavecheck appends it, evidence table and all.
   writeFileSync(
     join(dir, "plan.md"),
     `${enforcedPlan}
 ## Wavecheck reports
-
+${superseded}
 ### Wavecheck 1.0 — PASS — 2026-09-01
 
 \`\`\`
@@ -890,6 +923,30 @@ cases.push(
     out.includes("records 13 hook decision(s), 1 denied") &&
     out.includes("RECORD that enforcement ran, not a RECEIPT") &&
     !out.includes("the hook never ran here")],
+
+  // A re-audited wave carries TWO reports for one id and only the last stands.
+  // Reading the first took the superseded BLOCK's placeholder sha and failed the
+  // wave with "history moved under the recorded attribution" — on a history that
+  // had not moved. `derivePlanState` had always taken the last; two readers of
+  // the same headings must not disagree about which one counts.
+  ["a re-audited wave recovers the LAST report, not the superseded one", () => {
+    const dir = sealedRepo("reaudit", ["a.txt"], true);
+    return cli(dir, ["audit-wave", "plan.md", "1.0"]);
+  }, (out) =>
+    out.includes("sealed in this plan (PASS)") &&
+    out.includes("audit-wave 1.0: PASS") &&
+    !out.includes("0000000")],
+
+  // ...and when a sha really is unreachable, the error names the source that
+  // supplied it. It said "manifest names <sha>" even where the sealed report
+  // did, sending the reader to a file that was never consulted.
+  ["an unreachable sha blames the source that actually named it", () => {
+    const dir = sealedRepo("blame", ["a.txt"]);
+    // Break the sealed table's sha; the manifest is already gone.
+    const p = join(dir, "plan.md");
+    writeFileSync(p, readFileSync(p, "utf8").replace(/`[0-9a-f]{7}`/, "`0000000`"));
+    return cli(dir, ["audit-wave", "plan.md", "1.0"]);
+  }, (out) => out.includes("the sealed wavecheck 1.0 report in this plan names") && !out.includes("manifest names")],
 
   // ...and with no sealed report to lean on, the original three-way diagnosis is
   // untouched. Recovery must not become a way for an unsealed wave to escape.

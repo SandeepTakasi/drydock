@@ -59,6 +59,9 @@ const vlog = readFileSync(join(DOCS, "verification-log.md"), "utf8");
 const a3 = readFileSync(join(DOCS, "a3-gate-compliance.md"), "utf8");
 // The site restates these figures too, and is the surface a reader actually sees.
 const copy = readFileSync(join(HERE, "..", "content", "copy.ts"), "utf8");
+// The repo README is the first surface a reader meets, and the one the first
+// version of check 4 forgot.
+const rootReadme = readFileSync(join(HERE, "..", "..", "README.md"), "utf8");
 
 // --- parse the compatibility matrix ----------------------------------------
 // | A1 | property | STATUS | notes |   — the id column may be an em dash for
@@ -201,46 +204,90 @@ const CLAIMS = [
   [/upper bound|\bcompliance\b|\brate\b/i, () => `${totals.invoked}/${totals.waves}`],
 ];
 
-for (const [label, text] of [["a3-gate-compliance.md", a3], ["compatibility.md", compat], ["copy.ts", copy]]) {
-  for (const line of text.split(/\r?\n/)) {
-    if (!/\bgates?\b|\bboundar|\binvoked\b/i.test(line)) continue;
-    for (const m of line.matchAll(/\b(\d{1,3})\s*(?:of|\/)\s*(\d{1,3})\b/g)) {
-      const pair = `${m[1]}/${m[2]}`;
-      // A window around THIS figure, not the whole line. One sentence carries
-      // several: "28 of 29 gates invoked at their boundary, 1 skipped, 27 of 29
-      // recorded before the next wave opened" states two different totals, and
-      // classifying by line gave both the first keyword it found. The qualifier
-      // usually follows the figure ("27 of 29 recorded") but sometimes precedes
-      // it ("Unprompted on 27 of 28 invoked"), so both sides are read, and
-      // CLAIMS is ordered most-specific first for the overlaps.
-      const near =
-        line.slice(Math.max(0, m.index - 40), m.index) + " " + line.slice(m.index, m.index + 60);
-      const claim = CLAIMS.find(([re]) => re.test(near));
-      const expected = claim?.[1]();
-      if (expected && pair !== expected) {
-        fail(
-          `${label}: "${m[0]}" claims ${legitimate.get(expected) ?? expected}, but the A3 ledger's rows ` +
-            `total ${expected}. Line: ${line.trim().slice(0, 120)}`
-        );
-      } else if (!expected && !legitimate.has(pair)) {
-        fail(
-          `${label}: "${m[0]}" is not a figure the A3 ledger's rows support ` +
-            `(${[...legitimate.keys()].join(", ")}). Line: ${line.trim().slice(0, 120)}`
-        );
-      }
+// WHICH SURFACES. Every document that restates the figure — including the root
+// README, which is the FIRST thing a reader sees and was the one surface the
+// first version of this check did not read. It sat stale at "27 of 28 … across
+// those 4 plans" while all three checked surfaces were correct, because the
+// check was built from the list of places drift had been found rather than the
+// list of places the figure is stated.
+//
+// `verification-log.md` is deliberately absent. Its A3 entry reads "22 of 22
+// observed gates invoked, 0 skipped … across 3 plans" — a correctly scoped,
+// dated record of the 2026-08-19 measurement, closed at three plans. Scanning it
+// would fail a true statement. Historical entries are exempt BY FILE, which is
+// crude but honest; if a dated record ever moves into one of the files below,
+// this check will fail it and the fix is to move it back.
+const SURFACES = [
+  ["a3-gate-compliance.md", a3],
+  ["compatibility.md", compat],
+  ["copy.ts", copy],
+  ["README.md", rootReadme],
+];
+
+// WHOLE DOCUMENT, WHITESPACE-NORMALISED — not line by line. The root README
+// writes "27 of 28\nwave gates", with the figure and its noun on either side of
+// a line break, so a line-scoped scan sees a number with no keyword and a
+// keyword with no number, and matches neither. That blind spot is not
+// hypothetical: it is why this check missed the README, and why a hand-written
+// `grep` over the repo missed it too. Collapsing whitespace first makes the
+// window land on the sentence rather than on the line.
+const flat = (t) => t.replace(/\s+/g, " ");
+
+for (const [label, raw] of SURFACES) {
+  const text = flat(raw);
+  for (const m of text.matchAll(/\b(\d{1,3})\s*(?:of|\/)\s*(\d{1,3})\b/g)) {
+    const pair = `${m[1]}/${m[2]}`;
+    // A window around THIS figure. One sentence carries several: "28 of 29
+    // gates invoked at their boundary, 1 skipped, 27 of 29 recorded before the
+    // next wave opened" states two different totals, and classifying by the
+    // enclosing block gave both the first keyword it found. The qualifier
+    // usually follows the figure ("27 of 29 recorded") but sometimes precedes
+    // it ("Unprompted on 27 of 28 invoked"), so both sides are read, and CLAIMS
+    // is ordered most-specific first for the overlaps.
+    const near = text.slice(Math.max(0, m.index - 40), m.index + 60);
+    if (!/\bgates?\b|\bboundar|\binvoked\b|upper bound|\bcompliance\b/i.test(near)) continue;
+    const claim = CLAIMS.find(([re]) => re.test(near));
+    const expected = claim?.[1]();
+    const where = near.trim().slice(0, 120);
+    if (expected && pair !== expected) {
+      fail(
+        `${label}: "${m[0]}" claims ${legitimate.get(expected) ?? expected}, but the A3 ledger's rows ` +
+          `total ${expected}. Near: …${where}…`
+      );
+    } else if (!expected && !legitimate.has(pair)) {
+      fail(
+        `${label}: "${m[0]}" is not a figure the A3 ledger's rows support ` +
+          `(${[...legitimate.keys()].join(", ")}). Near: …${where}…`
+      );
     }
   }
 }
 
-// The plan count is restated in prose too, and drifted the same way.
-for (const [label, text] of [["a3-gate-compliance.md", a3], ["compatibility.md", compat], ["copy.ts", copy]]) {
-  for (const m of text.matchAll(/\b(\d+)\s+(?:pilot\s+)?plans\b/gi)) {
-    const line = text.slice(text.lastIndexOf("\n", m.index) + 1, text.indexOf("\n", m.index));
-    if (!/\bgates?\b|\bboundar|\binvoked\b|\bledger\b|\bA3\b/i.test(line)) continue;
-    if (Number(m[1]) !== ledgerPlans.length) {
+// The plan count is restated in prose too, and drifted the same way. Words as
+// well as digits: `copy.ts` writes "across five plans", which a digit-only
+// pattern cannot see. It happens to be correct, which is exactly why it needed
+// covering — an unguarded true statement is one edit from an unguarded false one.
+const WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
+const COUNT = new RegExp(`\\b(\\d+|${Object.keys(WORDS).join("|")})\\s+(?:pilot\\s+)?plans\\b`, "gi");
+
+for (const [label, raw] of SURFACES) {
+  const text = flat(raw);
+  for (const m of text.matchAll(COUNT)) {
+    const near = text.slice(Math.max(0, m.index - 90), m.index + 90);
+    if (!/\bgates?\b|\bboundar|\binvoked\b|\bledger\b|\bA3\b|\bgated\b/i.test(near)) continue;
+    // A HISTORICAL count is not drift. The ledger says "Measurement was closed
+    // at 3 plans on 2026-08-19, reopened…", which is true and must stay true as
+    // the current total grows. The corpus marks these with one idiom — "closed
+    // at N", "stopped at N" — and current claims use a different one ("across
+    // N plans"). Exempting on the marker rather than on the file is what lets a
+    // dated record live inside a checked document; `verification-log.md` is
+    // exempt wholesale only because it is nothing but such records.
+    if (/\b(?:closed|stopped|reopened)\s+(?:again\s+)?at\s*$/i.test(text.slice(Math.max(0, m.index - 30), m.index))) continue;
+    const n = WORDS[m[1].toLowerCase()] ?? Number(m[1]);
+    if (n !== ledgerPlans.length) {
       fail(
         `${label}: "${m[0]}" but the A3 ledger holds ${ledgerPlans.length} plan row(s). ` +
-          `Line: ${line.trim().slice(0, 120)}`
+          `Near: …${near.trim().slice(0, 120)}…`
       );
     }
   }

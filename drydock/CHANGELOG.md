@@ -1,5 +1,50 @@
 # Changelog
 
+## 0.8.11 — 2026-09-02
+
+**Four defects in code shipped hours earlier the same day, found by a second
+review pass over it.** Every one is a check that looked stronger than it was.
+
+- **The root `README.md` still published the stale A3 figure** — "Four plans",
+  "27 of 28 … across those 4 plans" — while all three surfaces `assert-matrix`
+  checks were correct. The gate had been built from *the list of places drift had
+  been found* rather than *the list of places the figure is stated*, and the most
+  public surface in the repo was not on it. Corrected, and `README.md` is now
+  checked.
+- **Check 4 scanned line by line, and the README wraps.** Its figure and the word
+  "gates" sit either side of a line break, so a line-scoped scan sees a number
+  with no keyword and a keyword with no number, and matches neither — which is
+  why the check missed it *and* why a hand-written `grep` over the repo missed it
+  too. It now scans whole documents with whitespace collapsed.
+  `verification-log.md` stays exempt by file (it is nothing but dated records);
+  a historical count *inside* a checked file — "Measurement was closed at 3 plans
+  on 2026-08-19" — is exempted by its idiom instead, so a dated record can live
+  in a checked document.
+- **The sealed-record fallback read the FIRST wavecheck report for a wave;
+  `derivePlanState` has always read the LAST.** A re-audit is an ordinary heading
+  and supersedes what came before, so on a re-audited wave the fallback recovered
+  the superseded table and then failed the wave with *"history moved under the
+  manifest (amend, rebase or drop)"* — a confident false cause for a history that
+  had not moved. Same failure class as the "the hook never ran here" diagnosis
+  fixed in 0.8.7. Two readers of the same headings must not disagree about which
+  one counts. The unreachable-sha error now also names the source that actually
+  supplied the sha rather than always blaming the manifest.
+- **`globsOverlap` reported every leading-wildcard glob as colliding with
+  everything.** An empty fixed prefix meant "matches everywhere", because
+  `x.startsWith("")` is true — so `*.md` vs `docs/**` failed `--strict` on two
+  file sets that cannot intersect. Measured against `path.matchesGlob` rather
+  than assumed: `*` does not cross `/`, `**` does. So `**/*.test.ts` vs `src/**`,
+  also reported, is **correct** and still reports. Only the single-`*` case was
+  wrong.
+- **Check 4's plan count was digit-only**, so `copy.ts`'s "across five plans" was
+  invisible to it. Correct today, which is exactly why it needed covering: an
+  unguarded true statement is one edit from an unguarded false one.
+
+Four tests added, each proven failable by reverting its fix and watching the
+suite drop. Worth recording that the first two revert attempts silently no-opped
+and the suite stayed green — a test that passes both ways proves nothing, and
+the only way to know is to confirm the revert actually applied.
+
 ## 0.8.10 — 2026-09-02
 
 **One of the two "same-wave dependency" defects was the validator's, not the

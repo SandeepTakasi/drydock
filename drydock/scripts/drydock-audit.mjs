@@ -266,9 +266,16 @@ function parsePlan(path) {
 //
 // ponytail: prefix comparison for glob-vs-glob, not set intersection. Exact
 // intersection only matters for shapes like `src/*.ts` vs `src/a*` that no plan
-// in this corpus has written; revisit if one ever does.
+// in this corpus has written; revisit if one ever does. Second known ceiling,
+// below: two root-anchored globs (`*.md` vs `*.ts`) are reported as overlapping
+// though they cannot be. That direction is the safe one and stays.
 const literal = (g) => !/[*?[\]{}]/.test(g);
 const fixedPrefix = (g) => g.slice(0, g.search(/[*?[\]{}]/) === -1 ? g.length : g.search(/[*?[\]{}]/)).replace(/[^/]*$/, "");
+
+// `**` crosses `/`, a single `*` does not — measured against `path.matchesGlob`,
+// not assumed: `*.md` does NOT match `docs/readme.md`, `**/*.test.ts` DOES match
+// `src/a.test.ts`. That distinction is the whole of the fix below.
+const unbounded = (g) => g.startsWith("**");
 
 function globsOverlap(a, b) {
   if (a === b) return true;
@@ -276,6 +283,13 @@ function globsOverlap(a, b) {
   if (literal(a)) return matchesGlob(a, b);
   if (literal(b)) return matchesGlob(b, a);
   const [pa, pb] = [fixedPrefix(a), fixedPrefix(b)];
+  // An empty prefix used to mean "matches everywhere", because `"".startsWith(x)`
+  // is false but `x.startsWith("")` is true — so any glob whose first wildcard
+  // sits at position 0 collided with every other glob, and `*.md` vs `docs/**`
+  // failed `--strict` on two file sets that cannot intersect. Only a `**` glob
+  // genuinely reaches out of its own directory; a leading single `*` is confined
+  // to the root segment and overlaps another rootless glob at most.
+  if (pa === "" || pb === "") return unbounded(a) || unbounded(b) || (pa === "" && pb === "");
   return pa.startsWith(pb) || pb.startsWith(pa);
 }
 
@@ -821,7 +835,17 @@ const git = (args) => execFileSync("git", args, { encoding: "utf8" }).trim();
 const SEALED_ROW = /^\|\s*(T[0-9][\w.]*)\s*\|\s*`([0-9a-f]{7,40})`\s*\|/;
 
 function sealedRecord(plan, wave) {
-  const start = plan.lines.findIndex((l) => new RegExp(`^### Wavecheck ${wave.replace(".", "\\.")}\\b`).test(l));
+  // The LAST report for the wave, matching `derivePlanState`, which takes the
+  // last verdict because a re-audit is an ordinary heading and supersedes what
+  // came before. This read the FIRST until 0.8.11, so on a re-audited wave it
+  // recovered the superseded table: measured against a BLOCK followed by a
+  // re-audit PASS, it took the BLOCK's placeholder sha and then failed the wave
+  // with "history moved under the manifest (amend, rebase or drop)" — a
+  // confident false cause for a history that had not moved at all. Two readers
+  // of the same headings must not disagree about which one counts.
+  const re = new RegExp(`^### Wavecheck ${wave.replace(".", "\\.")}\\b`);
+  let start = -1;
+  plan.lines.forEach((l, i) => { if (re.test(l)) start = i; });
   if (start === -1) return null;
   const rest = plan.lines.slice(start + 1);
   const end = rest.findIndex((l) => /^#{1,3} /.test(l));
@@ -870,6 +894,10 @@ function auditWave(path, wave) {
   const mode = plan.frontmatter.attribution ?? "commit-prefix";
   const planId = plan.frontmatter.plan ?? null;
   let commitsFor;
+  // Where the task->commit lookup came from, so an error can name its real
+  // source. It said "manifest names <sha>" even when the sealed report supplied
+  // the sha, sending a reader to a file that was not consulted.
+  let lookupSource = mode === "manifest" ? "`.drydock/attribution.jsonl`" : "the commit log";
 
   if (mode === "manifest") {
     // Written by `task-close`, never by hand: a manifest the executor types is
@@ -895,6 +923,7 @@ function auditWave(path, wave) {
           `Ceiling: the report is hand-editable where the manifest is tool-written, and a table naming the wrong ` +
           `commits shows the wrong file sets and FAILs rather than passing quietly.`
       );
+      lookupSource = `the sealed wavecheck ${wave} report in this plan`;
       commitsFor = (id) => (sealed.commits.has(id) ? [sealed.commits.get(id)] : []);
     } else {
       if (entries.length === 0) {
@@ -955,7 +984,7 @@ function auditWave(path, wave) {
 
     for (const sha of shas) {
       if (!reachable(sha)) {
-        errors.push(`task ${task.id}: manifest names \`${sha}\`, which is not a commit in this repository — history moved under the manifest (amend, rebase or drop) and the recorded attribution no longer describes anything`);
+        errors.push(`task ${task.id}: ${lookupSource} names \`${sha}\`, which is not a commit in this repository — history moved under the recorded attribution (amend, rebase or drop) and it no longer describes anything`);
         rows.push({ id: task.id, sha: `${sha.slice(0, 7)} (gone)`, files: [], owns: task.owns, strays: [] });
         continue;
       }

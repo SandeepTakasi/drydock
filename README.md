@@ -8,10 +8,10 @@ the source of truth, subagents executing it in parallel waves with disjoint
 file ownership, a conformance audit gating every wave, and a reconcile loop
 that feeds execution learnings back into your docs.
 
-**Status: open pilot (v0.8.10).** Four plans have been planned, executed
+**Status: open pilot (v0.8.11).** Five plans have been planned, executed
 and gated with it — see the [case study](docs/case-study-001-homepage.md) and
-[docs/plans/](docs/plans/). Gate compliance is measured, not asserted: 27 of 28
-wave gates invoked at their boundary across those 4 plans, **1 skipped** — and
+[docs/plans/](docs/plans/). Gate compliance is measured, not asserted: 28 of 29
+wave gates invoked at their boundary across those 5 plans, **1 skipped** — and
 the skip is the useful part, because the next gate refused to open on the
 missing report and the retroactive audit found a real ownership breach behind
 it. Every session knew it was observed, so the figure is a ceiling rather than a
