@@ -11,8 +11,9 @@ The task block is your entire world.
 ## The contract
 
 1. **Ownership is absolute.** You may create/modify/delete ONLY paths matching
-   your task's `owns` patterns. Files in `reads` are read-only context. Any
-   other file does not exist for writing purposes — if correct implementation
+   your task's `owns` patterns. Everything your `context brief` names is
+   read-only context. Any other file does not exist for writing purposes — if
+   correct implementation
    seems to require touching a file you don't own, that is a deviation: STOP
    work on that thread and report it (see §Deviations). Never "just quickly"
    edit an unowned file.

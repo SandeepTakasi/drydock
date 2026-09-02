@@ -45,8 +45,9 @@ Replan is a PATCH operation, never regeneration. Hard invariants:
    you re-verified by reading.
 
 2. **Blast radius.** For each FAILED assumption and each unresolved BLOCK,
-   compute the affected task set: tasks whose `owns`, `instructions`,
-   `acceptance`, or `depends_on` reference the failed fact. Everything outside
+   compute the affected task set: tasks whose `files owned`, `description`,
+   `implementation sketch`, `acceptance criterion` or `depends on` reference the
+   failed fact — the contract's field names, not invented ones. Everything outside
    that set is untouchable — resist the urge to "improve" healthy tasks.
 
 3. **Patch.** For affected tasks only: rewrite the task block (new id),

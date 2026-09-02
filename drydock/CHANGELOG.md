@@ -1,5 +1,45 @@
 # Changelog
 
+## 0.8.13 — 2026-09-02
+
+**The spine is now enforced in the direction it was only ever claimed.** The
+README's central architectural statement is that everything interoperates
+through one contract — "Change it → bump `format_version` → update every
+consumer." The contract half was checked; the consumers' half never was, and
+five instances of drift were found by hand across three review passes, every one
+invisible to every gate:
+
+- `Assumptions Register` — the input to `replan`'s blast-radius step and
+  `reconcile`'s postmortem. Defined nowhere; no plan ever had one. (0.8.12)
+- `reads` — both executor agents told the executor its `reads` files were
+  read-only context. No such field. The real one is `context brief`.
+- `instructions` — `replan` computed blast radius over it. Not a field.
+- `acceptance`, `depends_on` — real fields under invented names.
+
+`drydock-audit.test.mjs` now extracts the contract's vocabulary and holds every
+agent and skill to it. The allowlists are **derived** where they can be — plugin
+config keys from `plugin.json`, skill names from the skills directory — so they
+cannot go stale themselves; six genuinely unclassifiable tokens (`curl`,
+`fetch`, `git log`, `git status`, `low`, `addition`) are hand-held and named
+individually rather than lumped into a bag.
+
+**One scoping decision worth stating, because the first version got it wrong.**
+The executor's completion-report schema (`acceptance:`, `observations:`,
+`files_changed:`) is the executor's own contract, not the plan format's. Adding
+those names to the global allowlist made the check pass — and silently
+legitimised `acceptance` in `replan`, one of the exact drifts it exists to catch:
+the report's `acceptance:` and a plan's `Acceptance criterion:` are different
+things wearing the same word. They are now allowed in `agents/` and nowhere else.
+
+Proven failable: restoring one reverted token drops the suite to 79/80.
+
+**Also, in the same release but not the plugin** (no behaviour change, no bump of
+its own): `deploy.yml` was filtered to `site/**` while `assert-copy.mjs` reads
+`drydock/.claude-plugin/plugin.json` and `README.md`. A filter narrower than a
+check's inputs is a hole — a plugin-only version bump ran no workflow and would
+have shipped the exact drift that check exists to catch. Both paths added.
+`docs/architecture.md`'s gate table gains `plan-status` and `verify.yml`.
+
 ## 0.8.12 — 2026-09-02
 
 **Three pieces of prose that told a reader something untrue.** None changes

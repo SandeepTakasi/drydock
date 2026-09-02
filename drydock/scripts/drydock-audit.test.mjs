@@ -991,6 +991,83 @@ cases.push(
     return cli(closedWave("none"), ["audit-wave", "plan.md", "1.0"], { CLAUDE_CONFIG_DIR: cfg });
   }, (out) => !out.includes("VERSION DRIFT") && out.includes("audit-wave 1.0: PASS")],
 
+  // --- consumers may only name vocabulary the contract defines --------------
+  //
+  // The README's central architectural claim is that everything interoperates
+  // through ONE contract: "Change it → bump `format_version` → update every
+  // consumer." Nothing enforced the consumers' half, and four instances of
+  // drift were found by hand across three review passes, every one invisible to
+  // every gate:
+  //
+  //   - `Assumptions Register` — the input to `replan`'s blast-radius step and
+  //     `reconcile`'s postmortem. Defined nowhere; no plan ever had one.
+  //   - `reads` — both executor agents told the executor its `reads` files were
+  //     read-only context. No such field; the real one is `Context brief:`.
+  //   - `instructions` — `replan` computed blast radius over it. Not a field.
+  //   - `acceptance` / `depends_on` — real fields under invented names.
+  //
+  // So the contract's vocabulary is extracted and the consumers are held to it.
+  // The allowlists below are derived where they can be — plugin config keys
+  // from `plugin.json`, skill names from the skills directory — so they cannot
+  // themselves go stale; only the genuinely unclassifiable handful is hand-held,
+  // and each entry is named rather than lumped into a bag.
+  ["consumers name only vocabulary the format contract defines", () => {
+    const root = fileURLToPath(new URL("..", import.meta.url));
+    const read = (p) => readFileSync(join(root, p), "utf8");
+    const contract = read("skills/planwright/reference/plan-format.md");
+
+    const vocabulary = new Set();
+    // Task-block bullets: `- **Files owned:** …`
+    for (const m of contract.matchAll(/^- \*\*([^:*]+):?\*\*/gm)) {
+      const t = m[1].trim().toLowerCase();
+      if (/^[a-z][a-z /]*$/.test(t)) vocabulary.add(t);
+    }
+    // Backticked table keys (the Testing Gate per-case fields), frontmatter
+    // keys, and every lowercase token the contract itself backticks — if the
+    // spine says it, a consumer may say it.
+    for (const m of contract.matchAll(/^\|\s*`([a-z_]+)`\s*\|/gm)) vocabulary.add(m[1]);
+    for (const m of contract.matchAll(/^([a-z_]+):\s/gm)) vocabulary.add(m[1]);
+    for (const m of contract.matchAll(/`([a-z][a-z_ -]{1,24})`/g)) vocabulary.add(m[1].toLowerCase());
+
+    // Derived allowlists. These are not plan vocabulary and never were.
+    for (const k of Object.keys(JSON.parse(read(".claude-plugin/plugin.json")).userConfig ?? {})) {
+      vocabulary.add(k);
+    }
+    for (const d of readdirSync(join(root, "skills"))) vocabulary.add(d);
+    // Shell commands and bare prose adjectives. The only hand-held entries.
+    for (const t of ["curl", "fetch", "git log", "git status", "low", "addition"]) vocabulary.add(t);
+
+    // SCOPED, not global. The executor's completion-report schema is the
+    // executor's own contract rather than the plan format's, so its field names
+    // are legitimate in `agents/` and nowhere else. Adding them globally — the
+    // first version of this check did — quietly legitimised `acceptance` in
+    // `replan`, which is one of the exact drifts this check exists to catch:
+    // the report's `acceptance:` and a plan's `Acceptance criterion:` are
+    // different things wearing the same word.
+    const agentOnly = new Set(
+      [...read("agents/executor.md").matchAll(/^([a-z_]+):/gm)].map((m) => m[1])
+    );
+
+    const consumers = [
+      ...readdirSync(join(root, "agents")).map((f) => `agents/${f}`),
+      ...readdirSync(join(root, "skills")).map((d) => `skills/${d}/SKILL.md`),
+    ];
+    const unknown = [];
+    for (const rel of consumers) {
+      const allowed = (tok) =>
+        vocabulary.has(tok) || (rel.startsWith("agents/") && agentOnly.has(tok));
+      for (const m of read(rel).matchAll(/`([a-z][a-z_ ]{2,24})`/g)) {
+        const tok = m[1].toLowerCase();
+        if (!allowed(tok) && !unknown.some((u) => u.tok === tok && u.rel === rel)) {
+          unknown.push({ tok, rel });
+        }
+      }
+    }
+    return unknown.length === 0
+      ? "clean"
+      : `unknown vocabulary: ${unknown.map((u) => `\`${u.tok}\` (${u.rel})`).join(", ")}`;
+  }, (out) => out === "clean"],
+
   // Not a plan check — a packaging one, and it lives here because this is the
   // file that already runs on every change to the plugin.
   //
