@@ -8,7 +8,7 @@ the source of truth, subagents executing it in parallel waves with disjoint
 file ownership, a conformance audit gating every wave, and a reconcile loop
 that feeds execution learnings back into your docs.
 
-**Status: open pilot (v0.8.13).** Five plans have been planned, executed
+**Status: open pilot (v0.8.14).** Five plans have been planned, executed
 and gated with it — see the [case study](docs/case-study-001-homepage.md) and
 [docs/plans/](docs/plans/). Gate compliance is measured, not asserted: 28 of 29
 wave gates invoked at their boundary across those 5 plans, **1 skipped** — and
@@ -28,6 +28,18 @@ Behind it: an adversarial
 executor while all tests were green, and exposed + fixed a defect in our own
 attribution design) and an honest
 [compatibility checklist](docs/compatibility.md) of what's verified vs pending.
+
+**The full lifecycle is not the only lane.** `lane: small` is one phase, one
+wave, one gate — no quality-review wave, no pressure test, plan under ~100 lines
+— and `execution: solo` runs the tasks in-session instead of spawning a fleet.
+Ownership, acceptance criteria and the gates still apply; the ceremony does not.
+Planwright sizes the work and picks the lane, and **below about five units of
+work it offers to skip the plan and just do the task**. See
+[plan 005](docs/plans/005-small-lane-and-solo-mode.md), which was written and
+executed that way.
+
+**New here? [Quickstart](drydock/QUICKSTART.md)** — one small change, end to
+end, in about 15 minutes.
 
 Homepage: <https://sandeeptakasi.github.io/drydock/> ·
 Plugin: [`drydock/`](drydock/) ·

@@ -804,6 +804,44 @@ rather than GO-WITH-OVERRIDES.
 apart, returning identical verdicts, with the staleness, unreachable-target and
 lost-driver refusals all exercised in the second.
 
+### A7 addendum — 2026-09-02, the generated specs executed for the first time
+
+**Date:** 2026-09-02 · **Node:** v22 (CI) and v24.14.1 (local) ·
+**Runner:** `@playwright/test@1.62.1`, Chromium · **Repo SHA:** `23ec174`
+
+Both runs above ended "GENERATED, NOT EXECUTED — no runner was installed". That
+was true for eleven days and is no longer.
+
+**Result: `6 passed (8.7s)`.** Run locally first, against `site/out` served at
+the basePath on `127.0.0.1:5173`, then wired into
+`.github/workflows/verify.yml`. TG1, TG4, TG5 and TG6 passed outright; TG2 and
+TG3 carry `test.fail()`, so their passing means each failed exactly as designed —
+a false expectation and an unperformable step, the two cases plan 004 wrote to
+prove the gate can fail.
+
+**The repeatability claim is now measured, and stronger than it was asserted to
+be.** The specs were generated at commit `5a32ac9` on 2026-08-20 and are green
+against an export produced many releases later, without edit.
+
+**How the dependency constraint is kept.** `@playwright/test` is still not in
+`site/package.json` and seatrial is still forbidden from adding it — that rule is
+about this repo's dependency list, not about whether the specs may ever be run.
+CI copies the specs to a scratch directory outside the tree, installs the runner
+there, and runs them. Nothing in the repo changes.
+
+**Why this had never been done.** Not principle — friction. The one other browser
+gate, `measure-reduced-motion.mjs`, defaulted to a macOS-only Chrome path in a
+repo developed on Windows, so *no* browser check ran here without hand-set
+environment variables. Fixing that default (same day) is what made running these
+cheap enough to bother with.
+
+**Limits, unchanged and now the only ones left:** one engine (**Chromium only**),
+one viewport, one target, six cases. A passing suite on one browser is not a
+compatibility rate, and `assert-copy.mjs` now pins `Chromium only` on the page
+for exactly the reason it used to pin `GENERATED, NOT EXECUTED` — it is the
+ceiling most likely to be trimmed away now that there is a green suite to boast
+about.
+
 ## A6 — Ownership enforcement hook (PreToolUse)
 
 **Date:** 2026-08-21

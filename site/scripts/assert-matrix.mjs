@@ -222,6 +222,10 @@ const SURFACES = [
   ["compatibility.md", compat],
   ["copy.ts", copy],
   ["README.md", rootReadme],
+  // Both surfaces an external review found stale, neither previously read by
+  // any check: the plans index and the issue template that invites reports.
+  ["docs/plans/README.md", readFileSync(join(PLANS, "README.md"), "utf8")],
+  ["ISSUE_TEMPLATE/plan-report.yml", readFileSync(join(HERE, "..", "..", ".github", "ISSUE_TEMPLATE", "plan-report.yml"), "utf8")],
 ];
 
 // WHOLE DOCUMENT, WHITESPACE-NORMALISED — not line by line. The root README
@@ -290,6 +294,41 @@ for (const [label, raw] of SURFACES) {
           `Near: …${near.trim().slice(0, 120)}…`
       );
     }
+  }
+}
+
+// --- check 5: the plans index lists every plan, with its real status --------
+//
+// An external review found both defects this catches, by reading: the index
+// omitted plan 005 entirely, and gave 002 `RECONCILED` when its frontmatter says
+// `DONE` — and 002's Reconcile report is still an empty placeholder, so the
+// frontmatter was right and the index was wrong. Neither was visible to any
+// check, because checks 1-4 read `compatibility.md`, the A3 ledger, the site and
+// the root README, and nothing read the index.
+//
+// Counting prose would have been the weaker fix. The index is a table of
+// records that exist on disk, so it is checkable structurally: every plan file
+// has a row, and every row's status is the plan's own.
+const indexPath = join(PLANS, "README.md");
+const index = readFileSync(indexPath, "utf8");
+
+for (const file of readdirSync(PLANS).filter((f) => /^\d{3}-.*\.md$/.test(f))) {
+  const slug = file.replace(/\.md$/, "");
+  const row = index.split(/\r?\n/).find((l) => l.startsWith("|") && l.includes(`(${file})`));
+  if (!row) {
+    fail(
+      `docs/plans/README.md has no row for ${file}. Every plan on disk is an ` +
+        `execution record; an index that omits one hides it.`
+    );
+    continue;
+  }
+  const declared = readFileSync(join(PLANS, file), "utf8").match(/^status:\s*(\S+)/m)?.[1];
+  const listed = row.split("|").map((c) => c.trim()).filter(Boolean).pop();
+  if (declared && listed !== declared) {
+    fail(
+      `docs/plans/README.md lists ${slug} as ${listed}, but its frontmatter says ` +
+        `${declared}. The plan is the record; the index restates it.`
+    );
   }
 }
 

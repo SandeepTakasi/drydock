@@ -1,5 +1,68 @@
 # Changelog
 
+## 0.8.14 — 2026-09-02
+
+Acting on an external review — the first assessment of this repo by someone who
+did not write it. Seven staleness findings, all verified true before being fixed;
+one wrong claim that turned out to be the documentation's fault; and two defects
+found only by doing what the review asked for.
+
+**The small lane existed and was invisible.** The review concluded there is "no
+lite mode — you either adopt the full lifecycle or you don't use Drydock at all",
+and recommended building one. `lane: small` and `execution: solo` shipped in
+v0.8.0. But they appear **zero times** in either README, and the plugin README's
+feature list — the seven bullets that say what Drydock *is* — omitted them
+entirely. A careful reader of both READMEs would reach exactly that conclusion.
+The answer to this project's single biggest adoption criticism was already built
+and undiscoverable. Both READMEs now lead with it, and
+**[QUICKSTART.md](QUICKSTART.md)** walks one small change end to end.
+
+**The browser gate could not run here, and that hid worse.** `measure-reduced-
+motion.mjs` defaulted to a macOS-only Chrome path in a repo developed on Windows,
+so no browser check ran without hand-set environment variables. Fixed to resolve
+per-platform — and running it then exposed that **`DRIFT_FIXTURE=1`, the flag
+that proves the gate can fail, had stopped failing.** Instrumented: the fixture
+was injected at `readyState: complete` (`count=1` immediately after) and was
+**gone by capture** (`count=0`) — React hydration reconciles `<body>` after the
+document completes and discards a child it did not render. So the run passed and
+proved nothing. The injection moved to just before the first capture, and the
+harness now **throws if the fixture is not in the DOM** rather than sailing past
+its own absence. A failable-proof that quietly stops failing is worse than none:
+it is a green run certifying the gate instead of the page.
+
+**The generated E2E specs have been executed, for the first time.** `6 passed
+(8.7s)`, Chromium. TG2 and TG3 are `test.fail()` inversions, so their passing
+means they failed as designed. They were generated at `5a32ac9` and are green
+against an export many releases later — repeatability measured, not assumed.
+`@playwright/test` is still absent from this repo and seatrial still may not add
+it; CI installs it into a scratch directory outside the tree. The honesty chain
+moved with the evidence: `verification-log.md` gained a dated A7 addendum,
+`compatibility.md` and the site were updated, and `assert-copy` now pins
+**`Chromium only`** where it used to pin `GENERATED, NOT EXECUTED` — the ceiling
+most likely to be trimmed away now that there is a green suite to boast about.
+
+**Windows is now in CI.** This code carries backslash normalisation, CRLF
+splitting and padded-`wc` handling that exist *because they were got wrong*, and
+every one of those regressions would ship green on Linux alone.
+
+- **`assert-matrix` check 5**: the plans index must list every plan on disk, with
+  each row's status matching that plan's frontmatter. Both defects the review
+  found — 005 omitted, 002 listed `RECONCILED` against a frontmatter `DONE` and
+  an empty Reconcile report — are now mechanical, and both were proven failable.
+  The index and the issue template joined the surfaces check 4 reads.
+- **`docs/plans/README.md` said two plans fail the validator "and the tool is
+  right".** One of the two was the checker's own bug, fixed in v0.8.10 — a third
+  site of a claim already corrected twice elsewhere. Rewritten to the true and
+  better story: the tool found a real defect its reviewers missed, and one of its
+  own.
+- Contract retitled **v3** with a real version history (v2 → v3 adds
+  `enforcement`, `attribution`, `lane`, `execution`) — the one file whose own
+  rule is "changing this file means bumping `format_version`" had a title a
+  version behind.
+- `site/README.md` was `create-next-app` boilerplate instructing `npm run dev`,
+  a script that **does not exist**. Replaced.
+- Release-criteria text and the issue template's plan count corrected.
+
 ## 0.8.13 — 2026-09-02
 
 **The spine is now enforced in the direction it was only ever claimed.** The

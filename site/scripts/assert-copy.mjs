@@ -47,7 +47,12 @@ const REQUIRED = [
   // A7 ships a browser gate that ran once and generated spec files nobody ran.
   // Both halves have to stay on the page: the run is the claim, and this is the
   // ceiling that would quietly drop off it first.
-  "GENERATED, NOT EXECUTED",
+  // A7's ceiling MOVED on 2026-09-02: the generated specs are now executed in
+  // CI and pass, so pinning "GENERATED, NOT EXECUTED" would force the page to
+  // understate its own evidence. What it pins instead is the limit that would
+  // drop off the page first now that there is a green suite to boast about —
+  // one engine. A passing suite on one browser is not a compatibility rate.
+  "Chromium only",
   // The one install prerequisite. Below Node 22 the ownership hook exits 0 and
   // enforces nothing, so a page that sells enforcement without naming the
   // version sells a guarantee the reader may not have. Pinned so it cannot be

@@ -78,7 +78,7 @@ export const meta: Record<
   },
 };
 
-const VERSION = "0.8.13";
+const VERSION = "0.8.14";
 
 /**
  * Docs live in the repo, not in the export — only `site/out` is deployed. So
@@ -239,7 +239,7 @@ export const evidence: {
       label: "seatrial Testing Gate executes end to end",
       status: "OBSERVED, TWO FULL RUNS",
       tone: "hold",
-      note: "Run twice, 2026-08-20 and 2026-08-26, twelve commits apart, with identical verdicts: six cases, three passes, and three failures that the plan designed to fail -- a false expectation, an unperformable step that halted to ask rather than improvise, and a video clause this driver cannot satisfy. Both sheets closed NO-GO; seatrial writes no override for its own failures. The second run also halted on stale cases and on an unreachable target, and wrote nothing at all when the driver dropped mid-suite. Specs are GENERATED, NOT EXECUTED.",
+      note: "Run twice, 2026-08-20 and 2026-08-26, twelve commits apart, with identical verdicts: six cases, three passes, and three failures that the plan designed to fail -- a false expectation, an unperformable step that halted to ask rather than improvise, and a video clause this driver cannot satisfy. Both sheets closed NO-GO; seatrial writes no override for its own failures. The second run also halted on stale cases and on an unreachable target, and wrote nothing at all when the driver dropped mid-suite. The specs it generated now run in CI and pass -- Chromium only, one viewport, first executed 2026-09-02.",
     },
   ],
   provenance: "This page is not a brochure for something built elsewhere. The site was planned, executed in parallel waves and gated with Drydock itself, across five plans whose deviation logs are in the repo.",
@@ -395,7 +395,7 @@ export const faq: FaqItem[] = [
   },
   {
     q: "Does anything actually touch a browser?",
-    a: "Yes -- that is seatrial. A plan can carry a Testing Gate of end-to-end cases written before the code, and seatrial drives them through Playwright MCP, capturing each case's declared evidence into a go/no-go sheet. It refuses rather than improvises: a step it cannot perform is reported, not worked around; a missing driver halts; and it never overrides its own failures. Run end to end on this site: six cases, three passes, three designed failures. The specs it writes are GENERATED, NOT EXECUTED here -- see A7.",
+    a: "Yes -- that is seatrial. A plan can carry a Testing Gate of end-to-end cases written before the code, and seatrial drives them through Playwright MCP, capturing each case's declared evidence into a go/no-go sheet. It refuses rather than improvises: a step it cannot perform is reported, not worked around; a missing driver halts; and it never overrides its own failures. Run end to end on this site: six cases, three passes, three designed failures. The specs it writes now run in CI here and pass, Chromium only -- see A7.",
   },
   {
     q: "Why the name?",

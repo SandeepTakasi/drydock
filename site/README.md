@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# site/
 
-## Getting Started
+The Drydock homepage — a Next.js static export published to GitHub Pages at
+<https://sandeeptakasi.github.io/drydock/>.
 
-First, run the development server:
+This file used to be unedited `create-next-app` boilerplate, which mattered more
+than it looks: it told you to run `npm run dev`, and **there is no `dev`
+script.** It was removed by an over-constrained task brief and never restored.
+Instructions that do not run are worse than no instructions.
+
+## Commands
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run build     # static export to out/
+npm run verify    # THE gate: build && tsc --noEmit && eslint . && assert-copy && assert-matrix
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`npm run verify` is deliberately **hermetic and browser-free**, and it is what
+`deploy.yml` runs before publishing anything. Browser-only checks are a separate,
+explicit step:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+node scripts/measure-reduced-motion.mjs                  # needs a real Chrome
+DRIFT_FIXTURE=1 node scripts/measure-reduced-motion.mjs  # must FAIL, naming D1
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The second line is not a curiosity — it is how the gate proves it can fail. It
+finds Chrome per-platform; set `CHROME_PATH` to override.
 
-## Learn More
+## Viewing the export locally
 
-To learn more about Next.js, take a look at the following resources:
+`next.config.ts` sets `basePath: '/drydock'`, so the export references absolute
+`/drydock/_next/…` paths. `file://` will not load assets, and **serving `out/` at
+a server root 404s every asset.** Mount it where it expects to be:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+mkdir -p /tmp/dd && ln -sfn "$PWD/out" /tmp/dd/drydock
+cd /tmp/dd && python3 -m http.server 5173   # then open /drydock/
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Serving from a domain root instead means setting `basePath` to `""` and changing
+nothing else.
 
-## Deploy on Vercel
+## Conventions worth knowing before editing
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **All copy lives in `content/copy.ts`.** Components carry no hardcoded strings.
+  `scripts/assert-copy.mjs` pins the literals that must appear and rejects
+  over-claim patterns (`/\d+%\s*faster/` and friends) in the built export.
+- **Every verification claim traces to `docs/compatibility.md`**, which is the
+  source of truth. `scripts/assert-matrix.mjs` fails the build if the site, the
+  READMEs and the compatibility matrix disagree about what has been proven.
+- **Tailwind v4 is CSS-first** — tokens live in `@theme` in `app/globals.css`,
+  there is no `tailwind.config.js`, and a mistyped token emits nothing with no
+  error.
+- **All motion timing lives in `lib/motion.ts`.** A `duration:` or `delay:`
+  literal in `components/sections/*.tsx` fails `assert-copy`.

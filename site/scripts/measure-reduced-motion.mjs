@@ -49,6 +49,7 @@
  */
 
 import { createServer } from "node:http";
+import { existsSync } from "node:fs";
 import { readFile, mkdtemp, rm } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { join, extname } from "node:path";
@@ -57,9 +58,24 @@ import { fileURLToPath } from "node:url";
 
 const HERE = fileURLToPath(new URL(".", import.meta.url));
 const OUT_DIR = join(HERE, "..", "out");
+// Per-platform defaults, first existing wins, `CHROME_PATH` always overrides.
+// The default was the macOS path alone, on a repo developed on Windows: every
+// run here needed CHROME_PATH set by hand or died with ENOENT on a path that
+// cannot exist on this machine. A default that is wrong on the author's own
+// platform is not a default.
+const CHROME_CANDIDATES = {
+  darwin: ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"],
+  win32: [
+    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+  ],
+  linux: ["/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"],
+};
+
 const CHROME_PATH =
   process.env.CHROME_PATH ??
-  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+  (CHROME_CANDIDATES[process.platform] ?? []).find((p) => existsSync(p)) ??
+  (CHROME_CANDIDATES[process.platform] ?? ["google-chrome"])[0];
 const INJECT_FIXTURE = process.env.DRIFT_FIXTURE === "1";
 
 const MIME = {
@@ -296,8 +312,6 @@ async function measure(cdp, { expectReducedMotion, injectFixture }) {
   }
   if (!ready) throw new Error("page never reached document.readyState 'complete'");
 
-  if (injectFixture) await injectDriftFixture(cdp);
-
   // Control: reduced-motion emulation must actually be in effect, or every
   // downstream assertion for this session would pass trivially.
   const reducedMotion = await cdp.evaluate(
@@ -314,6 +328,29 @@ async function measure(cdp, { expectReducedMotion, injectFixture }) {
   // transforms at two distinct scroll positions along the way (D1/D2).
   await cdp.evaluate("window.scrollTo(0, document.body.scrollHeight)");
   await new Promise((r) => setTimeout(r, 250));
+
+  // The fixture goes in HERE, not at `readyState: complete`, and the harness
+  // proves it landed rather than assuming so.
+  //
+  // Measured 2026-09-02: injected at readyState the element was present
+  // immediately after (`count=1`) and GONE by capture (`count=0`) — React
+  // hydration reconciles `<body>` after the document is complete and discards a
+  // child it did not render. So `DRIFT_FIXTURE=1` silently passed, and the one
+  // mechanism that proves this gate can fail had stopped proving it. A
+  // failable-proof that quietly stops failing is worse than none: it is a green
+  // run that certifies the gate rather than the page.
+  if (injectFixture) {
+    await injectDriftFixture(cdp);
+    const landed = await cdp.evaluate('document.querySelectorAll("[data-drift]").length');
+    if (!landed) {
+      throw new Error(
+        "DRIFT_FIXTURE=1 was set but the injected [data-drift] element is not in the DOM — " +
+          "the failable-proof cannot run, so this session proves nothing. Something removed it " +
+          "between injection and capture (hydration, a re-render); move the injection later."
+      );
+    }
+  }
+
   const driftBottom = await captureDriftTransforms(cdp);
 
   await cdp.evaluate("window.scrollTo(0, 0)");

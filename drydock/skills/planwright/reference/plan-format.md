@@ -1,4 +1,4 @@
-# Drydock Plan Format Contract v2
+# Drydock Plan Format Contract v3
 
 Every Drydock skill reads or writes plan documents conforming to this file.
 Planwright WRITES it. Executors OBEY task blocks from it. Wavecheck AUDITS
@@ -6,8 +6,21 @@ against it. Replan PATCHES it. Reconcile CLOSES it. Changing this file means
 bumping `format_version` and updating every consumer; skills refuse plans with
 unsupported versions.
 
-v2 = the team's proven plan template merged with the Drydock execution
-contract. Task IDs are `T<phase>.<wave>.<n>` and never change once assigned.
+Task IDs are `T<phase>.<wave>.<n>` and never change once assigned — an id
+outlives its wave assignment, so the `### Wave` heading a task sits under is
+where it runs and the id is only a fallback.
+
+**Version history.** Both are supported; a plan written at either audits
+exactly as it always did.
+
+| | |
+|---|---|
+| **v2** | The team's proven plan template merged with the Drydock execution contract. |
+| **v3** | Adds four optional frontmatter keys, each a closed enumeration with a back-compatible default: `enforcement:` (hook receipts required), `attribution:` (`commit-prefix` \| `manifest`), `lane:` (`full` \| `small`), `execution:` (`fleet` \| `solo`). Absent means the v2 behaviour in every case. |
+
+This heading read `v2` for two releases after v3 shipped — in the one file
+whose own rule is "changing this file means bumping `format_version` and
+updating every consumer".
 
 ## Plan file
 

@@ -8,36 +8,46 @@ would have lost.
 | Plan | What it built | Status |
 |---|---|---|
 | [001-drydock-homepage](001-drydock-homepage.md) | The `site/` homepage, 28 tasks across 14 waves | RECONCILED |
-| [002-design-system-modernisation](002-design-system-modernisation.md) | Design-token and typography pass | RECONCILED |
+| [002-design-system-modernisation](002-design-system-modernisation.md) | Design-token and typography pass | DONE |
 | [003-hero-revamp](003-hero-revamp.md) | Hero section rebuild | DONE |
 | [004-seatrial-e2e-gate](004-seatrial-e2e-gate.md) | The `seatrial` browser gate (v0.5.0) | RECONCILED |
+| [005-small-lane-and-solo-mode](005-small-lane-and-solo-mode.md) | The `lane: small` / `execution: solo` short-form track (v0.8.0) | RECONCILED |
 
 Plan 001 also has a [field case study](../case-study-001-homepage.md) written
 against it, including the parts that reflect badly on the tool.
 
-## Two of these fail the validator, on purpose
+## One of these fails the validator, on purpose
 
 ```
-validate-plan: FAIL (1) — docs/plans/001-drydock-homepage.md
 validate-plan: FAIL (1) — docs/plans/004-seatrial-e2e-gate.md
 ```
 
-**That is a real defect in each plan, and the tool is right.** Both place a task
-in the same wave as a task it depends on — `T2.3.1` depends on `T2.3.2` in wave
-2.3, and `T2.1.2` depends on `T2.1.1` in wave 2.1. Same-wave tasks are declared
-to run in parallel, so neither dependency can hold; `T2.1.2` generates spec files
-from the run `T2.1.1` performs, and the two were placed side by side anyway.
+**That is a real defect, and the tool is right.** Plan 004 places `T2.1.2` in the
+same wave as `T2.1.1`, which it depends on: `T2.1.2` generates spec files from
+the run `T2.1.1` performs, and the two were placed side by side anyway. Same-wave
+tasks are declared to run in parallel, so the dependency cannot hold. It stays
+because **execution history is not a draft** — rewriting a finished plan to make
+a tool go green would destroy the evidence and teach the opposite lesson. It is
+accepted and recorded as that plan's deviation 15, and it is the shape
+`execution: solo` was invented for in v0.8.0: a plan written today would declare
+solo and validate clean.
 
-Both were found by `drydock-audit.mjs validate-plan` **on its first run**, in
-v0.6.0. Neither was caught by a wavecheck, by a fresh-context quality review, or
-by an adversarial pressure test — three layers of review that all read these
-plans and passed them. That is the argument for checking plans with a program
-rather than only with a reader, and it is why these two failures stay here rather
-than being quietly repaired.
+### It used to say *two*, and the second one was the tool's fault
 
-They are not edited because **execution history is not a draft.** Rewriting a
-finished plan to make a tool go green would destroy the evidence and teach the
-opposite lesson.
+Until v0.8.10 this file reported plan 001 failing the same way — `T2.3.1`
+depends on `T2.3.2`, apparently in wave 2.3. It does not. Deviation 44 moved
+integration into a new `### Wave 2.4` and kept the id `T2.3.1`, exactly as the
+format contract requires (ids never change once assigned; only the wave
+assignment moves). The validator was reading each task's wave off its **id**, so
+a correctly-moved task looked like a cycle. The plan followed the contract; the
+checker did not implement it.
+
+Both halves are worth keeping. `validate-plan` found a genuine defect on its
+first run in v0.6.0 that a wavecheck, a fresh-context quality review and an
+adversarial pressure test had all read past — the argument for checking plans
+with a program rather than only with a reader. And it reported a second one that
+was its own bug, which is the argument for not treating a program's verdict as
+beyond question either.
 
 ## Running the tools against them
 

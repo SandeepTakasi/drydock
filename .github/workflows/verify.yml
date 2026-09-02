@@ -28,14 +28,21 @@ permissions:
 jobs:
   plugin:
     name: plugin tests
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        # Both ends of the supported range. 22 is the stated minimum
+        # Both ends of the supported Node range. 22 is the stated minimum
         # (`path.matchesGlob` is stdlib from 22, per drydock/README.md); 24 is
         # what the repo is developed on.
         node: [22, 24]
+        # WINDOWS IS NOT OPTIONAL HERE. This code carries explicit Windows
+        # handling that exists because it was got wrong: backslash-to-POSIX
+        # normalisation in the ownership hook, CRLF splitting in the plan parser
+        # (splitting on "\n" alone parsed ZERO fields out of every task), and
+        # padded `wc -l` output. The repo is developed on Windows and every one
+        # of those regressions would have shipped green on Linux alone.
+        os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -66,3 +73,46 @@ jobs:
           for p in docs/plans/*.md; do
             node drydock/scripts/drydock-audit.mjs validate-plan "$p" || true
           done
+
+  e2e:
+    name: generated E2E specs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - run: npm ci
+        working-directory: site
+      - run: npm run build
+        working-directory: site
+
+      # The export uses absolute `/drydock/_next/…` paths, so serving `out/` at
+      # a server root 404s every asset. Mount it where it expects to be —
+      # CLAUDE.md's documented recipe.
+      - name: serve the export at its basePath
+        run: |
+          mkdir -p /tmp/dd && ln -sfn "$PWD/site/out" /tmp/dd/drydock
+          (cd /tmp/dd && python3 -m http.server 5173 &)
+          for i in $(seq 1 20); do
+            curl -sf -o /dev/null http://127.0.0.1:5173/drydock/ && break || sleep 0.5
+          done
+          curl -sf -o /dev/null -w "target: %{http_code}\n" http://127.0.0.1:5173/drydock/
+
+      # EPHEMERAL, and that is the point. `e2e/README.md` records that
+      # `@playwright/test` is not installed here and that seatrial is forbidden
+      # from adding it — a constraint on the repo's dependencies, not on whether
+      # anyone may ever run the specs. Installing into a scratch directory keeps
+      # `site/package.json` and its lockfile untouched while closing the loop
+      # seatrial leaves open: until 2026-09-02 these specs had never been
+      # executed by a test runner at all.
+      - name: run the specs (Playwright installed outside the repo)
+        run: |
+          mkdir -p /tmp/e2e && cp e2e/*.spec.ts /tmp/e2e/
+          cd /tmp/e2e
+          echo '{"name":"drydock-e2e","private":true}' > package.json
+          npm i --no-save --no-fund --no-audit @playwright/test@1.62.1
+          npx playwright install --with-deps chromium
+          npx playwright test . --reporter=list

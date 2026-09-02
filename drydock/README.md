@@ -61,6 +61,18 @@ planwright ──► [human approves] ──► execute waves ──► wavechec
   when the format contract says an id outlives its wave assignment, so a
   correctly-moved task looked like a cycle. One real defect (plan 004, accepted
   and recorded as its deviation 15), one checker bug (fixed in v0.8.10).
+- **There is a small lane, and the planner routes you to it.** Not every change
+  wants fourteen waves. `lane: small` is **one phase, one wave, one gate** — no
+  `Wave x.R` quality review, no adversarial pressure test, plan under ~100 lines
+  — and `execution: solo` drops subagent spawning entirely, so the orchestrating
+  session runs the tasks itself. Everything that makes Drydock worth using still
+  applies: ownership, acceptance criteria, the Decision Log, the Deviation Log,
+  the Testing Gate. `validate-plan` enforces the lane's limits rather than
+  trusting the header, so a "small" plan that grows a second wave fails.
+  Planwright sizes the work first and picks the lane; **below about five units of
+  work it offers to skip the plan and just do the task.** A tool that always
+  recommends itself is a tool you stop believing. Worked example:
+  [plan 005](../docs/plans/005-small-lane-and-solo-mode.md).
 - **Per-task model right-sizing lives in the plan**, not in global config.
 - **The Testing Gate is written before the code.** A plan touching a UI or API
   surface carries its end-to-end cases from the start, with declared evidence
@@ -112,6 +124,12 @@ support `PreToolUse` hooks, or ownership enforcement silently does nothing —
 run `node $DD/hooks/enforce-owns.test.mjs` to confirm the hook behaves before
 relying on it (`$DD` as above; `drydock/` in a checkout of this repo).
 
+## Quickstart
+
+**[QUICKSTART.md](QUICKSTART.md) — one small change, end to end, in about 15
+minutes.** It uses the small lane, which is where most work belongs. Start there
+rather than here; this file is the reference, not the on-ramp.
+
 ## Install (internal, team scope)
 
 ```
@@ -129,9 +147,13 @@ sentence in the plan, rather than each plan improvising a justification for its
 own location. `drydock-audit.mjs resolve-plans-dir` reports what it resolved.
 
 Versioning: explicit semver from v0.4.0 (`CHANGELOG.md` maintained per release).
-Licensed MIT. Remaining before public release, per
-[compatibility](../docs/compatibility.md): A3 published with real numbers across
-several pilot plans, and A2b (worktree merge) verified.
+Licensed MIT. Per [compatibility](../docs/compatibility.md), three of the four
+public-release criteria are met and one is partial: A2b (worktree merge) passed
+2026-08-19, and A3's numbers are published across five pilot plans. **What A3
+still lacks is independence, not sample size** — every run was self-observed, so
+the figure is a ceiling rather than a rate, and the row stays `PUBLISHED, not
+PASSED` until a session that has not been told the gate is watched runs a plan it
+did not write.
 
 ## The spine
 
