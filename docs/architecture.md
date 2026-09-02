@@ -53,6 +53,8 @@ trim border, so full-bleed backgrounds are fine.
 | `enforce-owns.mjs` (PreToolUse) | Write/Edit to a path the armed wave does not own — denied at the tool boundary, before the edit lands | **Bash-mediated writes entirely**, and paths outside the project directory |
 | `drydock-audit.mjs audit-wave` | per-task ownership against the real diff, unattributable tasks, a dirty tree, and whether enforcement actually ran | intent, quality, anything a commit does not record |
 | `drydock-audit.mjs validate-plan --strict` | plan defects a reader cannot eyeball: duplicate ids, same-wave collisions and dependencies, section order, Testing Gate completeness | whether the plan is a *good* plan |
+| `drydock-audit.mjs plan-status` | frontmatter `status:` contradicting what the wavecheck reports actually recorded — a plan reading `EXECUTING` after every wave passed, or `DONE` over a `BLOCK` | whether a gate was *skipped*: a retroactively written report is a heading like any other |
+| `.github/workflows/verify.yml` | the plugin's own tests (audit + hook) and the honesty matrix, on every push and PR, with no `paths` filter | anything needing a site build — that stays in `deploy.yml` |
 | human browser check | typography metrics, grid legibility, optical spacing | — |
 
 `verify` stays hermetic and browser-free on purpose. Timing lives only in

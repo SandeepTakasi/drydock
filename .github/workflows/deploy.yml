@@ -9,6 +9,16 @@ on:
     branches: [main]
     paths:
       - "site/**"
+      # `assert-copy.mjs` reads these two, and a filter narrower than a check's
+      # INPUTS is not a filter, it is a hole. Its version-drift check exists
+      # because "0.4.1 stayed on the live badge after the plugin went to 0.5.0,
+      # surviving a wave gate, a phase gate, a browser gate and a deploy" — and
+      # until this line, a plugin-only version bump touched neither `site/**`
+      # nor this file, ran no workflow, and shipped exactly that drift again.
+      # Reachable, not hypothetical: `9f59882` changed plugin.json with no site
+      # change and assert-copy never ran for it.
+      - "drydock/.claude-plugin/plugin.json"
+      - "README.md"
       - ".github/workflows/deploy.yml"
   workflow_dispatch:
 
