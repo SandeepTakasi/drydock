@@ -24,7 +24,7 @@ const CONFIG_DIR = join(ROOT, ".drydock");
 const CONFIG = join(CONFIG_DIR, "wave-owns.json");
 
 if (existsSync(CONFIG)) {
-  console.error(`refusing to run: ${CONFIG} exists — a wave may be live. Not clobbering it.`);
+  console.error(`refusing to run: ${CONFIG} exists: a wave may be live. Not clobbering it.`);
   process.exit(1);
 }
 
@@ -147,5 +147,5 @@ for (const [name, toolInput, want] of cases) {
 
 rmSync(CONFIG_DIR, { recursive: true, force: true });
 
-console.log(failed === 0 ? "\nenforce-owns: PASS — 12 cases" : `\nenforce-owns: FAIL — ${failed} case(s)`);
+console.log(failed === 0 ? "\nenforce-owns: PASS, 12 cases" : `\nenforce-owns: FAIL, ${failed} case(s)`);
 process.exit(failed ? 1 : 0);

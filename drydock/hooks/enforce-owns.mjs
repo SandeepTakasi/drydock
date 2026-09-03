@@ -78,7 +78,7 @@ const deny = (message) => {
 // a hook that never ran writes no entries, and `audit-wave` BLOCKs on that.
 if (typeof path.matchesGlob !== "function") {
   process.stderr.write(
-    `Drydock: ownership enforcement is INACTIVE — Node ${process.version} does not ` +
+    `Drydock: ownership enforcement is INACTIVE. Node ${process.version} does not ` +
       `provide path.matchesGlob (added in v22). Upgrade Node to enforce ownership; ` +
       `until then the wave audit will report this wave as unenforced.\n`
   );
@@ -102,7 +102,7 @@ let raw;
 try {
   raw = readFileSync(configPath, "utf8");
 } catch {
-  allow(); // no active wave — the normal state of this repo
+  allow(); // no active wave, the normal state of this repo
 }
 
 let config;
@@ -166,6 +166,6 @@ const where = config.plan ? `${config.plan} wave ${config.wave}` : `wave ${confi
 deny(
   `Drydock ownership violation: ${where} does not own ${rel}.\n` +
     `Owned by this wave: ${config.owns.join(", ")}\n` +
-    `If correct implementation needs this file, that is a deviation — report it ` +
+    `If correct implementation needs this file, that is a deviation, report it ` +
     `rather than widening your own boundary. Stale? delete .drydock/wave-owns.json`
 );

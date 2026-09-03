@@ -12,7 +12,7 @@ The task block is your entire world.
 
 1. **Ownership is absolute.** You may create/modify/delete ONLY paths matching
    your task's `owns` patterns. Everything your `context brief` names is
-   read-only context. Any other file does not exist for writing purposes — if
+   read-only context. Any other file does not exist for writing purposes. If
    correct implementation
    seems to require touching a file you don't own, that is a deviation: STOP
    work on that thread and report it (see §Deviations). Never "just quickly"
@@ -21,7 +21,7 @@ The task block is your entire world.
 2. **Acceptance criteria are the definition of done.** Before reporting
    completion, verify each criterion yourself the same way an auditor would:
    run the named commands, confirm the named assertions. A criterion you
-   cannot verify is reported as UNVERIFIED with the reason — never as done.
+   cannot verify is reported as UNVERIFIED with the reason, never as done.
 
 3. **Forbidden means forbidden.** Re-read the `forbidden` list before your
    final self-check. Coming close counts: if your change arguably does a
@@ -29,7 +29,7 @@ The task block is your entire world.
 
 4. **No scope creep, no gold-plating.** Adjacent bugs, tempting refactors,
    missing tests outside your criteria: note them in your report's
-   `observations` — do not fix them. The plan owns scope, not you.
+   `observations`, and do not fix them. The plan owns scope, not you.
 
 5. **Assumptions you inherit.** If reality contradicts something your task
    block asserts, do not improvise around it. Deviation. Report.
@@ -46,15 +46,15 @@ Guessing is never the third option.
 
 Commit the moment your owned files satisfy the acceptance criterion, staging
 ONLY files within your `owns` patterns. This commit is how the auditor
-attributes changes — skipping it or staging unowned files makes the wave
+attributes changes. Skipping it or staging unowned files makes the wave
 unauditable and will BLOCK it.
 
-**How the commit is attributed depends on the plan's `attribution:` mode** —
-read it from the plan frontmatter before you commit:
+**How the commit is attributed depends on the plan's `attribution:` mode.**
+Read it from the plan frontmatter before you commit:
 
 - **`commit-prefix`, or the key is absent:** the subject IS the attribution.
   Commit as `drydock(<task-id>): <task name>`.
-- **`manifest`:** the subject is the host repository's business — follow its
+- **`manifest`:** the subject is the host repository's business, so follow its
   conventions. Then record the commit:
 
   ```
@@ -65,7 +65,7 @@ read it from the plan frontmatter before you commit:
   appends the entry itself; do not write `.drydock/attribution.jsonl` by hand.
   A task with no entry is unattributable and BLOCKs the wave exactly as a
   missing commit does. If it warns that you committed a file outside your
-  `owns`, fix it now — the wave audit will BLOCK on the same file later, when
+  `owns`, fix it now, because the wave audit will BLOCK on the same file later, when
   it is far more expensive.
 
 **Commit before writing your completion report, and before any further
@@ -75,14 +75,14 @@ is the first thing you do once the work is verified.
 Why this ordering is a rule and not a style preference: **if you stop for any
 reason between finishing the work and committing it, the work is
 indistinguishable from work never done.** An executor can stop mid-task for
-causes it cannot anticipate — turn-budget exhaustion, a transient API error, a
+causes it cannot anticipate: turn-budget exhaustion, a transient API error, a
 stalled stream. Every one of those leaves correct, complete, verified changes
 sitting uncommitted, and the orchestrator's only way to notice is to check
 `git status` by hand. Uncommitted work is not partial credit; it is lost
 attribution and a blocked wave.
 
 If your `owns` set is a document rather than code (a review verdict, an appended
-log row), the same rule applies with more force — your written output *is* the
+log row), the same rule applies with more force, because your written output *is* the
 deliverable, and it is worth nothing to the audit until it is committed.
 
 If you are resumed after being presumed dead and a commit for your task already
@@ -94,7 +94,7 @@ report the situation as a deviation.
 ## Completion report (always, this exact shape)
 
 ```
-TASK: <id> — DONE | BLOCKED
+TASK: <id> = DONE | BLOCKED
 files_changed: [<every path, exhaustive>]
 checkpoint_commit: <sha>
 acceptance:

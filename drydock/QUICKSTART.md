@@ -1,4 +1,4 @@
-# Quickstart — your first Drydock plan in about 15 minutes
+# Quickstart: your first Drydock plan in about 15 minutes
 
 This walks one small change end to end. It uses the **small lane**, which is
 where most work belongs; the fourteen-wave lifecycle in the README is what
@@ -8,7 +8,7 @@ Drydock does when a change actually needs it.
 
 | | |
 |---|---|
-| **Claude Code** | the host — Drydock is a plugin, not a standalone CLI |
+| **Claude Code** | the host. Drydock is a plugin, not a standalone CLI |
 | **Node ≥ 22** on PATH | the ownership hook and audit script use `path.matchesGlob`, stdlib from 22. Below 22 the hook **exits 0 and enforces nothing**; it says so, and the wave audit reports the wave as unenforced |
 | **A git repo** | attribution is per-commit; there is nothing to audit without one |
 
@@ -19,13 +19,13 @@ Drydock does when a change actually needs it.
 
 Then **restart the session.** Skills are loaded from the installed plugin at
 session start, so a fresh install is not live until you restart. (This bites
-harder than it sounds — see the note at the end.)
+harder than it sounds; see the note at the end.)
 
 Confirm the hook works before relying on it:
 
 ```bash
 node ~/.claude/plugins/cache/drydock/drydock/*/hooks/enforce-owns.test.mjs
-# enforce-owns: PASS — 12 cases
+# enforce-owns: PASS, 12 cases
 ```
 
 ## 1. Ask for a plan
@@ -34,25 +34,25 @@ Just describe the change. You do not need to say "plan".
 
 > Add a `--json` flag to the export command so CI can parse the output.
 
-Planwright interviews you — a handful of questions it cannot answer by reading
-the repo — then explores the code and writes a plan document to `docs/plans/`.
+Planwright interviews you with a handful of questions it cannot answer by
+reading the repo, then explores the code and writes a plan document to `docs/plans/`.
 
 **Two things it should do that are worth watching for.** It sizes the work
 first: below about five units it will say so and **offer to just do the task
 instead of planning it.** Take that offer when it comes. And for anything
-small it writes `lane: small` and `execution: solo` in the header — one wave,
+small it writes `lane: small` and `execution: solo` in the header: one wave,
 one gate, no quality-review wave, no pressure test.
 
 ## 2. Read the plan, then approve it
 
 The plan is the deliverable of this step. Read at least:
 
-- **Surgical-scope statement** — the smallest diff that satisfies the ask.
-- **Files owned** per task — the boundary each task may write, and nothing else.
-- **Acceptance criterion** per task — *one command that exits 0.* If a criterion
+- **Surgical-scope statement**: the smallest diff that satisfies the ask.
+- **Files owned** per task: the boundary each task may write, and nothing else.
+- **Acceptance criterion** per task: *one command that exits 0.* If a criterion
   is prose rather than a command, say so; that is the single most common way a
   plan gates nothing.
-- **Open questions** — anything it could not decide alone.
+- **Open questions**: anything it could not decide alone.
 
 Nothing executes until you say so. A human flipping the plan to `APPROVED` is
 one of the two things in Drydock that are mechanically absolute.
@@ -68,7 +68,7 @@ node <plugin>/scripts/drydock-audit.mjs wave-start docs/plans/00N-your-plan.md 1
 
 That derives the ownership boundary **from the plan** and arms the hook. From
 here, a write to a file no task in the wave owns is **denied at the tool
-boundary** — not warned about afterwards. Two ceilings, stated plainly:
+boundary**, not warned about afterwards. Two ceilings, stated plainly:
 `sed -i`, `>` redirects and other Bash writes do not pass through file-tool
 hooks and are not caught; and paths outside the project directory are not
 enforced. The post-hoc audit is the backstop for both.
@@ -76,7 +76,7 @@ enforced. The post-hoc audit is the backstop for both.
 ## 4. Let the gate run
 
 At the wave boundary, `drydock:wavecheck` audits what actually happened against
-what the plan said — per-task ownership from each commit's real diff, acceptance
+what the plan said: per-task ownership from each commit's real diff, acceptance
 criteria re-executed rather than taken on report, and the forbidden list checked
 against the hunks. It emits PASS or BLOCK and appends the report to the plan.
 
@@ -90,7 +90,7 @@ contract breaches, not quality misses.
 ```
 
 Reconcile turns what execution *learned* into proposed edits to your `CLAUDE.md`,
-ADRs and architecture notes — **proposed, never applied.** Failed assumptions
+ADRs and architecture notes. **Proposed, never applied.** Failed assumptions
 that trace to a claim in a doc are the highest-value output: the doc said X,
 reality was Y.
 
@@ -113,8 +113,8 @@ ran and the plugin your skills came from disagree.
 
 ## What this skipped
 
-The full lane — multiple phases, parallel `drydock:executor` subagents on
-disjoint files, a `Wave x.R` quality review, an adversarial pressure test — and
+The full lane: multiple phases, parallel `drydock:executor` subagents on
+disjoint files, a `Wave x.R` quality review, an adversarial pressure test. Also
 the **Testing Gate**, where `seatrial` drives written end-to-end cases through a
 real browser and emits a go/no-go sheet. Reach for those when the change is big
 enough to deserve them. [Plan 005](../docs/plans/005-small-lane-and-solo-mode.md)

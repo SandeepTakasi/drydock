@@ -303,7 +303,7 @@ cases.push(
   // a declaration.
   ["an evidence line refusing video is not a video declaration",
     () => validateRaw("tg-novideo", tgPlan(oneGoodCase("screenshot only (no video — the driver cannot capture it)")), true),
-    (out) => out.includes("no `video` evidence declared — good") && out.includes("validate-plan --strict: PASS")],
+    (out) => out.includes("no `video` evidence declared. Good:") && out.includes("validate-plan --strict: PASS")],
 
   // ...while a real declaration is still plan 004's NO-GO.
   ["a case actually declaring video is still rejected",
@@ -313,7 +313,7 @@ cases.push(
   // Prose about the driver's limits is not an evidence declaration either.
   ["prose mentioning video outside an evidence line is ignored",
     () => validateRaw("tg-prose", tgPlan(`**Browser:** Playwright MCP. Video capture is impossible here.\n${oneGoodCase("screenshot")}`), true),
-    (out) => out.includes("no `video` evidence declared — good")],
+    (out) => out.includes("no `video` evidence declared. Good:")],
 );
 
 // --------------------------------------------------------------------------
@@ -887,7 +887,7 @@ cases.push(
 
   ["every audit states which layer verified ownership",
     () => cli(enforcedRepo("layer", null), ["audit-wave", "plan.md", "1.0"]),
-    (out) => out.includes("independently of the hook — detection, not prevention")],
+    (out) => out.includes("independently of the hook. Detection, not prevention")],
 
   // --- a sealed wave, re-audited after `.drydock/` was cleaned --------------
   //
@@ -965,7 +965,7 @@ cases.push(
   // cause.
   ["a verdict states which copy of the audit produced it",
     () => cli(closedWave("stamp"), ["audit-wave", "plan.md", "1.0"]),
-    (out) => /drydock-audit\.mjs v\d+\.\d+\.\d+ — .*drydock-audit\.mjs/.test(out)],
+    (out) => /drydock-audit\.mjs v\d+\.\d+\.\d+ at .*drydock-audit\.mjs/.test(out)],
 
   ["a differently-versioned install is reported as drift", () => {
     const cfg = fakeConfig("drift", "0.7.0", "C:\\nowhere\\drydock\\0.7.0");

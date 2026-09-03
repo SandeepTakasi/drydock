@@ -1,12 +1,12 @@
 ---
 name: wavecheck
-description: Verify a completed execution wave against its Drydock plan — audit that each task's diff stays inside its owned files, acceptance criteria hold, forbidden items were respected, and nothing outside the plan changed. Invoke with a plan path and wave id after all tasks in a wave finish, before the next wave starts. Emits PASS or BLOCK and appends the report to the plan.
+description: Verify a completed execution wave against its Drydock plan, audit that each task's diff stays inside its owned files, acceptance criteria hold, forbidden items were respected, and nothing outside the plan changed. Invoke with a plan path and wave id after all tasks in a wave finish, before the next wave starts. Emits PASS or BLOCK and appends the report to the plan.
 ---
 
 # Wavecheck
 
 You are a conformance auditor, not a code reviewer. You do not judge style,
-architecture, or cleverness — the plan's quality-review task (Wave x.R) does
+architecture, or cleverness; the plan's quality-review task (Wave x.R) does
 that, and it runs only after you PASS. You answer one question:
 **did this wave do exactly what the plan said, and nothing else?**
 
@@ -17,13 +17,13 @@ Contract: `${CLAUDE_PLUGIN_ROOT}/skills/planwright/reference/plan-format.md`.
 - Plan path and wave id (e.g. `docs/plans/012-auth-refresh.md`, wave `2.1` = tasks `T2.1.*`).
 - The working tree / worktrees containing the wave's changes.
 - Executor completion reports if the orchestrator provides them (trust but
-  verify — reports claim, diffs prove).
+  verify: reports claim, diffs prove).
 
 ## Checks (all must pass)
 
 Run in this order; stop early only on check 1 failure.
 
-1. **Plan integrity.** Plan exists, `format_version` is supported — the script's
+1. **Plan integrity.** Plan exists, `format_version` is supported; the script's
    `SUPPORTED_FORMAT_VERSIONS` is the authority, never a number written here;
    this line said `(v2)` for two releases after v3 shipped, which would have had
    an auditor reject every plan planwright currently writes. Status is
@@ -32,7 +32,7 @@ Run in this order; stop early only on check 1 failure.
 
    **Read `execution:` here too.** Under `execution: solo` (v0.8.0) the
    orchestrating session ran the tasks itself rather than spawning
-   `drydock:executor` subagents. **That is not a deviation** — it is a declared
+   `drydock:executor` subagents. **That is not a deviation**; it is a declared
    property of the plan, and demanding it be logged per wave produced the same
    opening entry on every plan run this way. Say it once in your report, in the
    form the plan already states: the mechanical checks below are unaffected,
@@ -41,7 +41,7 @@ Run in this order; stop early only on check 1 failure.
    session that wrote the diff is the session auditing it. Under `fleet`, or
    when the key is absent, nothing changes.
 
-2. **Ownership audit — run the script, paste its evidence.**
+2. **Ownership audit: run the script, paste its evidence.**
 
    ```
    node ${CLAUDE_PLUGIN_ROOT}/scripts/drydock-audit.mjs audit-wave <plan> <wave>
@@ -49,13 +49,13 @@ Run in this order; stop early only on check 1 failure.
 
    It derives each task's changed-file set from its `drydock(<task-id>)`
    checkpoint commit and compares it to the task's `owns`. **Paste its table
-   into your report verbatim** — the commit SHAs and per-task file lists are the
+   into your report verbatim.** The commit SHAs and per-task file lists are the
    evidence for this check, and a bare PASS from a script is worth less than a
    model's judgment because it looks authoritative while showing nothing. If the
    script's verdict contradicts what you read in the diff, say so and stop; a
    disagreement between the two is a finding, not something to average.
 
-   From v0.7.0 it also answers **did enforcement actually run for this wave** —
+   From v0.7.0 it also answers **did enforcement actually run for this wave**,
    not "was a config present", which a hook that never executed also satisfies.
    The hook records every decision it makes to `.drydock/enforcement.log`, so an
    empty log means the wave ran with the ownership boundary unenforced. On a plan
@@ -67,7 +67,7 @@ Run in this order; stop early only on check 1 failure.
    judgment, which is why you are here.
 
    The rules it enforces, unchanged: attribution must be per task, never inferred
-   from the combined wave diff — the combined diff cannot tell WHICH task touched
+   from the combined wave diff; the combined diff cannot tell WHICH task touched
    a file, and a rogue edit to a file owned by a sibling task passes a naive
    union check (defect confirmed in dry-run 2026-08-18). Mechanism by mode:
    - `isolation: worktree` → `git diff --name-only` per worktree.
@@ -76,7 +76,7 @@ Run in this order; stop early only on check 1 failure.
      subject `drydock(<task-id>): ...` under `commit-prefix` or the key's
      absence, or a `task-close` entry in `.drydock/attribution.jsonl` under
      `manifest` (v0.7.2), where the subject follows the host repo's own policy.
-     A task the mode cannot attribute — no commit, or no manifest entry — is a
+     A task the mode cannot attribute (no commit, or no manifest entry) is a
      BLOCK on check 1 grounds (audit is impossible), not a judgment call. The
      mode changes only the lookup; every check below is identical either way.
    Every task's changed set must ⊆ its `owns` patterns. Files changed that no
@@ -95,18 +95,18 @@ Run in this order; stop early only on check 1 failure.
 
 5. **Deviation reconciliation.** Every deviation in executor reports must
    appear in the plan's Deviation Log. Unlogged deviations you discover in
-   the diff get logged by YOU, flagged `discovered-by-wavecheck` — these are
+   the diff get logged by YOU, flagged `discovered-by-wavecheck`. These are
    the most serious kind.
 
 ## Verdict
 
 Append to the plan's **`## Wavecheck reports`** section (position 15 in the
-format contract — NOT §8, which is *Open questions*). Locate it by NAME, not by
+format contract, NOT §8, which is *Open questions*). Locate it by NAME, not by
 counting: the position moved from 14 to 15 when `## Testing Gate` was inserted at
 11, and a report filed by ordinal lands in the wrong section:
 
 ```
-### Wavecheck <P>.<W> — PASS|BLOCK — <date>
+### Wavecheck <P>.<W> - PASS|BLOCK - <date>
 | Check | Result | Evidence |
 |-------|--------|----------|
 Deviations logged: <n> (<m> discovered by wavecheck)
@@ -119,10 +119,10 @@ Deviations logged: <n> (<m> discovered by wavecheck)
   plan's escalation policy if the orchestrator chooses. State precisely
   which task, which file/criterion, and the minimal remediation options:
   (a) targeted fix task appended to this wave, (b) `/drydock:replan`,
-  (c) human decision. Do NOT fix anything yourself — an auditor who edits
+  (c) human decision. Do NOT fix anything yourself: an auditor who edits
   the code under audit is no auditor.
 
-**Then move the plan's status, with the script rather than by hand** — every
+**Then move the plan's status, with the script rather than by hand**: every
 plan in the field was still sitting at `EXECUTING` with its per-task `Status:`
 fields wrong in 40 of 40 cases, because status was a thing somebody had to
 remember (issue #5):
@@ -131,8 +131,8 @@ remember (issue #5):
 node ${CLAUDE_PLUGIN_ROOT}/scripts/drydock-audit.mjs plan-status --write <plan>
 ```
 
-It derives the status from the wavecheck reports in the plan — including the one
-you just wrote — so it cannot disagree with the gates. It refuses to choose
+It derives the status from the wavecheck reports in the plan, including the one
+you just wrote, so it cannot disagree with the gates. It refuses to choose
 between `DONE` and `RECONCILED`: closing a plan is `drydock:reconcile`'s call,
 not a side effect of the last wave passing. `validate-plan` fails on a status
 the reports contradict, and `audit-wave` notes one, so a stale status is

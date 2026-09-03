@@ -1,6 +1,6 @@
 ---
 name: seatrial
-description: Execute a Drydock plan's Testing Gate — drive its written end-to-end cases against the running app through Playwright MCP, capture the declared evidence per case, generate re-runnable Playwright spec files, and emit a go/no-go verdict sheet fit for QA handoff. Invoke after the final wave passes wavecheck, or whenever the user asks to run the Testing Gate, run the E2E cases, or produce a go/no-go for a plan.
+description: Execute a Drydock plan's Testing Gate, drive its written end-to-end cases against the running app through Playwright MCP, capture the declared evidence per case, generate re-runnable Playwright spec files, and emit a go/no-go verdict sheet fit for QA handoff. Invoke after the final wave passes wavecheck, or whenever the user asks to run the Testing Gate, run the E2E cases, or produce a go/no-go for a plan.
 ---
 
 # Seatrial
@@ -11,7 +11,7 @@ it with cargo. That trial is what you run.
 You execute what is written. You do not decide what should have been written, you
 do not improve a case whose steps are awkward, and you do not find another way to
 reach the same screen. A step you cannot perform exactly as written is a failure
-with a reason — never a substitution. The value of this gate is that its cases
+with a reason, never a substitution. The value of this gate is that its cases
 were fixed before the code existed; a verifier that adapts them at run time hands
 back a result about the app it wished it were testing.
 
@@ -29,20 +29,20 @@ cannot drift apart about where a verdict lives.
 ## Inputs
 
 - A plan path. A subset of case ids may be passed as a **diagnostic** while
-  someone is iterating on a failure — and a subset run **writes no verdict sheet
+  someone is iterating on a failure, and a subset run **writes no verdict sheet
   at all**. A gate run is every case in the section or it is a HALT.
 
   There is no partial verdict, deliberately. The gate rule already holds that a
   case which cannot be run is neither a pass nor a skip; a suite that was only
   partly run is the same shape of thing, and inventing a fourth summary value for
-  it would leave `drydock:reconcile` — which branches on exactly missing, NO-GO,
-  GO-WITH-OVERRIDES and GO — with no rule, so a plan could be closed on a run
+  it would leave `drydock:reconcile`, which branches on exactly missing, NO-GO,
+  GO-WITH-OVERRIDES and GO, no rule at all, so a plan could be closed on a run
   that verified some of it. Overwriting a real sheet with a partial one is worse
   still, which is why nothing is written.
 - The running app. You do not start it, build it, migrate it, or seed it. If it
   is not up, that is a HALT, not a task.
 
-## Preflight — every failure here is a HALT, never a skip
+## Preflight: every failure here is a HALT, never a skip
 
 Run in order. On any failure, stop and ask. Do not proceed with the rest of the
 suite "to get partial signal": a gate that degrades under pressure is worth
@@ -51,12 +51,12 @@ exactly like a full one.
 
 1. **The gate exists.** The plan has a `## Testing Gate` section, its
    `format_version` is supported, and its status is `EXECUTING` or later. If the
-   section reads `N/A — <reason>`, there is nothing to run: say so and stop, with
+   section reads `N/A - <reason>`, there is nothing to run: say so and stop, with
    no sheet written. An absent section on a plan that touches a UI is a planning
-   defect — report it, do not invent cases.
+   defect: report it, and do not invent cases.
 2. **The gate is not stale.** `git diff <baseline SHA>..HEAD -- <paths the target
    is built from>`. Non-empty means the cases were written against a target that
-   has since moved. HALT and ask whether to re-validate the cases or replan —
+   has since moved. HALT and ask whether to re-validate the cases or replan,
    the same mechanism and the same refusal planwright prescribes per wave. Testing
    fixed cases against a moved target produces confident nonsense.
 3. **Playwright MCP is available.** Confirm the browser tools actually resolve.
@@ -75,42 +75,42 @@ exactly like a full one.
    and `Browser` header fields were written when the plan was written. They are
    claims about an environment that has had every opportunity to move since, and
    a mismatch here produces failures that describe your harness rather than the
-   software — the most expensive kind of red, because it looks like a defect.
+   software: the most expensive kind of red, because it looks like a defect.
    Resolve all three and reconcile each against what the plan says:
 
    - **Origin.** The repo's own dev configuration is the fact; the plan's port is
      the claim. Read it from the config (`package.json` scripts, a compose file,
      a framework config) rather than from the gate header. If the two disagree,
-     HALT and print both — do not silently prefer either. A plan naming a port
+     HALT and print both; do not silently prefer either. A plan naming a port
      the repo no longer uses is a stale gate, which is step 2's problem wearing
      different clothes.
-   - **Identity — a reachable URL is not evidence of the right app.** This is the
+   - **Identity: a reachable URL is not evidence of the right app.** This is the
      failure worth naming, because nothing else in this preflight can see it: a
      dev server left running from a **different checkout** answers on that port
      cheerfully, and every case then runs against software nobody is testing. The
      suite produces a full sheet, passes or fails on the wrong build, and says
      nothing is wrong. So assert one thing that must be true of *this* build
-     before the first case runs — the commit SHA if the app exposes it, otherwise
+     before the first case runs, the commit SHA if the app exposes it, otherwise
      a string the current source produces and the previous one does not. If you
      cannot establish it, HALT and say so. "It answered" is not identity.
    - **Driver.** What actually resolved in step 3 is the fact. If the gate's
      `Browser` field names something else, HALT: the run would produce a
      different kind of evidence than the plan promised, which is how a case ends
      up substituting a DOM transcript for the screenshot its `expected` clause
-     asked for — and a substituted artifact is not the declared evidence.
+     asked for, and a substituted artifact is not the declared evidence.
 
    Everything resolved here goes into the sheet's Environment row **with how it
    was resolved**. A base URL with no provenance is indistinguishable from a
    guess that happened to answer.
 5. **Every route the cases name exists.** Collect the routes the steps navigate
-   to and check them against the application's actual route table — or against
-   the running app — before any case executes. A route the application does not
+   to and check them against the application's actual route table, or against
+   the running app, before any case executes. A route the application does not
    have is a **plan defect and a HALT, never a FAIL**: reporting it as a failure
    blames the software for a slug the plan invented. Name the case and the route.
    This is the same rule the evidence-type contract already applies at plan time,
    moved to the moment the truth is knowable.
 6. **The evidence root is writable.** `.drydock/testing/<plan-id>/`. If it cannot
-   be created, HALT — a case whose evidence cannot be written is not a passing
+   be created, HALT: a case whose evidence cannot be written is not a passing
    case, because the declared evidence is part of the expected result.
 7. **Auth is settled.** If the gate's header declares an auth approach, perform
    it once before the first case. If it declares `none`, proceed. If it declares
@@ -118,7 +118,7 @@ exactly like a full one.
 
 ## Executing a case
 
-Cases run in declared order, and a failure does not stop the suite — every case
+Cases run in declared order, and a failure does not stop the suite; every case
 gets a verdict, because a sheet showing one failure and five unknowns cannot be
 triaged. Only a HALT condition stops a run.
 
@@ -134,9 +134,9 @@ For each case:
 3. **A step that cannot be performed as written is verdict FAIL with reason
    exactly `step not executable`.** Record which step, and what you looked for.
    Then judge, and say which you judged:
-   - **Looks like an app defect** — the element should exist and does not, the
+   - **Looks like an app defect**: the element should exist and does not, the
      flow is broken, a navigation 404s. Record the FAIL and continue.
-   - **Looks like a plan defect** — the step names a control, route or concept the
+   - **Looks like a plan defect**: the step names a control, route or concept the
      application has no notion of, or the case contradicts itself. Record the
      FAIL **and HALT and ask.** A gate quietly failing every case because the
      cases describe a different product is worse than no gate: it manufactures a
@@ -149,14 +149,14 @@ For each case:
 5. **Honour a declared inversion.** A case whose `expected` says it must fail is
    PASS-when-it-fails: if it passes, that is a failure of the gate, and the sheet
    must say so in those words rather than logging a quiet green.
-6. **Capture the declared evidence** — exactly the declared type, into
+6. **Capture the declared evidence**, exactly the declared type, into
    `.drydock/testing/<plan-id>/<case-id>/`:
-   - `screenshot` — at the moment the `Then` clause is evaluated, not at the end
+   - `screenshot`: at the moment the `Then` clause is evaluated, not at the end
      of the case.
-   - `video` — the whole case. If the driver produced no video, the case FAILs on
+   - `video`: the whole case. If the driver produced no video, the case FAILs on
      its evidence clause even when its assertions held. The declared evidence
      type is part of the case, not a preference.
-   - `network assertion` — the recorded request/response table the claim rests
+   - `network assertion`: the recorded request/response table the claim rests
      on, saved as a file. A screenshot is not evidence for a network claim.
    Evidence missing or written outside the declared path is a FAIL on the
    evidence clause. Say which.
@@ -176,11 +176,11 @@ suite can be re-run without an agent. Configure `video: 'retain-on-failure'`.
   CI-ready. An unrun test file is a hypothesis.
 - If the runner is present, run the generated specs once and record whether they
   agree with the live verdicts. Disagreement is a finding worth more than either
-  result alone — report it, do not average it.
+  result alone: report it, and do not average it.
 
 ## The verdict sheet
 
-Write `.drydock/testing/<plan-id>/verdict.md` — the path the format contract
+Write `.drydock/testing/<plan-id>/verdict.md`, the path the format contract
 freezes and `drydock:reconcile` reads. Write it only after every case in the
 section has a verdict; a diagnostic subset run writes nothing. Shape:
 
@@ -206,7 +206,7 @@ Apply the gate rule from the format contract exactly: any blocker FAIL is
 **NO-GO**; a major FAIL is **GO-WITH-OVERRIDES** only with a recorded override
 naming case, reason and decider, and **NO-GO** without one; a minor FAIL is
 recorded only; everything passing is **GO**. You never write an override
-yourself — a human decides it and you transcribe it.
+yourself; a human decides it and you transcribe it.
 
 The QA handoff note states what was covered **and what was not**: which flows,
 viewports, browsers, and pages were never touched. Understate coverage. The
@@ -222,7 +222,7 @@ reader is deciding whether to ship on the strength of this page.
   changing them at run time is the one thing that voids the gate. If a case is
   genuinely wrong, that is a HALT and a `/drydock:replan`, not an edit.
 - **Do not fix the app.** You are a verifier. A verifier who repairs the thing
-  under test destroys its own evidence — the same reason wavecheck may not fix
+  under test destroys its own evidence, the same reason wavecheck may not fix
   what it audits.
 - **No mechanical enforcement.** You do not install hooks and you do not block
   anyone's tooling. This gate is prose, like every other gate in Drydock: it
@@ -236,5 +236,5 @@ reader is deciding whether to ship on the strength of this page.
 One browser session for the whole suite unless a case's preconditions require a
 fresh one. Do not re-navigate between assertions on the same page. Do not
 screenshot steps whose evidence type is not `screenshot`. Do not read source
-files to "understand" a case — the case is the specification, and the app's
+files to "understand" a case: the case is the specification, and the app's
 behaviour is the only other input you need.

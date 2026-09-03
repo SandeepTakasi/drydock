@@ -75,7 +75,7 @@ const installedVersion = () => {
 // the same version as the install is not drift, it is a developer up to date.
 function provenance() {
   const mine = selfVersion();
-  const lines = [`drydock-audit.mjs v${mine} — ${SELF}`];
+  const lines = [`drydock-audit.mjs v${mine} at ${SELF}`];
   const inst = installedVersion();
   if (inst && inst.version !== mine && !SELF.startsWith(inst.installPath)) {
     lines.push(
@@ -327,12 +327,12 @@ function validatePlan(path, strict) {
   // documented verification steps. A file that HAS frontmatter but no `plan:`
   // key is a different thing — a malformed plan — and stays an error.
   if (!plan.hasFrontmatter) {
-    console.log(`validate-plan: SKIP — ${path} (no frontmatter; not a plan file)`);
+    console.log(`validate-plan: SKIP, ${path} (no frontmatter; not a plan file)`);
     return;
   }
 
   const fv = Number(plan.frontmatter.format_version);
-  if (!plan.frontmatter.plan) errors.push("frontmatter: no `plan:` key — is this a Drydock plan?");
+  if (!plan.frontmatter.plan) errors.push("frontmatter: no `plan:` key, is this a Drydock plan?");
   if (!SUPPORTED_FORMAT_VERSIONS.includes(fv)) {
     errors.push(`frontmatter: format_version ${plan.frontmatter.format_version ?? "(absent)"} unsupported (supported: ${SUPPORTED_FORMAT_VERSIONS.join(", ")})`);
   }
@@ -354,7 +354,7 @@ function validatePlan(path, strict) {
     if (!ATTRIBUTION_MODES.includes(attribution)) {
       errors.push(`frontmatter: attribution ${JSON.stringify(attribution)} unknown (expected: ${ATTRIBUTION_MODES.join(" | ")})`);
     } else if (attribution === "manifest" && fv < 3) {
-      errors.push(`frontmatter: attribution: manifest needs format_version 3 or later — the key did not exist at v${fv}, so an older reader ignores it and silently audits by commit subject instead`);
+      errors.push(`frontmatter: attribution: manifest needs format_version 3 or later, the key did not exist at v${fv}, so an older reader ignores it and silently audits by commit subject instead`);
     }
   }
 
@@ -367,7 +367,7 @@ function validatePlan(path, strict) {
     if (!LANES.includes(lane)) {
       errors.push(`frontmatter: lane ${JSON.stringify(lane)} unknown (expected: ${LANES.join(" | ")})`);
     } else if (lane === "small" && fv < 3) {
-      errors.push(`frontmatter: lane: small needs format_version 3 or later — the key did not exist at v${fv}`);
+      errors.push(`frontmatter: lane: small needs format_version 3 or later, the key did not exist at v${fv}`);
     }
   }
   const execution = plan.frontmatter.execution;
@@ -375,7 +375,7 @@ function validatePlan(path, strict) {
     if (!EXECUTION_MODES.includes(execution)) {
       errors.push(`frontmatter: execution ${JSON.stringify(execution)} unknown (expected: ${EXECUTION_MODES.join(" | ")})`);
     } else if (execution === "solo" && fv < 3) {
-      errors.push(`frontmatter: execution: solo needs format_version 3 or later — the key did not exist at v${fv}`);
+      errors.push(`frontmatter: execution: solo needs format_version 3 or later, the key did not exist at v${fv}`);
     }
   }
 
@@ -385,31 +385,31 @@ function validatePlan(path, strict) {
   if (lane === "small") {
     const state = derivePlanState(plan);
     if (state.waves.length > 1) {
-      errors.push(`lane: small declares ${state.waves.length} implementation waves (${state.waves.join(", ")}) — the small lane is one wave and one gate. Use lane: full, or merge the waves.`);
+      errors.push(`lane: small declares ${state.waves.length} implementation waves (${state.waves.join(", ")}), the small lane is one wave and one gate. Use lane: full, or merge the waves.`);
     }
     const reviewWaves = plan.lines.filter((l) => /^### Wave \d+\.R\b/.test(l)).length;
-    if (reviewWaves > 0) errors.push(`lane: small declares ${reviewWaves} \`Wave x.R\` quality-review wave(s) — the small lane has no separate quality review. Use lane: full.`);
+    if (reviewWaves > 0) errors.push(`lane: small declares ${reviewWaves} \`Wave x.R\` quality-review wave(s), the small lane has no separate quality review. Use lane: full.`);
   }
 
   // --- task ids are never reused, superseded ones included ------------------
   const seen = new Map();
   for (const t of plan.tasks) {
-    if (seen.has(t.id)) errors.push(`task ${t.id}: id declared twice — ids are never reused, a replacement takes a suffix (e.g. ${t.id}r1)`);
+    if (seen.has(t.id)) errors.push(`task ${t.id}: id declared twice, ids are never reused, a replacement takes a suffix (e.g. ${t.id}r1)`);
     seen.set(t.id, t);
   }
 
   // --- required fields ------------------------------------------------------
   for (const t of plan.tasks) {
     if (t.superseded) continue;
-    if (!t.fields.has("files owned")) errors.push(`task ${t.id}: no **Files owned:** — ownership is not optional`);
-    if (!t.fields.has("acceptance criterion")) errors.push(`task ${t.id}: no **Acceptance criterion:** — a task without a runnable criterion gates nothing`);
+    if (!t.fields.has("files owned")) errors.push(`task ${t.id}: no **Files owned:**, ownership is not optional`);
+    if (!t.fields.has("acceptance criterion")) errors.push(`task ${t.id}: no **Acceptance criterion:**, a task without a runnable criterion gates nothing`);
     if (strict && !t.fields.has("context brief")) errors.push(`task ${t.id}: no **Context brief:** (strict)`);
     // The loose read of the same block found paths the strict read did not, so a
     // wrapped or nested shape is being dropped and the enforced boundary is
     // narrower than the plan says. Issue #8 shipped exactly this, silently.
     if (strict && t.fields.has("files owned")) {
       const seen = backticked(t.ownsSpan.join(" ")).length;
-      if (seen !== t.owns.length) errors.push(`task ${t.id}: **Files owned:** block holds ${seen} backticked path(s) but ${t.owns.length} parsed — the ownership boundary would be ${seen - t.owns.length} file(s) too narrow (strict)`);
+      if (seen !== t.owns.length) errors.push(`task ${t.id}: **Files owned:** block holds ${seen} backticked path(s) but ${t.owns.length} parsed, the ownership boundary would be ${seen - t.owns.length} file(s) too narrow (strict)`);
     }
   }
 
@@ -440,8 +440,8 @@ function validatePlan(path, strict) {
         if (!globsOverlap(a.glob, b.glob)) continue;
         errors.push(
           a.glob === b.glob
-            ? `wave ${wave}: \`${a.glob}\` is owned by both ${a.id} and ${b.id} — same-wave ownership must be disjoint`
-            : `wave ${wave}: \`${a.glob}\` (${a.id}) and \`${b.glob}\` (${b.id}) describe overlapping file sets — same-wave ownership must be disjoint, and the wave's armed boundary is their union, so the hook would permit both`
+            ? `wave ${wave}: \`${a.glob}\` is owned by both ${a.id} and ${b.id}, same-wave ownership must be disjoint`
+            : `wave ${wave}: \`${a.glob}\` (${a.id}) and \`${b.glob}\` (${b.id}) describe overlapping file sets, same-wave ownership must be disjoint, and the wave's armed boundary is their union, so the hook would permit both`
         );
       }
     }
@@ -482,8 +482,8 @@ function validatePlan(path, strict) {
         if (same && execution === "solo") continue;
         errors.push(
           same
-            ? `task ${t.id}: depends on ${dep} in the SAME wave ${waveOf(t)} — same-wave tasks run in parallel, so this dependency cannot hold. Split the wave.`
-            : `task ${t.id}: depends on ${dep} in wave ${waveOf(seen.get(dep) ?? dep) ?? "—"}, which is not earlier than its own wave ${waveOf(t) ?? "—"}`
+            ? `task ${t.id}: depends on ${dep} in the SAME wave ${waveOf(t)}, same-wave tasks run in parallel, so this dependency cannot hold. Split the wave.`
+            : `task ${t.id}: depends on ${dep} in wave ${waveOf(seen.get(dep) ?? dep) ?? ", "}, which is not earlier than its own wave ${waveOf(t) ?? ", "}`
         );
       }
     }
@@ -504,7 +504,7 @@ function validatePlan(path, strict) {
       // The section-order loop above already reported it; saying it twice makes
       // a two-defect plan look like a four-defect one.
     } else if (/^\s*N\/A/i.test(gate)) {
-      if (!/^\s*N\/A\s*[—-]\s*\S/i.test(gate)) errors.push("Testing Gate: `N/A` with no reason — the reason is required");
+      if (!/^\s*N\/A\s*[—-]\s*\S/i.test(gate)) errors.push("Testing Gate: `N/A` with no reason, the reason is required");
     } else {
       const caseIds = [...new Set([...gate.matchAll(/\bTG\d+\b/g)].map((m) => m[0]))];
       if (caseIds.length === 0) errors.push("Testing Gate: not N/A but declares no `TG<n>` cases");
@@ -522,14 +522,14 @@ function validatePlan(path, strict) {
       const blocks = caseBlocks(gate);
       if (caseIds.length > 0 && blocks.length === 0) {
         errors.push(
-          `Testing Gate: names ${caseIds.length} \`TG<n>\` id(s) but carries no per-case block — a case listed only in the summary table declares none of its seven fields`
+          `Testing Gate: names ${caseIds.length} \`TG<n>\` id(s) but carries no per-case block, a case listed only in the summary table declares none of its seven fields`
         );
       }
       for (const { id, body } of blocks) {
         const missing = TESTING_GATE_FIELDS.filter((f) => !new RegExp(`\\b${f}\\b`, "i").test(body));
         if (missing.length > 0) {
           errors.push(
-            `Testing Gate: case ${id} declares no ${missing.map((f) => `\`${f}\``).join(", ")} — all seven fields are required (\`id\` and \`title\` come from the case heading; these are the other five)`
+            `Testing Gate: case ${id} declares no ${missing.map((f) => `\`${f}\``).join(", ")}, all seven fields are required (\`id\` and \`title\` come from the case heading; these are the other five)`
           );
         }
       }
@@ -549,8 +549,8 @@ function validatePlan(path, strict) {
         .split(/\r?\n/)
         .filter((l) => /evidence/i.test(l) && /\bvideo\b/i.test(l))
         .filter((l) => !NEGATED_VIDEO.test(l));
-      if (videoDeclared.length === 0) notes.push("Testing Gate: no `video` evidence declared — good; the Playwright MCP driver cannot capture it (A5)");
-      else errors.push(`Testing Gate: declares \`video\` evidence, which the supported driver cannot capture at all — that case fails its evidence clause on every possible run (plan 004's only NO-GO). Line: ${videoDeclared[0].trim()}`);
+      if (videoDeclared.length === 0) notes.push("Testing Gate: no `video` evidence declared. Good: the Playwright MCP driver cannot capture it (A5)");
+      else errors.push(`Testing Gate: declares \`video\` evidence, which the supported driver cannot capture at all, that case fails its evidence clause on every possible run (plan 004's only NO-GO). Line: ${videoDeclared[0].trim()}`);
 
       // Same shape as the `video` rule, one field over: a gate naming a driver
       // seatrial will not use produces evidence of a different kind than the
@@ -561,7 +561,7 @@ function validatePlan(path, strict) {
       // does not trip it. Issue #7.
       const rival = gate.match(/\b(selenium|cypress|puppeteer|webdriver|testcafe|nightwatch)\b/i);
       if (rival && !/\bplaywright\b/i.test(gate)) {
-        errors.push(`Testing Gate: names \`${rival[1]}\` as the driver, but seatrial drives Playwright MCP and refuses to fall back — the run would produce a different kind of evidence than the gate promises`);
+        errors.push(`Testing Gate: names \`${rival[1]}\` as the driver, but seatrial drives Playwright MCP and refuses to fall back, the run would produce a different kind of evidence than the gate promises`);
       }
     }
   }
@@ -598,10 +598,12 @@ function sectionBody(plan, name) {
 // that a gate was skipped at its boundary. Status is what it answers; gate
 // compliance is not.
 const WAVE_RE = /^### Wave (\d+)\.(\d+|R)\b/;
-// `### Wavecheck 2.1 (re-audit after Decision 12) — PASS — 2026-08-20`.
+// `### Wavecheck 2.1 (re-audit after Decision 12) - PASS - 2026-08-20`.
+// Either dash: wavecheck wrote an em dash before 0.8.15 and a hyphen after,
+// and the five plans already in this repo carry the old form.
 // The parenthetical is free text and re-audits are ordinary headings, so the
 // LAST verdict for a wave is the one that stands.
-const WAVECHECK_RE = /^### Wavecheck (\d+)\.(\d+)\b[^—]*—\s*([A-Z]+)/;
+const WAVECHECK_RE = /^### Wavecheck (\d+)\.(\d+)\b.*?[—-]\s*([A-Z]+)/;
 
 // A phase gate spans its `**Phase gate:` line AND the wrapped lines under it.
 // This is not fussiness: plan 005 declared "plus human sign-off" three lines
@@ -688,7 +690,7 @@ function derivePlanState(plan) {
   } else {
     expected = ["DRAFT", "APPROVED", "EXECUTING", "BLOCKED", "DONE", "RECONCILED"];
     writable = null;
-    reason = "no wavecheck reports — the plan has not been gated, so its status is unconstrained";
+    reason = "no wavecheck reports, the plan has not been gated, so its status is unconstrained";
   }
 
   return { waves, verdicts, reported, blocked, started, complete, expected, writable, reason };
@@ -702,7 +704,7 @@ function statusContradiction(plan) {
   const status = plan.frontmatter.status;
   if (!status || state.expected.includes(status)) return null;
   return (
-    `frontmatter says \`status: ${status}\`, but ${state.reason} — ` +
+    `frontmatter says \`status: ${status}\`, but ${state.reason}, ` +
     `the wavecheck reports are the only state a gate writes, so they win. Expected ${state.expected.join(" or ")}.`
   );
 }
@@ -712,20 +714,20 @@ function planStatus(path, write) {
   const state = derivePlanState(plan);
   const status = plan.frontmatter.status ?? "(absent)";
 
-  console.log(`\n### plan-status — ${path}\n`);
+  console.log(`\n### plan-status, ${path}\n`);
   console.log("| Wave | Last verdict |");
   console.log("|------|--------------|");
-  for (const w of state.waves) console.log(`| ${w} | ${state.verdicts.get(w) ?? "— none —"} |`);
+  for (const w of state.waves) console.log(`| ${w} | ${state.verdicts.get(w) ?? ", none, "} |`);
   console.log(`\nfrontmatter: ${status}`);
   console.log(`derived:     ${state.expected.join(" or ")}  (${state.reason})`);
 
   const bad = statusContradiction(plan);
   if (!bad) {
-    console.log(`\nplan-status: PASS — ${path} (status agrees with ${state.reported.length} wavecheck report(s))`);
+    console.log(`\nplan-status: PASS, ${path} (status agrees with ${state.reported.length} wavecheck report(s))`);
     return;
   }
   if (!write) {
-    console.error(`\nplan-status: FAIL — ${path}`);
+    console.error(`\nplan-status: FAIL, ${path}`);
     console.error(`  - ${bad}`);
     process.exit(1);
   }
@@ -734,7 +736,7 @@ function planStatus(path, write) {
   // the tool has no opinion and says so rather than picking one — an automatic
   // DONE would quietly overwrite a RECONCILED that reconcile earned.
   if (!state.writable) {
-    console.error(`\nplan-status: FAIL — ${path}`);
+    console.error(`\nplan-status: FAIL, ${path}`);
     console.error(`  - ${bad}`);
     console.error(`  --write cannot resolve this: ${state.expected.join(" or ")} are both consistent with the reports. Set it by hand.`);
     process.exit(1);
@@ -747,11 +749,11 @@ function planStatus(path, write) {
   // first one in the file — and nothing further down.
   const updated = plan.text.replace(/^status:[^\r\n]*/m, `status: ${next}`);
   if (updated === plan.text) {
-    console.error(`\nplan-status: FAIL — ${path}\n  - no \`status:\` line to update`);
+    console.error(`\nplan-status: FAIL, ${path}\n  - no \`status:\` line to update`);
     process.exit(1);
   }
   writeFileSync(path, updated);
-  console.log(`\nplan-status: WROTE — ${path} (${status} -> ${next})`);
+  console.log(`\nplan-status: WROTE, ${path} (${status} -> ${next})`);
 }
 
 // ------------------------------------------------------------ wave-start ---
@@ -862,7 +864,7 @@ function sealedRecord(plan, wave) {
     .match(/enforcement active:\s*(\d+)\s*hook decision\(s\) recorded for wave [\d.]+\s*\((\d+) denied\)/);
 
   if (commits.size === 0 && !enforcement) return null;
-  const verdict = plan.lines[start].match(/—\s*([A-Z]+)/)?.[1] ?? "?";
+  const verdict = plan.lines[start].match(/[—-]\s*([A-Z]+)/)?.[1] ?? "?";
   return {
     commits,
     verdict,
@@ -878,7 +880,7 @@ function auditWave(path, wave) {
   const sealed = sealedRecord(plan, wave);
 
   if (plan.frontmatter.isolation === "worktree") {
-    notes.push("plan declares `isolation: worktree` — attribution there comes from per-worktree `git diff --name-only`; this subcommand audits default-mode per-task commits only");
+    notes.push("plan declares `isolation: worktree`, attribution there comes from per-worktree `git diff --name-only`; this subcommand audits default-mode per-task commits only");
   }
 
   const tasks = plan.tasks.filter((t) => !t.superseded && waveOf(t) === wave);
@@ -917,7 +919,7 @@ function auditWave(path, wave) {
       // unattributed when git still holds every commit they name.
       notes.push(
         `\`${manifestPath}\` holds no entries, but wavecheck ${wave} is sealed in this plan (${sealed.verdict}) ` +
-          `with ${sealed.commits.size} task->commit row(s) — ATTRIBUTION RECOVERED FROM THE SEALED REPORT. ` +
+          `with ${sealed.commits.size} task->commit row(s), ATTRIBUTION RECOVERED FROM THE SEALED REPORT. ` +
           `Every file set below is still re-derived with \`git show\` and re-compared against the plan's \`owns\`, ` +
           `so this verdict is as strong as the original; the report supplied the lookup, not the evidence. ` +
           `Ceiling: the report is hand-editable where the manifest is tool-written, and a table naming the wrong ` +
@@ -927,7 +929,7 @@ function auditWave(path, wave) {
       commitsFor = (id) => (sealed.commits.has(id) ? [sealed.commits.get(id)] : []);
     } else {
       if (entries.length === 0) {
-        notes.push(`plan declares \`attribution: manifest\` and ${manifestPath} holds no entries for this plan — every task below will read as unattributed`);
+        notes.push(`plan declares \`attribution: manifest\` and ${manifestPath} holds no entries for this plan, every task below will read as unattributed`);
       }
       commitsFor = (id) => entries.filter((e) => e.task === id).map((e) => e.sha);
     }
@@ -942,7 +944,7 @@ function auditWave(path, wave) {
     const baseline = plan.text.match(/\*\*Baseline SHA:\*\*\s*`([0-9a-f]{7,40})`/)?.[1];
     const range = baseline ? [`${baseline}..HEAD`] : ["-n", "2000"];
     if (!baseline) {
-      notes.push("plan records no `**Baseline SHA:**` — searching the whole history, so a task id reused by another plan can match here");
+      notes.push("plan records no `**Baseline SHA:**`, searching the whole history, so a task id reused by another plan can match here");
     }
 
     const log = git(["log", "--format=%H%x1f%s", ...range]).split(/\r?\n/).filter(Boolean);
@@ -968,23 +970,23 @@ function auditWave(path, wave) {
     if (shas.length === 0) {
       errors.push(
         mode === "manifest"
-          ? `task ${task.id}: no entry in \`.drydock/attribution.jsonl\` — attribution is impossible, which BLOCKs the wave rather than being a judgment call. The executor runs \`drydock-audit.mjs task-close <plan> ${task.id}\` immediately after its checkpoint commit.`
-          : `task ${task.id}: no \`drydock(${task.id}): …\` checkpoint commit — attribution is impossible, which BLOCKs the wave rather than being a judgment call`
+          ? `task ${task.id}: no entry in \`.drydock/attribution.jsonl\`, attribution is impossible, which BLOCKs the wave rather than being a judgment call. The executor runs \`drydock-audit.mjs task-close <plan> ${task.id}\` immediately after its checkpoint commit.`
+          : `task ${task.id}: no \`drydock(${task.id}): …\` checkpoint commit, attribution is impossible, which BLOCKs the wave rather than being a judgment call`
       );
-      rows.push({ id: task.id, sha: "—", files: [], owns: task.owns, strays: [] });
+      rows.push({ id: task.id, sha: ", ", files: [], owns: task.owns, strays: [] });
       continue;
     }
     if (shas.length > 1) {
       errors.push(
         mode === "manifest"
-          ? `task ${task.id}: ${shas.length} manifest entries claim it (${shas.map((s) => s.slice(0, 7)).join(", ")}) — ambiguous attribution is what per-task attribution exists to prevent`
-          : `task ${task.id}: ${shas.length} commits share its subject (${shas.map((s) => s.slice(0, 7)).join(", ")}) — ambiguous attribution is what per-task commits exist to prevent`
+          ? `task ${task.id}: ${shas.length} manifest entries claim it (${shas.map((s) => s.slice(0, 7)).join(", ")}), ambiguous attribution is what per-task attribution exists to prevent`
+          : `task ${task.id}: ${shas.length} commits share its subject (${shas.map((s) => s.slice(0, 7)).join(", ")}), ambiguous attribution is what per-task commits exist to prevent`
       );
     }
 
     for (const sha of shas) {
       if (!reachable(sha)) {
-        errors.push(`task ${task.id}: ${lookupSource} names \`${sha}\`, which is not a commit in this repository — history moved under the recorded attribution (amend, rebase or drop) and it no longer describes anything`);
+        errors.push(`task ${task.id}: ${lookupSource} names \`${sha}\`, which is not a commit in this repository, history moved under the recorded attribution (amend, rebase or drop) and it no longer describes anything`);
         rows.push({ id: task.id, sha: `${sha.slice(0, 7)} (gone)`, files: [], owns: task.owns, strays: [] });
         continue;
       }
@@ -992,7 +994,7 @@ function auditWave(path, wave) {
       const strays = files.filter((f) => !task.owns.some((glob) => matchesGlob(f, glob) || f === glob));
       for (const f of files) {
         if (claimed.has(f) && claimed.get(f) !== task.id) {
-          errors.push(`file \`${f}\` is touched by both ${claimed.get(f)} and ${task.id} in wave ${wave} — that is a plan defect, not just a conflict`);
+          errors.push(`file \`${f}\` is touched by both ${claimed.get(f)} and ${task.id} in wave ${wave}, that is a plan defect, not just a conflict`);
         }
         claimed.set(f, task.id);
       }
@@ -1041,8 +1043,8 @@ function auditWave(path, wave) {
       // "audited within one session only".
       notes.push(
         `\`${logPath}\` holds no entries for wave ${wave}, but this plan's sealed wavecheck ${wave} report ` +
-          `records ${sealed.decisions} hook decision(s), ${sealed.denied} denied. The live receipt is gone — ` +
-          `\`.drydock/\` is gitignored, so it does not survive a clean — and it CANNOT be reconstructed. ` +
+          `records ${sealed.decisions} hook decision(s), ${sealed.denied} denied. The live receipt is gone, ` +
+          `\`.drydock/\` is gitignored, so it does not survive a clean, and it CANNOT be reconstructed. ` +
           `What stands is a RECORD that enforcement ran, not a RECEIPT of it: the hook wrote the log, a human ` +
           `wrote the report. Treat this wave as enforced-on-record, and re-run the gate before the artifacts ` +
           `are cleaned if you need the stronger claim.`
@@ -1063,11 +1065,11 @@ function auditWave(path, wave) {
       const cause = !logExists
         ? `no \`${logPath}\` exists at all, so the hook never ran here: \`wave-start\` was never invoked, the host does not register PreToolUse hooks, or Node is older than 22 (the hook exits 0 with a message rather than wedging every edit)`
         : otherWaves > 0
-          ? `the log holds ${otherWaves} decision(s) for OTHER waves, so the hook is alive and registered — this wave's writes simply never reached it, which is what happens when they go through Bash (\`sed -i\`, a heredoc, \`>\`), since a PreToolUse file-tool hook cannot see those`
-          : `the log exists but is empty — armed at some point, invoked never`;
+          ? `the log holds ${otherWaves} decision(s) for OTHER waves, so the hook is alive and registered, this wave's writes simply never reached it, which is what happens when they go through Bash (\`sed -i\`, a heredoc, \`>\`), since a PreToolUse file-tool hook cannot see those`
+          : `the log exists but is empty, armed at some point, invoked never`;
       errors.push(
         `plan declares \`enforcement: required\` but ${logPath} holds no entries for wave ${wave}: ${cause}. ` +
-          `Prevention did not run for this wave. Detection did — check 2 above audited every task commit against its \`owns\` regardless — so read this as an unmet claim, not as an unaudited wave.`
+          `Prevention did not run for this wave. Detection did, check 2 above audited every task commit against its \`owns\` regardless, so read this as an unmet claim, not as an unaudited wave.`
       );
     } else {
       // The armed boundary must be the plan's boundary. Catches a config left
@@ -1093,7 +1095,7 @@ function auditWave(path, wave) {
   // already reading. A note, not an error: this subcommand audits a wave, and
   // failing it over a frontmatter word would conflate two different verdicts.
   const staleStatus = statusContradiction(plan);
-  if (staleStatus) notes.push(`plan status is stale — ${staleStatus} Fix with \`plan-status --write\`, or by hand.`);
+  if (staleStatus) notes.push(`plan status is stale, ${staleStatus} Fix with \`plan-status --write\`, or by hand.`);
 
   // What a PASS from this subcommand does and does not mean. Two layers exist
   // and they answer different questions: the hook PREVENTS a write at the tool
@@ -1101,28 +1103,28 @@ function auditWave(path, wave) {
   // commit or the working tree, and sees everything either of those carries.
   // Issue #3 read the pair as "enforcement can only BLOCK on its own absence" —
   // it cannot, because this check never consults the hook at all.
-  const attributed = new Set(rows.filter((r) => r.sha !== "—").map((r) => r.sha)).size;
+  const attributed = new Set(rows.filter((r) => r.sha !== ", ").map((r) => r.sha)).size;
   notes.push(
-    `ownership verified by this audit from ${attributed} commit(s), independently of the hook — detection, not prevention: a Bash-mediated write to an unowned file is caught when it lands, not when it happens`
+    `ownership verified by this audit from ${attributed} commit(s), independently of the hook. Detection, not prevention: a Bash-mediated write to an unowned file is caught when it lands, not when it happens`
   );
 
   const dirty = git(["status", "--porcelain"]);
   const head = git(["rev-parse", "HEAD"]);
-  const live = rows.some((r) => r.sha !== "—" && head.startsWith(r.sha));
+  const live = rows.some((r) => r.sha !== ", " && head.startsWith(r.sha));
   if (dirty) {
     const detail = `${dirty.split(/\r?\n/).length} uncommitted change(s): ${dirty.split(/\r?\n/).map((l) => l.replace(/^..\s+/, "")).join(", ")}`;
-    if (live) errors.push(`working tree is not clean after the wave's task commits — ${detail}`);
-    else notes.push(`working tree is dirty, but HEAD has moved past this wave — not attributed to it (${detail})`);
+    if (live) errors.push(`working tree is not clean after the wave's task commits, ${detail}`);
+    else notes.push(`working tree is dirty, but HEAD has moved past this wave, not attributed to it (${detail})`);
   }
 
   // Evidence, always, verdict or not. Never a bare PASS.
-  console.log(`\n### audit-wave ${wave} — ${path}\n`);
+  console.log(`\n### audit-wave ${wave}, ${path}\n`);
   console.log("| Task | Commit | Files changed | Owns | Outside owns |");
   console.log("|------|--------|---------------|------|--------------|");
   for (const r of rows) {
     console.log(
-      `| ${r.id} | \`${r.sha}\` | ${r.files.map((f) => `\`${f}\``).join("<br>") || "—"} | ` +
-        `${r.owns.map((o) => `\`${o}\``).join("<br>") || "—"} | ${r.strays.map((f) => `\`${f}\``).join("<br>") || "none"} |`
+      `| ${r.id} | \`${r.sha}\` | ${r.files.map((f) => `\`${f}\``).join("<br>") || ", "} | ` +
+        `${r.owns.map((o) => `\`${o}\``).join("<br>") || ", "} | ${r.strays.map((f) => `\`${f}\``).join("<br>") || "none"} |`
     );
   }
   console.log(`\nWorking tree: ${dirty ? "DIRTY" : "clean"}`);
@@ -1152,7 +1154,7 @@ function taskClose(planPath, taskId) {
     process.exit(1);
   }
   if (task.superseded) {
-    console.error(`task-close: ${taskId} is superseded — its files belong to its replacement, and recording it would attribute work twice`);
+    console.error(`task-close: ${taskId} is superseded, its files belong to its replacement, and recording it would attribute work twice`);
     process.exit(1);
   }
 
@@ -1182,7 +1184,7 @@ function taskClose(planPath, taskId) {
   console.log(`task-close: ${task.id} -> ${sha.slice(0, 7)} (${files.length} file(s))`);
   for (const f of files) console.log(`  ${f}`);
   if (strays.length > 0) {
-    console.error(`\ntask-close: WARNING — ${strays.length} file(s) outside this task's \`owns\`:`);
+    console.error(`\ntask-close: WARNING, ${strays.length} file(s) outside this task's \`owns\`:`);
     for (const f of strays) console.error(`  ${f}`);
     console.error(`audit-wave will BLOCK the wave on these. Fix the commit now, before the wave closes.`);
   }
@@ -1231,12 +1233,12 @@ function resolvePlansDir(preferred) {
   // The fixed sentence. Planwright quotes this verbatim into the plan instead of
   // writing its own justification — that improvisation is the actual defect.
   const sentence = ignored
-    ? `**Plan location:** \`${dir}/\` — \`${want}/\` is gitignored in this repo, so this plan is NOT committed. It lives with the other execution artifacts under \`.drydock/\`, and \`git clean -xdf\` will remove it.`
-    : `**Plan location:** \`${dir}/\` — committed with the repo.`;
+    ? `**Plan location:** \`${dir}/\`, \`${want}/\` is gitignored in this repo, so this plan is NOT committed. It lives with the other execution artifacts under \`.drydock/\`, and \`git clean -xdf\` will remove it.`
+    : `**Plan location:** \`${dir}/\`, committed with the repo.`;
 
   console.log(`resolve-plans-dir: ${dir}`);
   console.log(`  preferred:   ${want}`);
-  console.log(`  gitignored:  ${ignored ? "yes — falling back" : "no"}`);
+  console.log(`  gitignored:  ${ignored ? "yes, falling back" : "no"}`);
   console.log(`  committable: ${ignored ? "no" : "yes"}`);
   console.log(`\n${sentence}`);
 }
@@ -1251,11 +1253,11 @@ function report(what, path, errors, notes, summary) {
   // reconstructable only from whoever remembers what they had installed.
   for (const line of provenance()) console.log(`  ${line}`);
   if (errors.length > 0) {
-    console.error(`\n${what}: FAIL (${errors.length}) — ${path}`);
+    console.error(`\n${what}: FAIL (${errors.length}), ${path}`);
     for (const e of errors) console.error(`  - ${e}`);
     process.exit(1);
   }
-  console.log(`\n${what}: PASS — ${path} (${summary()})`);
+  console.log(`\n${what}: PASS, ${path} (${summary()})`);
 }
 
 // ------------------------------------------------------------------ main ----
