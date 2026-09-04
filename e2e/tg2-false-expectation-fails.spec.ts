@@ -7,7 +7,9 @@ test.use({ video: 'retain-on-failure' });
 // TG2 (blocker) — DESIGNED TO FAIL. The expectation below is false against a
 // string pinned by site/scripts/assert-copy.mjs, so it cannot silently become
 // true. A green result WITHOUT test.fail() would be a gate defect.
-// Live run: actual 'open pilot -- field benchmarks pending'. FAIL, as designed.
+// Live run: actual 'open pilot, field benchmarks pending' (the separator changed
+// from -- to a comma in v0.8.15; the case is unaffected, since the expectation
+// is false either way). FAIL, as designed.
 test.fail();
 test('TG2 — the status pill reads CLOSED PILOT (it does not)', async ({ page }) => {
   await page.goto(TARGET);

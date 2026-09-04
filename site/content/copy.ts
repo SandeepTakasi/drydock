@@ -93,10 +93,10 @@ const REPO = "https://github.com/SandeepTakasi/drydock";
 const BLOB = `${REPO}/blob/main`;
 
 export const site = {
-  title: "Drydock -- plan-first parallel execution for Claude Code",
+  title: "Drydock: plan-first parallel execution for Claude Code",
   description:
-    "Plan-first execution for Claude Code: a rigorous plan document as the source of truth, subagents executing it in parallel waves with disjoint file ownership -- or one session executing it in sequence and saying so -- a conformance audit gating every wave, and a reconcile loop that feeds execution learnings back into your docs.",
-  status: "open pilot -- field benchmarks pending",
+    "Plan-first execution for Claude Code: a rigorous plan document as the source of truth, subagents executing it in parallel waves with disjoint file ownership (or one session executing it in sequence and saying so), a conformance audit gating every wave, and a reconcile loop that feeds execution learnings back into your docs.",
+  status: "open pilot, field benchmarks pending",
   version: VERSION,
   selfAuditHref: `${BLOB}/docs/self-audit.md`,
   selfAuditLinkText: "Read the self-audit",
@@ -126,14 +126,14 @@ export const hero = {
   kicker: "CLAUDE CODE PLUGIN",
   headline: "Drydock",
   promise:
-    "A plan that is checked against the diff -- run in parallel by subagents, or alone by one session.",
+    "A plan that is checked against the diff: run in parallel by subagents, or alone by one session.",
   thesis: "NOTHING SAILS UNTIL IT LEAVES THE DOCK",
   sub: "A plan document is the source of truth. Subagents run it in parallel waves with disjoint file ownership, or one session runs it in sequence and says so. Either way the gate audits the wave against the actual diff, never against what the executor reports.",
-  badges: [`v${VERSION} -- OPEN PILOT`, "MIT", "PLAN FORMAT v3"],
+  badges: [`v${VERSION} · OPEN PILOT`, "MIT", "PLAN FORMAT v3"],
   ctaPrimary: "Install it",
   wave: {
     label: "WAVE 1.1",
-    subLabel: "3 TASKS -- DISJOINT OWNERSHIP",
+    subLabel: "3 TASKS · DISJOINT OWNERSHIP",
     caption:
       "Illustration, not a captured run: one wave, three tasks owning three separate files, one gate, one human approval.",
     diagramAriaLabel:
@@ -239,7 +239,7 @@ export const evidence: {
       label: "seatrial Testing Gate executes end to end",
       status: "OBSERVED, TWO FULL RUNS",
       tone: "hold",
-      note: "Run twice, 2026-08-20 and 2026-08-26, twelve commits apart, with identical verdicts: six cases, three passes, and three failures that the plan designed to fail -- a false expectation, an unperformable step that halted to ask rather than improvise, and a video clause this driver cannot satisfy. Both sheets closed NO-GO; seatrial writes no override for its own failures. The second run also halted on stale cases and on an unreachable target, and wrote nothing at all when the driver dropped mid-suite. The specs it generated now run in CI and pass -- Chromium only, one viewport, first executed 2026-09-02.",
+      note: "Run twice, 2026-08-20 and 2026-08-26, twelve commits apart, with identical verdicts: six cases, three passes, and three failures that the plan designed to fail: a false expectation, an unperformable step that halted to ask rather than improvise, and a video clause this driver cannot satisfy. Both sheets closed NO-GO; seatrial writes no override for its own failures. The second run also halted on stale cases and on an unreachable target, and wrote nothing at all when the driver dropped mid-suite. The specs it generated now run in CI and pass: Chromium only, one viewport, first executed 2026-09-02.",
     },
   ],
   provenance: "This page is not a brochure for something built elsewhere. The site was planned, executed in parallel waves and gated with Drydock itself, across five plans whose deviation logs are in the repo.",
@@ -270,13 +270,13 @@ export const terminal: {
       tone: "dim",
     },
     {
-      text: "git show T1.1.2: src/greeting.py -- owned by T1.1.1, unreported",
+      text: "git show T1.1.2: src/greeting.py (owned by T1.1.1, unreported)",
       tone: "dim",
     },
-    { text: "Wavecheck 1.1 -- BLOCK -- 2026-08-18", tone: "block" },
+    { text: "Wavecheck 1.1 - BLOCK - 2026-08-18", tone: "block" },
     { text: "Deviations logged: 1 (1 discovered by wavecheck)", tone: "dim" },
     {
-      text: "no retries -- route: /drydock:replan or human decision",
+      text: "no retries; route: /drydock:replan or human decision",
       tone: "dim",
     },
   ],
@@ -331,7 +331,7 @@ export const lifecycle: { flow: string[]; loop: string; pieces: Piece[] } = {
     {
       name: "seatrial",
       kind: "skill",
-      invocation: "model, or /drydock:seatrial -- after the final wave",
+      invocation: "model, or /drydock:seatrial (after the final wave)",
       detail:
         "Drives the plan's written end-to-end cases through a real browser, captures the evidence each one declares, and writes a go/no-go sheet. Halts rather than degrades.",
     },
@@ -362,7 +362,7 @@ export const install: {
   configNote:
     "Configured on enable: where plans live (default docs/plans), which docs reconcile may propose changes to, and where seatrial writes its generated specs (default e2e). If your repo forbids committing planning artifacts and gitignores that path, plans fall back to .drydock/plans and the plan says so in one fixed line rather than arguing its own case. Then run /drydock:planwright on something small.",
   requirement:
-    "Requires Node 22 or newer on PATH -- the ownership hook and the plan audit are Node programs. On anything older the hook exits 0 with a message and ownership is not enforced.",
+    "Requires Node 22 or newer on PATH: the ownership hook and the plan audit are Node programs. On anything older the hook exits 0 with a message and ownership is not enforced.",
   copyLabel: "Copy",
   copyAriaLabel: "Copy install command to clipboard",
   copiedLabel: "Copied",
@@ -371,15 +371,15 @@ export const install: {
 export const faq: FaqItem[] = [
   {
     q: "Is this overkill for a one-file change?",
-    a: "Yes, and then do not use it. Drydock earns its keep on multi-file changes, parallel execution, and teams. For everything in between there is a small lane: one phase, one wave, one gate, no separate quality-review wave and no pressure test, declared as lane: small in the plan header and held to it by the validator. What scales with risk stays -- ownership, acceptance criteria, both logs. Only what scales with cost is dropped. Inflating structure to look thorough is an anti-pattern the planner refuses.",
+    a: "Yes, and then do not use it. Drydock earns its keep on multi-file changes, parallel execution, and teams. For everything in between there is a small lane: one phase, one wave, one gate, no separate quality-review wave and no pressure test, declared as lane: small in the plan header and held to it by the validator. What scales with risk stays: ownership, acceptance criteria, both logs. Only what scales with cost is dropped. Inflating structure to look thorough is an anti-pattern the planner refuses.",
   },
   {
     q: "How is this different from other planning plugins?",
-    a: "The gate audits plan conformance, not code quality: did the wave do exactly what the plan said and nothing else, judged against the actual diff rather than against what the executors claim. From v0.6.0 disjoint file ownership is enforced rather than requested: wave-start generates the boundary from the plan, a hook denies every write outside it until the wave closes, and outside a wave it is inert. The audit is the backstop for what a hook cannot see -- see A6. Per-task model right-sizing lives in the plan instead of global config. And reconcile closes the loop by turning what execution learned into proposed doc diffs.",
+    a: "The gate audits plan conformance, not code quality: did the wave do exactly what the plan said and nothing else, judged against the actual diff rather than against what the executors claim. From v0.6.0 disjoint file ownership is enforced rather than requested: wave-start generates the boundary from the plan, a hook denies every write outside it until the wave closes, and outside a wave it is inert. The audit is the backstop for what a hook cannot see; see A6. Per-task model right-sizing lives in the plan instead of global config. And reconcile closes the loop by turning what execution learned into proposed doc diffs.",
   },
   {
     q: "What if I do not run subagents at all?",
-    a: "Then say so, and the plan stops pretending otherwise. execution: solo in the header means the orchestrating session runs the tasks itself, which is what happens under a standing rule against spawning agents. It relaxes no gate, no ownership boundary and no acceptance criterion -- it removes a claim the plan was making falsely, and states once that the session writing the diff is the session auditing it, rather than logging that as a deviation on every wave. Same-wave dependencies also become legal, because the prohibition exists for simultaneity that solo does not have.",
+    a: "Then say so, and the plan stops pretending otherwise. execution: solo in the header means the orchestrating session runs the tasks itself, which is what happens under a standing rule against spawning agents. It relaxes no gate, no ownership boundary and no acceptance criterion; it removes a claim the plan was making falsely, and states once that the session writing the diff is the session auditing it, rather than logging that as a deviation on every wave. Same-wave dependencies also become legal, because the prohibition exists for simultaneity that solo does not have.",
   },
   {
     q: "My repo forbids tool names in commit messages.",
@@ -391,11 +391,11 @@ export const faq: FaqItem[] = [
   },
   {
     q: "Can the model skip the gates?",
-    a: "Honestly: gates are named as blocking instructions in every plan, and compliance is measured (A3), not asserted. The figure is 28 of 29 invoked at their boundary across 5 pilot plans -- and one was skipped. That skip is on the record because the next gate caught it and the retroactive audit found a real ownership breach behind it. Every one of those sessions knew it was being watched, so it is a ceiling rather than a rate. Two things are mechanically absolute. A human flips a plan to APPROVED, and replan cannot be model-invoked.",
+    a: "Honestly: gates are named as blocking instructions in every plan, and compliance is measured (A3), not asserted. The figure is 28 of 29 invoked at their boundary across 5 pilot plans, and one was skipped. That skip is on the record because the next gate caught it and the retroactive audit found a real ownership breach behind it. Every one of those sessions knew it was being watched, so it is a ceiling rather than a rate. Two things are mechanically absolute. A human flips a plan to APPROVED, and replan cannot be model-invoked.",
   },
   {
     q: "Does anything actually touch a browser?",
-    a: "Yes -- that is seatrial. A plan can carry a Testing Gate of end-to-end cases written before the code, and seatrial drives them through Playwright MCP, capturing each case's declared evidence into a go/no-go sheet. It refuses rather than improvises: a step it cannot perform is reported, not worked around; a missing driver halts; and it never overrides its own failures. Run end to end on this site: six cases, three passes, three designed failures. The specs it writes now run in CI here and pass, Chromium only -- see A7.",
+    a: "Yes, that is seatrial. A plan can carry a Testing Gate of end-to-end cases written before the code, and seatrial drives them through Playwright MCP, capturing each case's declared evidence into a go/no-go sheet. It refuses rather than improvises: a step it cannot perform is reported, not worked around; a missing driver halts; and it never overrides its own failures. Run end to end on this site: six cases, three passes, three designed failures. The specs it writes now run in CI here and pass, Chromium only; see A7.",
   },
   {
     q: "Why the name?",
