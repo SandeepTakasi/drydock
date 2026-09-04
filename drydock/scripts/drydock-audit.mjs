@@ -1022,12 +1022,21 @@ function auditWave(path, wave) {
   // 0.7.0 keep auditing unchanged rather than retroactively failing.
   if (plan.frontmatter.enforcement === "required") {
     const logPath = join(repoRoot(), ".drydock", "enforcement.log");
+    // One log per REPO, not per plan: `.drydock/enforcement.log` is append-only
+    // and every plan in the repo writes into it. Selecting on the wave id alone
+    // unions this plan's `owns` with every other plan that shares the id, and
+    // since `1.0` is the first wave of every plan, the boundary comparison below
+    // could only fail from the repo's second plan onwards. Issue #10. Same
+    // null-tolerant shape as the attribution manifest above: an entry or a plan
+    // with no id is unattributable, not foreign, and dropping it would turn a
+    // clean wave into the much louder "the hook never ran here" error.
+    const samePlan = (e) => e.plan == null || planId == null || e.plan === planId;
     const entries = existsSync(logPath)
       ? readFileSync(logPath, "utf8")
           .split(/\r?\n/)
           .filter(Boolean)
           .map((l) => { try { return JSON.parse(l); } catch { return null; } })
-          .filter((e) => e && e.wave === wave)
+          .filter((e) => e && e.wave === wave && samePlan(e))
       : [];
 
     if (entries.length === 0 && sealed?.decisions !== null && sealed?.decisions !== undefined) {
@@ -1055,17 +1064,23 @@ function auditWave(path, wave) {
       // exists, consider it". That instruction was prose-compliance of exactly
       // the kind `wave-start` and `task-close` were built to delete. Issue #3.
       const logExists = existsSync(logPath);
-      const otherWaves = logExists
+      // Everything that is not THIS plan's THIS wave, which is what the "the
+      // hook is alive, this wave's writes just never reached it" reading needs:
+      // a foreign plan's entry proves the hook registered exactly as another
+      // wave of this one does. Counting only `wave !== wave` here would leave a
+      // same-id foreign entry in neither bucket and report "the log exists but
+      // is empty" about a log with lines in it. Issue #10.
+      const elsewhere = logExists
         ? readFileSync(logPath, "utf8")
             .split(/\r?\n/)
             .filter(Boolean)
             .map((l) => { try { return JSON.parse(l); } catch { return null; } })
-            .filter((e) => e && e.wave !== wave).length
+            .filter((e) => e && !(e.wave === wave && samePlan(e))).length
         : 0;
       const cause = !logExists
         ? `no \`${logPath}\` exists at all, so the hook never ran here: \`wave-start\` was never invoked, the host does not register PreToolUse hooks, or Node is older than 22 (the hook exits 0 with a message rather than wedging every edit)`
-        : otherWaves > 0
-          ? `the log holds ${otherWaves} decision(s) for OTHER waves, so the hook is alive and registered, this wave's writes simply never reached it, which is what happens when they go through Bash (\`sed -i\`, a heredoc, \`>\`), since a PreToolUse file-tool hook cannot see those`
+        : elsewhere > 0
+          ? `the log holds ${elsewhere} decision(s) for OTHER waves or plans, so the hook is alive and registered, this wave's writes simply never reached it, which is what happens when they go through Bash (\`sed -i\`, a heredoc, \`>\`), since a PreToolUse file-tool hook cannot see those`
           : `the log exists but is empty, armed at some point, invoked never`;
       errors.push(
         `plan declares \`enforcement: required\` but ${logPath} holds no entries for wave ${wave}: ${cause}. ` +

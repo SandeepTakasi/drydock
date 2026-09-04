@@ -811,6 +811,18 @@ const enforcedRepo = (name, log) => {
 
 const OTHER_WAVE = JSON.stringify({ ts: "x", plan: "900-fixture", wave: "9.9", decision: "allow", path: "z.txt", owns: ["z.txt"] }) + "\n";
 
+// There is ONE enforcement.log per repo and every plan appends to it, so an
+// entry has to be matched on (plan, wave) and not on the wave alone. `1.0` is
+// the first wave of every plan, so wave-only selection unions a foreign plan's
+// `owns` into this plan's armed boundary and the comparison can only fail, from
+// the repo's second plan onwards. Issue #10.
+const OWN_RECEIPT = JSON.stringify({ ts: "x", plan: "900-fixture", wave: "1.0", decision: "allow", path: "a.txt", owns: ["a.txt"] }) + "\n";
+const OTHER_PLAN = JSON.stringify({ ts: "x", plan: "001-elsewhere", wave: "1.0", decision: "allow", path: "src/other.js", owns: ["src/other.js"] }) + "\n";
+// A receipt with no plan id: a hand-written `wave-owns.json`, or a plan with no
+// `plan:` key. Unattributable is not foreign; dropping it would flip a clean
+// wave into the far louder "the hook never ran here" error.
+const UNIDENTIFIED = JSON.stringify({ ts: "x", plan: null, wave: "1.0", decision: "allow", path: "a.txt", owns: ["a.txt"] }) + "\n";
+
 // A CLOSED wave as it looks months later: the task's commit is in history, the
 // plan carries the wavecheck report wavecheck wrote, and `.drydock/` has been
 // cleaned away. `rm`-ing the directory after `task-close` is the whole point —
@@ -880,6 +892,19 @@ cases.push(
   ["an empty log is diagnosed as armed but never invoked",
     () => cli(enforcedRepo("emptylog", ""), ["audit-wave", "plan.md", "1.0"]),
     (out) => out.includes("armed at some point, invoked never")],
+
+  ["a foreign plan sharing the wave id neither widens the boundary nor inflates the count",
+    () => cli(enforcedRepo("foreignplan", OWN_RECEIPT + OTHER_PLAN), ["audit-wave", "plan.md", "1.0"]),
+    (out) => out.includes("audit-wave 1.0: PASS") && !out.includes("src/other.js") &&
+             out.includes("1 hook decision(s) recorded for wave 1.0")],
+
+  ["a receipt with no plan id still counts as this plan's",
+    () => cli(enforcedRepo("nullplan", UNIDENTIFIED), ["audit-wave", "plan.md", "1.0"]),
+    (out) => out.includes("audit-wave 1.0: PASS") && !out.includes("the hook never ran here")],
+
+  ["a log holding only a foreign plan's entries reads as bypass, not as never invoked",
+    () => cli(enforcedRepo("foreignonly", OTHER_PLAN), ["audit-wave", "plan.md", "1.0"]),
+    (out) => out.includes("decision(s) for OTHER waves or plans") && !out.includes("armed at some point")],
 
   ["a missing receipt is reported as an unmet claim, not an unaudited wave",
     () => cli(enforcedRepo("claim", null), ["audit-wave", "plan.md", "1.0"]),
