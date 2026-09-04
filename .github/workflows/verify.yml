@@ -8,12 +8,15 @@
 # that drift, triggered nothing.
 #
 # NO `paths:` FILTER, DELIBERATELY. A path filter is what broke the last gate,
-# and these jobs cost seconds: every script here imports Node builtins only, so
-# there is no `npm ci`, no lockfile, no `node_modules`. Filtering would save
-# nothing and reintroduce the one failure this file exists to fix.
+# and the plugin and docs jobs cost seconds: their scripts import Node builtins
+# only, so there is no `npm ci`, no lockfile, no `node_modules`. Filtering would
+# save nothing and reintroduce the one failure this file exists to fix.
 #
-# `assert-copy.mjs` is NOT here — it reads `out/index.html` and needs a real
-# build, so it stays in `deploy.yml` where the build already happens.
+# `assert-copy.mjs` reads `out/index.html` and so needs a real build. It ran
+# only in `deploy.yml` until 0.8.16, on the argument that the build already
+# happened there — but `deploy.yml` runs on pushes to `main`, which is AFTER a
+# merge, so a copy or version drift could not fail a PR. It now runs in the
+# `site` job below as well; see the note there.
 name: Verify
 
 on:
@@ -73,6 +76,42 @@ jobs:
           for p in docs/plans/*.md; do
             node drydock/scripts/drydock-audit.mjs validate-plan "$p" || true
           done
+
+  # The same gate `deploy.yml` runs, moved left of the merge. It lived only in
+  # deploy until 0.8.16, so a copy or version drift was uncatchable on a PR and
+  # surfaced on `main` after merge, with the deploy red and a revert or a
+  # follow-up the only ways out. Measured: PR #11 bumped plugin.json to 0.8.16
+  # and showed 6/6 green with `VERSION` in `content/copy.ts` still on 0.8.15;
+  # the merge went in, deploy caught the drift and blocked the upload, and #12
+  # was the follow-up. Nothing stale shipped, but the finding arrived one merge
+  # too late, which is the whole argument for a gate being a gate.
+  #
+  # `deploy.yml` keeps its own copy of this step. Two runs of the same command
+  # is the cheap half of the trade: the deploy gate must hold on a direct push
+  # and on `workflow_dispatch`, neither of which is a pull request, so deleting
+  # it there in favour of this job would gate the deploy on a check that had not
+  # necessarily run.
+  #
+  # This is the one job here that needs `npm ci`, so it carries the install the
+  # file's header says the others do without.
+  site:
+    name: site gate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - run: npm ci
+      # build && tsc --noEmit && eslint . && assert-copy && assert-matrix.
+      # Browser-only checks are NOT here: `measure-reduced-motion.mjs` needs a
+      # real Chrome and stays a local, explicit step, exactly as in deploy.yml.
+      - run: npm run verify
 
   e2e:
     name: generated E2E specs
