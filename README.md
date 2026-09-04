@@ -8,7 +8,7 @@ the source of truth, subagents executing it in parallel waves with disjoint
 file ownership, a conformance audit gating every wave, and a reconcile loop
 that feeds execution learnings back into your docs.
 
-**Status: open pilot (v0.8.15).** Five plans have been planned, executed
+**Status: open pilot (v0.8.16).** Five plans have been planned, executed
 and gated with it. See the [case study](docs/case-study-001-homepage.md) and
 [docs/plans/](docs/plans/). Gate compliance is measured, not asserted: 28 of 29
 wave gates invoked at their boundary across those 5 plans, **1 skipped**. The

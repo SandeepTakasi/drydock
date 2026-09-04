@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.8.16: 2026-09-04
+
+**`audit-wave` read one repo's enforcement log as if it belonged to one plan.**
+Issue #10. `.drydock/enforcement.log` is a single append-only file that every
+plan in the repo writes into, and each entry has carried a `plan` field since
+0.7.0, but the audit selected entries on the wave id alone. The armed boundary
+it compared against the plan was therefore the union of every plan sharing that
+wave id, and `1.0` is the first wave of every plan: from a repo's second plan
+onwards, an otherwise clean wave FAILed naming files it had never owned or
+touched. The decision count in the same report summed the other plans' entries
+too. Entries are now matched on `(plan, wave)`.
+
+**The three-way empty-log diagnosis is keyed the same way.** Its "the hook is
+alive, this wave's writes just never reached it" reading counted entries with
+`wave !== wave`; a foreign plan's entry at this wave id would have fallen into
+neither bucket and been reported as "the log exists but is empty" about a log
+with lines in it. It now counts everything that is not this plan's this wave,
+and says "OTHER waves or plans".
+
+**The match is null-tolerant, deliberately.** An entry or a plan with no id is
+unattributable, not foreign. Strict equality would have dropped a receipt
+written from a hand-edited `wave-owns.json` and flipped a clean wave into the
+much louder "the hook never ran here" error. Same shape the attribution manifest
+already uses, and there is a test that fails against the strict version.
+
+**Also closed:** two plans sharing a wave id *and* an `owns` set (a replan
+re-run under a new plan id) could have let an unenforced wave pass on the other
+plan's receipts, since a non-empty `entries` skipped the "hook never ran here"
+branch entirely. The same filter closes it.
+
 ## 0.8.15: 2026-09-02
 
 **No em dashes in user-facing text.** 444 of them across the plugin's prose and
