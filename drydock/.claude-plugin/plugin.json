@@ -7,6 +7,9 @@
     "name": "Sandeep Takasi"
   },
   "license": "MIT",
+  "engines": {
+    "node": ">=20.17.0"
+  },
   "keywords": [
     "planning",
     "subagents",

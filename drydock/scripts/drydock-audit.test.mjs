@@ -1139,6 +1139,250 @@ cases.push(
     (out) => out === "clean"]
 );
 
+// --------------------------------------------------------------------------
+// COMMITS NO TASK CLAIMS. `audit-wave` only ever inspected commits it could
+// already attribute, so a commit belonging to no task was invisible: two clean
+// task commits plus one `chore:` adding an unowned file returned PASS.
+
+const strayRepo = (name, subject = "chore: unrelated refactor", files = ["evil.ts"]) => {
+  const dir = closedWave(name);
+  commitAs(dir, files, subject);
+  return dir;
+};
+
+cases.push(
+  ["a commit no task claims fails the wave", () => cli(strayRepo("unattributed"), ["audit-wave", "plan.md", "1.0"]),
+    (out) => out.includes("audit-wave 1.0: FAIL") && out.includes("claimed by no task") && out.includes("`evil.ts`")],
+
+  // The plan document is owned by no task BY DESIGN: the orchestrator writes the
+  // Deviation Log into it after the wave closes. Failing that would make correct
+  // bookkeeping indistinguishable from a breach.
+  ["a commit touching only the plan document is a note, not a failure", () => {
+    const dir = closedWave("stray-plan");
+    // APPEND, never rewrite: the plan document is the fixture, and overwriting
+    // it leaves the wave with no tasks and the audit reporting that instead.
+    writeFileSync(join(dir, "plan.md"), `${readFileSync(join(dir, "plan.md"), "utf8")}\n<!-- deviation log -->\n`);
+    git(dir, ["add", "plan.md"]);
+    git(dir, ["commit", "-q", "-m", "plan: deviation log"]);
+    return cli(dir, ["audit-wave", "plan.md", "1.0"]);
+  }, (out) => out.includes("audit-wave 1.0: PASS") && out.includes("recorded rather than failed")],
+
+  // A commit touching only files the wave owns is a bookkeeping shape too: the
+  // files were authorised, only the attribution is missing.
+  ["a commit touching only owned files is a note, not a failure", () => {
+    const dir = closedWave("stray-owned");
+    // Append: commitAs writes `${f}\n`, which for a file the wave already
+    // committed is a no-op, and git refuses an empty commit.
+    writeFileSync(join(dir, "a.txt"), `${readFileSync(join(dir, "a.txt"), "utf8")}fixup\n`);
+    git(dir, ["add", "a.txt"]);
+    git(dir, ["commit", "-q", "-m", "fixup: whitespace"]);
+    return cli(dir, ["audit-wave", "plan.md", "1.0"]);
+  }, (out) => out.includes("audit-wave 1.0: PASS") && out.includes("recorded rather than failed")],
+
+  // Re-auditing a CLOSED record must not fail it on a check that did not exist
+  // when it ran. Plan 005 wave 1.0 produced 20 such errors, naming release
+  // commits from days after the wave sealed.
+  ["a stray in an already-sealed wave is recorded, not failed", () => {
+    // The stray goes BETWEEN the two task commits on purpose. A sealed wave is
+    // bounded by its own span, so a commit after its last task commit is out of
+    // range by design; only one inside the span exercises the downgrade.
+    const dir = mkrepo("stray-sealed");
+    commitAs(dir, ["a.txt"], "fix(parser): tighten the thing");
+    cli(dir, ["task-close", "plan.md", "T1.0.1"]);
+    commitAs(dir, ["evil.ts"], "chore: unrelated refactor");
+    commitAs(dir, ["b.txt"], "feat(core): add the other thing");
+    cli(dir, ["task-close", "plan.md", "T1.0.2"]);
+    const plan = readFileSync(join(dir, "plan.md"), "utf8");
+    writeFileSync(join(dir, "plan.md"), `${plan}\n### Wave 1.0 - w\n\n### Wavecheck 1.0, PASS, 2026-01-01\n`);
+    git(dir, ["add", "plan.md"]);
+    git(dir, ["commit", "-q", "-m", "plan: seal wave 1.0"]);
+    return cli(dir, ["audit-wave", "plan.md", "1.0"]);
+  }, (out) => out.includes("audit-wave 1.0: PASS") && out.includes("already sealed")],
+);
+
+// --------------------------------------------------------------------------
+// SUBJECT COLLISION. `8410e54`, a release bump made a day after plan 003 sealed,
+// reused the subject `drydock(T1.2.1)`. The audit then reported an ownership
+// violation against a wave that never touched the file in that commit.
+
+cases.push(
+  ["a reused commit subject is unverifiable, not a breach", () => {
+    const dir = join(DIR, "repo-collide");
+    mkdirSync(dir, { recursive: true });
+    git(dir, ["init", "-q", "-b", "main"]);
+    writeFileSync(join(dir, ".gitignore"), ".drydock/\n");
+    writeFileSync(join(dir, "plan.md"), planText(2, "commit-prefix"));
+    git(dir, ["add", "-A"]);
+    git(dir, ["commit", "-q", "-m", "chore: baseline"]);
+    commitAs(dir, ["a.txt"], "drydock(T1.0.1): first");
+    commitAs(dir, ["b.txt"], "drydock(T1.0.2): second");
+    // A later, unrelated commit reusing the id, touching a file T1.0.1 does not own.
+    commitAs(dir, ["unrelated.txt"], "drydock(T1.0.1): release bump");
+    return cli(dir, ["audit-wave", "plan.md", "1.0"]);
+  }, (out) => out.includes("CANNOT be judged") && !out.includes("outside its `owns`")],
+);
+
+// --------------------------------------------------------------------------
+// ATTRIBUTION DEFAULT BY FORMAT VERSION. Keeping the `commit-prefix` reader is
+// what lets plans 001-004 (all v2, none declaring the key) audit exactly as they
+// always did; defaulting v3 to `manifest` retires the collision class above for
+// every new plan without a format bump.
+
+const noAttrRepo = (name, fv) => {
+  const dir = join(DIR, `repo-${name}`);
+  mkdirSync(dir, { recursive: true });
+  git(dir, ["init", "-q", "-b", "main"]);
+  writeFileSync(join(dir, ".gitignore"), ".drydock/\n");
+  writeFileSync(join(dir, "plan.md"), planText(fv, "manifest").replace(/^attribution:.*$/m, "").replace(/\n\n\n/, "\n\n"));
+  git(dir, ["add", "-A"]);
+  git(dir, ["commit", "-q", "-m", "chore: baseline"]);
+  commitAs(dir, ["a.txt"], "drydock(T1.0.1): first");
+  commitAs(dir, ["b.txt"], "drydock(T1.0.2): second");
+  return dir;
+};
+
+cases.push(
+  ["format_version 3 with no attribution key defaults to manifest",
+    () => cli(noAttrRepo("fv3-default", 3), ["audit-wave", "plan.md", "1.0"]),
+    (out) => out.includes("attribution: manifest") || out.includes("attribution.jsonl")],
+
+  ["format_version 2 with no attribution key still audits by commit subject",
+    () => cli(noAttrRepo("fv2-default", 2), ["audit-wave", "plan.md", "1.0"]),
+    (out) => out.includes("attribution: commit-prefix")],
+);
+
+// --------------------------------------------------------------------------
+// ONE GRAMMAR. `plan-format.md` instructs `N/A, <reason>` and the validator
+// accepted only the two dashes, so a plan written to the contract failed the
+// contract's own validator. And `WAVECHECK_RE` required a dash, so the
+// contract's own `### Wavecheck <p>.<w>, PASS|BLOCK, <date>` template did not
+// parse at all: a plan read as having zero gates, with its status unconstrained.
+
+const naGatePlan = (gate) => `${head}
+## 11. Testing Gate
+
+${gate}
+
+#### T1.0.1 — only
+- **Files owned:** \`a.txt\`
+- **Acceptance criterion:** \`true\` exits 0.
+`;
+
+cases.push(
+  // `--strict`, because the Testing Gate check is strict-only: run without it
+  // these three assert the absence of a message no code path can emit, which is
+  // a test that passes on a deleted check.
+  ["the contract's own `N/A, <reason>` form is accepted",
+    () => validateRaw("na-comma", naGatePlan("N/A, this plan has no user-facing surface."), true),
+    (out) => !out.includes("`N/A` with no reason")],
+  ["`N/A - <reason>` still parses, for the five plans already written that way",
+    () => validateRaw("na-hyphen", naGatePlan("N/A - no user-facing surface."), true),
+    (out) => !out.includes("`N/A` with no reason")],
+  ["`N/A` with no reason at all is still rejected",
+    () => validateRaw("na-bare", naGatePlan("N/A"), true),
+    (out) => out.includes("`N/A` with no reason")],
+
+  // A verdict counts only for a wave the plan actually declares, so the fixture
+  // needs the `### Wave` heading as well as the report.
+  ["the contract's comma-form wavecheck heading is parsed as a gate",
+    () => status("wc-comma", `${head}\n### Wave 1.0 - w\n\n#### T1.0.1 - a\n- **Files owned:** \`a.txt\`\n\n### Wavecheck 1.0, PASS, 2026-01-01\n`).out,
+    (out) => /\|\s*1\.0\s*\|\s*PASS\s*\|/.test(out) && !out.includes("no wavecheck reports")],
+
+  ["the em-dash form the five existing plans use still parses",
+    () => status("wc-emdash", `${head}\n### Wave 1.0 - w\n\n#### T1.0.1 - a\n- **Files owned:** \`a.txt\`\n\n### Wavecheck 1.0 — PASS — 2026-01-01\n`).out,
+    (out) => /\|\s*1\.0\s*\|\s*PASS\s*\|/.test(out)],
+
+  // `([A-Z]+)` accepted any uppercase word, so `- NOTE: see above` yielded the
+  // verdict NOTE and the plan derived as BLOCKED off a heading nobody meant.
+  ["an uppercase word that is not a verdict is not read as one",
+    () => status("wc-note", `${head}\n### Wave 1.0 - w\n\n#### T1.0.1 - a\n- **Files owned:** \`a.txt\`\n\n### Wavecheck 1.0 - NOTE: see the thread above\n`).out,
+    (out) => out.includes("0 wavecheck report")],
+);
+
+// --------------------------------------------------------------------------
+// A FENCED BLOCK IS DOCUMENTATION. A markdown sample showing `#### T1.0.9` with
+// `Files owned: **` parsed as a real task, and `wave-start` then armed the hook
+// with `owns: ["**"]` — a boundary permitting every write in the repo, derived
+// from a code sample.
+
+cases.push(
+  ["an example task inside a fence is not a task", () => {
+    const body = [
+      "## 6. Findings & constraints",
+      "",
+      "Write tasks like this:",
+      "",
+      "```markdown",
+      "#### T9.9.9 — example",
+      "- **Files owned:** `**`",
+      "```",
+      "",
+      "#### T1.0.1 — only",
+      "- **Files owned:** `a.txt`",
+      "- **Acceptance criterion:** `true` exits 0.",
+    ].join("\n");
+    return validateRaw("fenced", `${head}\n${body}\n`);
+  }, (out) => out.includes("(1 task(s)") && !out.includes("T9.9.9")],
+
+  // Zero tasks is a parse failure wearing a PASS: every other check then passes
+  // vacuously, having nothing to disagree with.
+  ["a plan the parser reads as having no tasks fails",
+    () => validateRaw("no-tasks", `${head}\n## 1. Requirement\n\n##### T1.0.1 — five hashes\n- **Files owned:** \`a.txt\`\n`),
+    (out) => out.includes("no tasks found")],
+);
+
+// --------------------------------------------------------------------------
+// WAVE-START PREFLIGHT. It armed from any file at all, including a plan the
+// validator rejects, and a first `audit-wave` in a fresh repo then failed on the
+// tool's own `.drydock/` and the uncommitted plan — a wave that had done nothing
+// wrong. The docs' claim that `.drydock/` is gitignored was true of this repo only.
+
+const bareRepo = (name, fv = 3) => {
+  const dir = join(DIR, `repo-${name}`);
+  mkdirSync(dir, { recursive: true });
+  git(dir, ["init", "-q", "-b", "main"]);
+  writeFileSync(join(dir, "plan.md"), planText(fv, "manifest"));
+  return dir;
+};
+
+cases.push(
+  ["wave-start refuses a plan the validator rejects", () => {
+    const dir = bareRepo("ws-invalid", 9);
+    git(dir, ["add", "-A"]); git(dir, ["commit", "-q", "-m", "plan"]);
+    return cli(dir, ["wave-start", "plan.md", "1.0"]);
+  }, (out) => out.includes("does not pass validate-plan") && !out.includes("armed")],
+
+  ["wave-start refuses an uncommitted plan", () => {
+    const dir = bareRepo("ws-dirty");
+    return cli(dir, ["wave-start", "plan.md", "1.0"]);
+  }, (out) => out.includes("uncommitted changes") && !out.includes("armed")],
+
+  ["wave-start gitignores .drydock/ so the first audit is not dirty", () => {
+    const dir = bareRepo("ws-ignore");
+    git(dir, ["add", "-A"]); git(dir, ["commit", "-q", "-m", "plan"]);
+    const out = cli(dir, ["wave-start", "plan.md", "1.0"]);
+    return `${out}\nGITIGNORE:${readFileSync(join(dir, ".gitignore"), "utf8")}\nSTATUS:${git(dir, ["status", "--porcelain"])}`;
+  }, (out) => out.includes("armed") && /GITIGNORE:[\s\S]*\.drydock\//.test(out) && !out.includes("?? .drydock")],
+
+  ["wave-start prints a path that actually runs", () => {
+    const dir = bareRepo("ws-path");
+    git(dir, ["add", "-A"]); git(dir, ["commit", "-q", "-m", "plan"]);
+    return cli(dir, ["wave-start", "plan.md", "1.0"]);
+  }, (out) => out.includes("audit it with:") && out.includes(CLI)],
+);
+
+// --------------------------------------------------------------------------
+// EXIT CODES. A missing file printed an eleven-line `node:fs` stack trace and
+// exited 1 — the same code as a legitimate FAIL — so nothing could tell "this
+// plan is bad" from "this tool is broken".
+
+cases.push(
+  ["a missing plan is a clean error, not a stack trace", () => {
+    const r = spawnSync("node", [CLI, "validate-plan", join(DIR, "nope-does-not-exist.md")], { encoding: "utf8" });
+    return `EXIT:${r.status}\n${r.stdout}${r.stderr}`;
+  }, (out) => out.includes("EXIT:3") && out.includes("no such file") && !out.includes("at ModuleJob")],
+);
+
 let failed = 0;
 for (const [name, run, ok] of cases) {
   const out = run();
