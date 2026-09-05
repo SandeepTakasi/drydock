@@ -1,6 +1,6 @@
 # The plugin's gate. Until this file existed there was none: `deploy.yml` is the
 # only other workflow, it is filtered to `site/**`, and it runs the site build
-# gate. So `drydock-audit.test.mjs` (75 cases) and `enforce-owns.test.mjs` (12)
+# gate. So `drydock-audit.test.mjs` and `enforce-owns.test.mjs`
 # had never run automatically — every release was verified only because somebody
 # chose to run them by hand — and `assert-matrix.mjs`, which exists to stop the
 # A3 figure drifting across documents, sat inside a workflow that ignores
@@ -35,10 +35,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Both ends of the supported Node range. 22 is the stated minimum
-        # (`path.matchesGlob` is stdlib from 22, per drydock/README.md); 24 is
-        # what the repo is developed on.
-        node: [22, 24]
+        # Every end of the supported range. 20 is the floor `plugin.json`
+        # declares in `engines`, and it is tested because a declared floor no
+        # program checks is exactly the kind of claim this repo exists to stop
+        # making: the docs said 22 for `path.matchesGlob` while both scripts ran
+        # fine on 20.20, and the plugin no longer calls it at all. 24 is what the
+        # repo is developed on.
+        node: [20, 22, 24]
         # WINDOWS IS NOT OPTIONAL HERE. This code carries explicit Windows
         # handling that exists because it was got wrong: backslash-to-POSIX
         # normalisation in the ownership hook, CRLF splitting in the plan parser
@@ -64,18 +67,29 @@ jobs:
           node-version: 22
       - run: node site/scripts/assert-matrix.mjs
 
-      # INFORMATIONAL, never a gate. Plan 004 fails `validate-plan` permanently
-      # and on purpose: its wave 2.1 same-wave dependency is accepted and
-      # recorded as deviation 15, because repairing a closed record to satisfy a
-      # validator written afterwards would make the plan describe an execution
-      # that did not happen. Gating on this would mean a red build nobody is
-      # allowed to fix, which is a build people learn to ignore. The output is
-      # here to be read; the exit code is not a verdict.
-      - name: validate the plan corpus (informational)
+      # A REAL GATE, with one named exception. `drydock/README.md` says the plan
+      # is "checked by a program"; behind `|| true` it was not, and a check whose
+      # exit code is discarded is a check that can rot green.
+      #
+      # THE EXCEPTION IS ONE FILE AND IT IS NAMED HERE. Plan 004 fails
+      # `validate-plan` permanently and on purpose: its wave 2.1 same-wave
+      # dependency is accepted and recorded as its deviation 15, because
+      # repairing a closed record to satisfy a validator written afterwards would
+      # make the plan describe an execution that did not happen. Skipping it by
+      # name gates every other plan, including every future one, while leaving
+      # that record closed. An allowlist of one is readable; `|| true` is not.
+      - name: validate the plan corpus
         run: |
+          set -euo pipefail
+          rc=0
           for p in docs/plans/*.md; do
-            node drydock/scripts/drydock-audit.mjs validate-plan "$p" || true
+            case "$p" in
+              # accepted, see deviation 15 in the plan itself
+              *004-seatrial-e2e-gate.md) node drydock/scripts/drydock-audit.mjs validate-plan "$p" || true; continue ;;
+            esac
+            node drydock/scripts/drydock-audit.mjs validate-plan "$p" || rc=1
           done
+          exit $rc
 
   # The same gate `deploy.yml` runs, moved left of the merge. It lived only in
   # deploy until 0.8.16, so a copy or version drift was uncatchable on a PR and

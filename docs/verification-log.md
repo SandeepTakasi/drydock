@@ -246,6 +246,15 @@ matching the contract's `drydock(<task-id>): <task name>` format.
 isolation`. The main working tree still holds one line and `main` is still at
 `aa38357`, which is **correct** unmerged-isolation behaviour, not a failure.
 
+> **2026-09-06: `6b8ba31` is no longer reachable.** It was committed on
+> `worktree-agent-<id>` and, per (c) above, deliberately never merged, so the
+> branch has since been pruned and `git cat-file -t 6b8ba31` returns
+> `Not a valid object name`. The three checks above were run live on 2026-08-18
+> and stand as a record of what was measured; they are not reproducible from a
+> clone today, and `docs/compatibility.md` no longer cites the sha as though
+> they were. The sha is kept here because deleting it would erase the trail
+> rather than correct it.
+
 ### Observations
 
 1. **Isolation held.** Main-tree HEAD and file content were untouched by the
