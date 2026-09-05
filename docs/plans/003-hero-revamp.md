@@ -578,6 +578,19 @@ only real proof at this point.
 
 **Verdict: PASS.** Wave 1.3 (integration) may start.
 
+> **2026-09-06, re-audit note. This wave re-audits as unverifiable, not as a
+> breach, and the original verdict above stands as written.** `drydock(T1.2.1)`
+> names two commits in this history: `3366a88`, this wave's, and `8410e54`, an
+> unrelated release bump made on 2026-08-20 that reused the task id in its
+> subject. Under `attribution: commit-prefix` the auditor cannot tell which
+> commit belongs to the task, so for a period it reported
+> "commit 8410e54 changes `drydock/.claude-plugin/plugin.json`, which is outside
+> its `owns`" -- an ownership violation against a wave that never touched that
+> file. `audit-wave` no longer derives ownership verdicts from colliding
+> commits; it now says the task cannot be judged and names the collision as the
+> cause. The durable fix is `attribution: manifest`, which is the default from
+> `format_version: 3`; this plan is v2 and stays as executed.
+
 ### Wavecheck 1.3 — PASS — 2026-08-19
 
 | Check | Result | Evidence |

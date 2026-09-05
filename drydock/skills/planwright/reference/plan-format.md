@@ -211,6 +211,15 @@ on original assumptions.
 
 ## Required sections, in order
 
+**Separator grammar.** Wherever a plan writes a reason or a verdict after a
+label, the validator accepts a **comma, a hyphen or an em dash**, and documents
+write the comma form: `N/A, <reason>`, `### Wavecheck 1.0, PASS, 2026-08-19`.
+All three parse, so the five plans written before this was pinned keep auditing
+unchanged. This is stated because it once was not: the templates below wrote the
+comma form while the validator required a dash, so a plan written exactly to
+this contract failed the contract's own validator, and a wavecheck report
+written to the template did not register as a gate at all.
+
 1. **Requirement**, one paragraph; what must be true when done. No solutioning.
 2. **Spec reference**, path + sections, or "none, requirement is complete".
 3. **Surgical-scope statement**, the smallest satisfying diff, 1–2 sentences.
