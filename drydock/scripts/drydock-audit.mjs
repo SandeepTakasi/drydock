@@ -1,6 +1,6 @@
 /**
  * Structural validation and ownership auditing for Drydock plans.
- * Node built-ins only (Node >= 22 for `path.matchesGlob`).
+ * Node built-ins only. No dependencies, and no stdlib call newer than Node 20.
  *
  *   node drydock-audit.mjs validate-plan [--strict] <plan.md>
  *   node drydock-audit.mjs audit-wave <plan.md> <wave>
@@ -30,7 +30,14 @@
 
 import { readFileSync, writeFileSync, appendFileSync, mkdirSync, existsSync } from "node:fs";
 import { execFileSync, spawnSync } from "node:child_process";
-import { dirname, join, matchesGlob } from "node:path";
+import { dirname, join, resolve } from "node:path";
+// LOCAL matcher, not `path.matchesGlob`. A named import of matchesGlob is a
+// parse-time SyntaxError below Node 20.17 -- the process dies before any version
+// guard can run -- and matchesGlob does not match dotfiles, so `src/**` did not
+// cover `src/.env` and `audit-wave` reported owned dotfiles as strays.
+import { matchesOwns, globToRegExp } from "../lib/owns-match.mjs";
+
+const matchesGlob = (f, glob) => globToRegExp(glob).test(f);
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
 
@@ -210,7 +217,16 @@ function parsePlan(path) {
   // did not implement it.
   let heading = null;
 
+  // A fenced block holding an example task is DOCUMENTATION, not a task. Without
+  // this, a `\u0060\u0060\u0060markdown` sample showing `#### T1.0.9` with
+  // `Files owned: **` parsed as a real task, and `wave-start` armed the hook with
+  // `owns: ["**"]` -- an ownership boundary that permits every write in the repo,
+  // derived from a code sample.
+  let fenced = false;
+
   for (const line of lines) {
+    if (/^\s*(```|~~~)/.test(line)) { fenced = !fenced; continue; }
+    if (fenced) { if (current) current.body.push(line); continue; }
     const w = line.match(/^### Wave (\d+\.(?:\d+|R))\b/);
     if (w) heading = w[1];
     const head = line.match(/^#### (~~)?\s*(T[0-9][\w.]*)\b/);
@@ -343,6 +359,15 @@ function validatePlan(path, strict) {
   // no status at all. Issue #5.
   const contradiction = statusContradiction(plan);
   if (contradiction) errors.push(contradiction);
+
+  // Zero tasks is a parse failure wearing a PASS. `##### T1.0.1` (five hashes),
+  // a task block the fence rule now skips, or a heading shape this parser does
+  // not know all produce an empty task list, and every downstream check then has
+  // nothing to disagree with: duplicate ids, ownership overlap and dependency
+  // order all pass vacuously.
+  if (plan.tasks.length === 0) {
+    errors.push("no tasks found: task headings must be `#### T<phase>.<wave>.<n> - <title>`. A plan the parser reads as empty passes every other check vacuously");
+  }
 
   // --- attribution mode ------------------------------------------------------
   // Absent means `commit-prefix`, which is every plan written before 0.7.1 and
@@ -504,7 +529,11 @@ function validatePlan(path, strict) {
       // The section-order loop above already reported it; saying it twice makes
       // a two-defect plan look like a four-defect one.
     } else if (/^\s*N\/A/i.test(gate)) {
-      if (!/^\s*N\/A\s*[—-]\s*\S/i.test(gate)) errors.push("Testing Gate: `N/A` with no reason, the reason is required");
+      // Comma, hyphen or em dash. `plan-format.md` instructs `N/A, <reason>` and
+      // this accepted only the two dashes, so a plan written to the contract
+      // failed the contract's own validator. The em dash is kept because the
+      // five plans already in this repo carry it.
+      if (!/^\s*N\/A\s*[—,-]\s*\S/i.test(gate)) errors.push("Testing Gate: `N/A` with no reason, the reason is required (write `N/A, <reason>`)");
     } else {
       const caseIds = [...new Set([...gate.matchAll(/\bTG\d+\b/g)].map((m) => m[0]))];
       if (caseIds.length === 0) errors.push("Testing Gate: not N/A but declares no `TG<n>` cases");
@@ -599,11 +628,17 @@ function sectionBody(plan, name) {
 // compliance is not.
 const WAVE_RE = /^### Wave (\d+)\.(\d+|R)\b/;
 // `### Wavecheck 2.1 (re-audit after Decision 12) - PASS - 2026-08-20`.
-// Either dash: wavecheck wrote an em dash before 0.8.15 and a hyphen after,
-// and the five plans already in this repo carry the old form.
+// Comma, hyphen or em dash: wavecheck wrote an em dash before 0.8.15, a hyphen
+// after, and `plan-format.md` templates the comma form, which this refused to
+// parse at all -- so a report written to the contract left the plan reading
+// "no wavecheck reports, status unconstrained" and `plan-status` passed a DONE
+// plan with zero recognised gates.
+// The verdict alternation is closed: this was `([A-Z]+)`, so
+// `### Wavecheck 1.0 - NOTE: see above` yielded the verdict `NOTE` and the plan
+// derived as BLOCKED off a heading nobody meant as a gate.
 // The parenthetical is free text and re-audits are ordinary headings, so the
 // LAST verdict for a wave is the one that stands.
-const WAVECHECK_RE = /^### Wavecheck (\d+)\.(\d+)\b.*?[—-]\s*([A-Z]+)/;
+const WAVECHECK_RE = /^### Wavecheck (\d+)\.(\d+)\b.*?[—,-]\s*(PASS|BLOCK)\b/;
 
 // A phase gate spans its `**Phase gate:` line AND the wrapped lines under it.
 // This is not fussiness: plan 005 declared "plus human sign-off" three lines
@@ -789,6 +824,45 @@ function waveStart(planPath, wave) {
   }
 
   const root = repoRoot(planPath);
+
+  // PREFLIGHT. `wave-start` used to arm from any file at all, including a plan
+  // with `format_version: 9`, and the boundary it writes is what the hook then
+  // enforces for the whole wave. A plan the validator rejects is not a boundary
+  // anyone should be held to.
+  const check = spawnSync(process.execPath, [SELF, "validate-plan", planPath], { encoding: "utf8" });
+  if (check.status !== 0) {
+    console.error(`wave-start: ${planPath} does not pass validate-plan, so its ownership boundary is not trustworthy.`);
+    for (const line of String(check.stdout ?? "").split("\n").concat(String(check.stderr ?? "").split("\n"))) {
+      if (/^\s*-\s/.test(line) || /^validate-plan/.test(line)) console.error(`  ${line.trim()}`);
+    }
+    console.error(`  Fix the plan, then arm the wave.`);
+    process.exit(1);
+  }
+
+  // An uncommitted plan is a boundary that can change under the wave, and after
+  // the wave `audit-wave` reports the plan file as an uncommitted change on a
+  // clean run. Committing it first is one command; discovering this at the gate
+  // costs a wave.
+  const planRel = resolve(planPath).slice(root.length + 1).split("\\").join("/");
+  const planDirty = git(["-C", root, "status", "--porcelain", "--", planRel]);
+  if (planDirty) {
+    console.error(`wave-start: ${planRel} has uncommitted changes (${planDirty.trim().split("\n")[0]}).`);
+    console.error(`  Commit the plan before arming the wave, or the boundary can move under the executors`);
+    console.error(`  and the wave's own audit reports the plan file as an unattributed change.`);
+    process.exit(1);
+  }
+
+  // `.drydock/` holds the armed boundary, the enforcement receipts and the
+  // attribution manifest. The docs said it "is gitignored", which was true of
+  // THIS repo only: in a fresh host repo the first `audit-wave` failed on the
+  // tool's own state files, on a wave that had done nothing wrong.
+  const ignorePath = join(root, ".gitignore");
+  const ignored = existsSync(ignorePath) ? readFileSync(ignorePath, "utf8") : "";
+  if (!/^\.drydock\/?\s*$/m.test(ignored)) {
+    writeFileSync(ignorePath, (ignored && !ignored.endsWith("\n") ? ignored + "\n" : ignored) + "# Drydock wave state, receipts and attribution\n.drydock/\n");
+    console.log(`wave-start: added \`.drydock/\` to ${ignorePath}, its state files are not part of your history`);
+  }
+
   const configPath = join(root, ".drydock", "wave-owns.json");
   mkdirSync(dirname(configPath), { recursive: true });
   writeFileSync(
@@ -803,9 +877,24 @@ function waveStart(planPath, wave) {
   // Forward slashes, always: this line is meant to be copy-pasted into a shell,
   // and join() would hand a Windows user a backslash path for a POSIX command.
   console.log(`close the wave with:  rm .drydock/wave-owns.json`);
+  // The absolute path, because `$DD` and `${CLAUDE_PLUGIN_ROOT}` are both empty
+  // in a shell and a command copied out of the docs with either one still in it
+  // runs `node /scripts/...` and dies MODULE_NOT_FOUND.
+  console.log(`audit it with:        node ${SELF} audit-wave ${planPath} ${wave}`);
 }
 
-const repoRoot = () => git(["rev-parse", "--show-toplevel"]);
+// Resolve from the PLAN's directory when one is given. This took an argument at
+// every call site and ignored it, using process.cwd(): running
+// `wave-start ../other-repo/docs/plans/p.md 1.0` from elsewhere armed the hook
+// in the WRONG repository, writing .drydock/wave-owns.json next to the shell
+// rather than next to the plan.
+const repoRoot = (from) =>
+  git(from ? ["-C", dirname(resolve(from)), "rev-parse", "--show-toplevel"] : ["rev-parse", "--show-toplevel"]);
+
+// A path as git names it: repo-relative, POSIX separators. `owns` globs and
+// `git show --name-only` both speak that dialect; an absolute path or a `./`
+// prefix matches nothing and reads as a stray.
+const relFromRoot = (p) => resolve(p).slice(repoRoot().length + 1).split("\\").join("/");
 
 // ------------------------------------------------------------ audit-wave ----
 
@@ -836,6 +925,18 @@ const git = (args) => execFileSync("git", args, { encoding: "utf8" }).trim();
 // record is never allowed to read as a live one.
 const SEALED_ROW = /^\|\s*(T[0-9][\w.]*)\s*\|\s*`([0-9a-f]{7,40})`\s*\|/;
 
+// Is there a wavecheck report for this wave at all? Distinct from
+// `sealedRecord`, which returns null whenever the report's evidence table does
+// not parse -- so "no recoverable table" read as "wave still open", and a closed
+// record was re-audited under live-wave rules.
+function sealedVerdict(plan, wave) {
+  const re = new RegExp(`^### Wavecheck ${wave.replace(/\./g, "\\.")}\\b`);
+  let start = -1;
+  plan.lines.forEach((l, i) => { if (re.test(l)) start = i; });
+  if (start === -1) return null;
+  return plan.lines[start].match(/[—,-]\s*(PASS|BLOCK)\b/)?.[1] ?? "?";
+}
+
 function sealedRecord(plan, wave) {
   // The LAST report for the wave, matching `derivePlanState`, which takes the
   // last verdict because a re-audit is an ordinary heading and supersedes what
@@ -845,7 +946,7 @@ function sealedRecord(plan, wave) {
   // with "history moved under the manifest (amend, rebase or drop)" — a
   // confident false cause for a history that had not moved at all. Two readers
   // of the same headings must not disagree about which one counts.
-  const re = new RegExp(`^### Wavecheck ${wave.replace(".", "\\.")}\\b`);
+  const re = new RegExp(`^### Wavecheck ${wave.replace(/\./g, "\\.")}\\b`);
   let start = -1;
   plan.lines.forEach((l, i) => { if (re.test(l)) start = i; });
   if (start === -1) return null;
@@ -864,7 +965,7 @@ function sealedRecord(plan, wave) {
     .match(/enforcement active:\s*(\d+)\s*hook decision\(s\) recorded for wave [\d.]+\s*\((\d+) denied\)/);
 
   if (commits.size === 0 && !enforcement) return null;
-  const verdict = plan.lines[start].match(/[—-]\s*([A-Z]+)/)?.[1] ?? "?";
+  const verdict = plan.lines[start].match(/[—,-]\s*(PASS|BLOCK)\b/)?.[1] ?? "?";
   return {
     commits,
     verdict,
@@ -878,6 +979,7 @@ function auditWave(path, wave) {
   const errors = [];
   const notes = [];
   const sealed = sealedRecord(plan, wave);
+  const sealedAs = sealedVerdict(plan, wave);
 
   if (plan.frontmatter.isolation === "worktree") {
     notes.push("plan declares `isolation: worktree`, attribution there comes from per-worktree `git diff --name-only`; this subcommand audits default-mode per-task commits only");
@@ -893,7 +995,16 @@ function auditWave(path, wave) {
   // JUDGED is identical below, which is the whole point of issue #2 — the commit
   // subject was never part of the ownership check, only its lookup key, and it
   // was the one part of the contract a host repo's commit policy could reject.
-  const mode = plan.frontmatter.attribution ?? "commit-prefix";
+  // DEFAULT BY FORMAT VERSION. `commit-prefix` finds a task's commit by grepping
+  // subjects, and a subject is not unique: `8410e54`, a release bump made a day
+  // after plan 003 sealed, reused the subject `drydock(T1.2.1)` and turned that
+  // plan's sealed PASS into a FAIL naming an ownership violation plan 003 never
+  // committed. Keeping the reader is what lets plans 001-004 (all v2, none
+  // declaring the key) audit exactly as they always did; defaulting v3 and later
+  // to `manifest` retires the collision class for every new plan without a
+  // format bump.
+  const fv = Number(plan.frontmatter.format_version);
+  const mode = plan.frontmatter.attribution ?? (fv >= 3 ? "manifest" : "commit-prefix");
   const planId = plan.frontmatter.plan ?? null;
   let commitsFor;
   // Where the task->commit lookup came from, so an error can name its real
@@ -977,11 +1088,29 @@ function auditWave(path, wave) {
       continue;
     }
     if (shas.length > 1) {
-      errors.push(
-        mode === "manifest"
-          ? `task ${task.id}: ${shas.length} manifest entries claim it (${shas.map((s) => s.slice(0, 7)).join(", ")}), ambiguous attribution is what per-task attribution exists to prevent`
-          : `task ${task.id}: ${shas.length} commits share its subject (${shas.map((s) => s.slice(0, 7)).join(", ")}), ambiguous attribution is what per-task commits exist to prevent`
-      );
+      if (mode === "manifest") {
+        // Two `task-close` calls for one task. A real bookkeeping fault, and both
+        // commits are genuinely the task's, so keep judging every one of them.
+        errors.push(
+          `task ${task.id}: ${shas.length} manifest entries claim it (${shas.map((s) => s.slice(0, 7)).join(", ")}), ambiguous attribution is what per-task attribution exists to prevent`
+        );
+      } else {
+        // Subject collision. The auditor CANNOT tell which of these commits is
+        // the task's, so it must not derive ownership verdicts from any of them.
+        // It used to: plan 003's sealed wave 1.2 re-audits as two errors, the
+        // collision plus "commit 8410e54 changes plugin.json, which is outside
+        // its owns" -- a breach report against a wave that never touched that
+        // file, caused entirely by a later commit reusing the id.
+        errors.push(
+          `task ${task.id}: ${shas.length} commits share the subject \`drydock(${task.id}):\` ` +
+            `(${shas.map((s) => s.slice(0, 7)).join(", ")}), so this task's ownership CANNOT be judged and is ` +
+            `reported as unverifiable rather than as a breach. A commit subject is not unique -- any later ` +
+            `commit can reuse a task id -- which is what \`attribution: manifest\` (default from ` +
+            `format_version 3) fixes.`
+        );
+        rows.push({ id: task.id, sha: `${shas.length} colliding`, files: [], owns: task.owns, strays: [] });
+        continue;
+      }
     }
 
     for (const sha of shas) {
@@ -1002,6 +1131,124 @@ function auditWave(path, wave) {
         errors.push(`task ${task.id}: commit ${sha.slice(0, 7)} changes \`${f}\`, which is outside its \`owns\` (${task.owns.map((o) => `\`${o}\``).join(", ") || "none declared"})`);
       }
       rows.push({ id: task.id, sha: sha.slice(0, 7), files, owns: task.owns, strays });
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // COMMITS NO TASK CLAIMS. The wave contract is "these tasks, these files, and
+  // nothing else", and until now `audit-wave` only ever inspected commits it
+  // could already attribute -- so a commit belonging to no task was invisible.
+  // Measured in a throwaway repo: two clean `drydock(<id>)` commits plus one
+  // `chore: unrelated` adding `src/evil.ts`, owned by nobody, returned
+  // `PASS, 2 task(s), 2 commit(s)`. `wavecheck/SKILL.md` has asserted this check
+  // exists since it was written. It did not.
+  //
+  // SCOPED TO THE WAVE'S OWN SPAN, `<earliest>^..<latest>`, where both ends are
+  // the wave's attributed commits. Both bounds are load-bearing.
+  //
+  // The lower bound is the PARENT of the earliest, so that commit sits inside
+  // the range (then filtered out as attributed) while earlier waves stay out.
+  // Anchoring on the plan-level baseline instead would make every wave inherit
+  // every earlier wave's commits, and a plan's own release bookkeeping would
+  // BLOCK each of its later waves.
+  //
+  // The upper bound depends on whether the wave is still open. A LIVE wave (no
+  // sealed wavecheck report for it in the plan) is being audited at its close,
+  // so the bound is HEAD: a stray commit landing after the last task commit is
+  // exactly the F1 case, and stopping at the last task commit would miss it. A
+  // SEALED wave is being re-audited later, so the bound is its own last commit;
+  // running to HEAD there reported every commit made since it closed, which on
+  // plan 005 wave 1.0 was 20 errors naming release commits from days afterwards.
+  // A closed wave is responsible for its own span and nothing after it.
+  // FULL shas, always. The sealed-record path supplies 7-character shas while
+  // `git log --format=%H` yields 40, so a raw comparison matched nothing and
+  // every one of the wave's own task commits was reported as claimed by no task.
+  const fullShas = new Set();
+  for (const task of tasks) {
+    for (const sha of commitsFor(task.id)) {
+      if (!reachable(sha)) continue;
+      try { fullShas.add(git(["rev-parse", `${sha}^{commit}`])); } catch { fullShas.add(sha); }
+    }
+  }
+
+  if (fullShas.size === 0) {
+    notes.push("no attributed commits in this wave, so the unattributed-commit scan cannot run; every task is already reported as unattributed above");
+  } else {
+    const ordered = (() => {
+      try {
+        // Ask git for these commits in history order rather than trusting the
+        // order the plan happens to list its tasks in.
+        return git(["rev-list", "--no-walk", "--date-order", ...fullShas]).split(/\r?\n/).filter(Boolean);
+      } catch { return [...fullShas]; }
+    })();
+    const earliest = ordered[ordered.length - 1];
+
+    const upper = sealedAs ? ordered[0] : "HEAD";
+    let range = null;
+    try { git(["rev-parse", "--verify", `${earliest}^`]); range = `${earliest}^..${upper}`; }
+    catch { range = null; } // root commit: no parent to anchor on
+
+    if (!range) {
+      notes.push(`wave's earliest commit ${earliest.slice(0, 7)} is a root commit, so there is no range to scan for unattributed commits`);
+    } else {
+      const planRel = relFromRoot(plan.path);
+      const allOwns = [...new Set(tasks.flatMap((t) => t.owns))];
+
+      // Commits belonging to ANOTHER wave of the SAME plan. Waves interleave in
+      // practice -- plan 001 wave 1.1's span contains `drydock(T1.2.1)` -- and a
+      // commit the plan does claim is not an unattributed commit. It is worth
+      // saying that the waves overlapped, and it is not a breach.
+      const otherWaveShas = new Map();
+      for (const t of plan.tasks) {
+        if (t.superseded || waveOf(t) === wave) continue;
+        for (const sha of commitsFor(t.id)) {
+          try { otherWaveShas.set(git(["rev-parse", `${sha}^{commit}`]), t); } catch { otherWaveShas.set(sha, t); }
+        }
+      }
+      const scanned = git(["log", "--format=%H%x1f%s", range]).split(/\r?\n/).filter(Boolean);
+
+      for (const line of scanned) {
+        const [sha, subject] = line.split("\x1f");
+        if (fullShas.has(sha)) continue;
+
+        const files = git(["show", "--name-only", "--format=", sha]).split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+        if (files.length === 0) continue; // merge or empty commit
+
+        // The plan document is owned by no task BY DESIGN -- the orchestrator
+        // writes the Deviation Log and the wavecheck report into it after the
+        // wave closes -- so a commit touching only the plan is bookkeeping, not
+        // a breach. Anything else is a file this wave was never authorised to
+        // change.
+        const owner = otherWaveShas.get(sha);
+        if (owner) {
+          notes.push(
+            `commit ${sha.slice(0, 7)} (\`${subject}\`) lands inside wave ${wave}'s span but belongs to ` +
+              `${owner.id} in wave ${waveOf(owner)}, so the waves overlapped. Claimed by the plan, not a stray.`
+          );
+          continue;
+        }
+
+        const unowned = files.filter((f) => f !== planRel && !matchesOwns(f, allOwns));
+        if (unowned.length === 0) {
+          notes.push(`commit ${sha.slice(0, 7)} (\`${subject}\`) claims no task and touches only files this wave owns or the plan document, recorded rather than failed`);
+          continue;
+        }
+
+        const what =
+          `commit ${sha.slice(0, 7)} (\`${subject}\`) is claimed by no task in wave ${wave} and changes ` +
+          `${unowned.map((f) => `\`${f}\``).join(", ")}, which no task in this wave owns`;
+
+        // A SEALED wave already had its verdict rendered, and the artifacts
+        // behind it are gone. Turning a closed record into a FAIL years later on
+        // a check that did not exist when it ran would rewrite history rather
+        // than describe it, so on a re-audit this is reported and not failed.
+        // On a LIVE wave it is the breach the check exists to catch.
+        if (sealedAs) {
+          notes.push(`${what}. This wave is already sealed (${sealedAs}), so this is recorded as a re-audit finding rather than failing a closed record.`);
+        } else {
+          errors.push(`${what}. "Nothing outside the plan changed" is the wave contract; an unattributed commit is how it breaks.`);
+        }
+      }
     }
   }
 
@@ -1281,6 +1528,22 @@ const argv = process.argv.slice(2);
 const strict = argv.includes("--strict");
 const [command, ...rest] = argv.filter((a) => a !== "--strict" && a !== "--write");
 
+// EXIT CODES: 0 pass, 1 the plan failed the check, 2 bad usage, 3 the check
+// could not run. A missing file used to print an eleven-line `node:fs` stack
+// trace and exit 1 -- the same code as a legitimate FAIL -- so no wrapper could
+// tell "this plan is bad" from "this tool is broken", and a first-time user's
+// typo looked like a plan defect.
+const fail = (err) => {
+  const msg = err?.code === "ENOENT" && err.path
+    ? `${err.path}: no such file`
+    : err?.message?.split("\n")[0] ?? String(err);
+  console.error(`drydock-audit: ${command ?? "(no command)"} could not run: ${msg}`);
+  if (process.env.DRYDOCK_DEBUG) console.error(err?.stack ?? "");
+  else console.error(`  set DRYDOCK_DEBUG=1 for the stack trace`);
+  process.exit(3);
+};
+
+try {
 if (command === "validate-plan" && rest[0]) validatePlan(rest[0], strict);
 else if (command === "audit-wave" && rest[0] && rest[1]) auditWave(rest[0], rest[1]);
 else if (command === "wave-start" && rest[0] && rest[1]) waveStart(rest[0], rest[1]);
@@ -1295,4 +1558,7 @@ else {
   console.error("       drydock-audit.mjs resolve-plans-dir [<preferred>]   # where plans go, and whether they can be committed");
   console.error("       drydock-audit.mjs validate-plan [--strict] <plan.md>");
   process.exit(2);
+}
+} catch (err) {
+  fail(err);
 }
