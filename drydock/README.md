@@ -93,36 +93,46 @@ Ownership enforcement is armed per wave, from the plan, and closed when the wave
 closes:
 
 ```bash
-node $DD/scripts/drydock-audit.mjs wave-start docs/plans/005-x.md 2.1   # arm the hook
+# Set once per shell. The install directory is not on your PATH, and
+# $CLAUDE_PLUGIN_ROOT is substituted by the HOST when it loads a skill, not by
+# bash, so a command pasted from a file with the placeholder still in it runs
+# `node /scripts/...` and dies MODULE_NOT_FOUND. In a checkout of this repo,
+# DD=drydock instead.
+DD=$(ls -d ~/.claude/plugins/cache/drydock/drydock/*/ | sort -V | tail -1)
+
+node "$DD/scripts/drydock-audit.mjs" wave-start docs/plans/005-x.md 2.1   # arm the hook
 # ... the wave's executors run; the hook denies writes outside the boundary ...
-node $DD/scripts/drydock-audit.mjs audit-wave  docs/plans/005-x.md 2.1  # audit afterwards
-rm .drydock/wave-owns.json                                              # close the wave
+node "$DD/scripts/drydock-audit.mjs" audit-wave  docs/plans/005-x.md 2.1  # audit afterwards
+rm .drydock/wave-owns.json                                                # close the wave
 ```
 
-`$DD` is the plugin's install directory. **You do not have to find it by hand:**
-the host substitutes `${CLAUDE_PLUGIN_ROOT}` when it loads a skill body, so the
-commands `planwright`, `wavecheck` and `executor` hand you already carry the
-absolute path. It substitutes nothing in a file read from disk, and
-`$CLAUDE_PLUGIN_ROOT` is empty in a shell, so a command copied out of this
-README or out of `plan-format.md` with the placeholder still in it runs
-`node /scripts/…` and dies `MODULE_NOT_FOUND`. In a checkout of this repo,
-`$DD` is `drydock/`.
-
 `wave-start` derives the boundary from the plan. Never write
-`.drydock/wave-owns.json` by hand. The hook records every decision to
-`.drydock/enforcement.log`, and `audit-wave` reads that log to establish whether
-enforcement was actually running, which is a different and stronger question than
-whether a config file existed. Both files live under the gitignored `.drydock/`.
+`.drydock/wave-owns.json` by hand. It also refuses to arm a plan that fails
+`validate-plan` or that has uncommitted changes, and adds `.drydock/` to your
+`.gitignore` if it is missing, because the claim that `.drydock/` is gitignored
+was only ever true of this repo: in a fresh host repo the first `audit-wave`
+failed on the tool's own state files.
+
+The hook records every decision to `.drydock/enforcement.log`, and `audit-wave`
+reads that log to establish whether enforcement was actually running, which is a
+different and stronger question than whether a config file existed.
 
 ## Requirements
 
-**Node >= 22**, on PATH. New in v0.6.0: the ownership hook and the audit script
-are Node programs (`path.matchesGlob` is stdlib from 22). Before this release the
-plugin was markdown-only and ran wherever Claude Code ran; that is no longer
-true, and it is a real adoption cost rather than a footnote. The host must also
-support `PreToolUse` hooks, or ownership enforcement silently does nothing.
-Run `node $DD/hooks/enforce-owns.test.mjs` to confirm the hook behaves before
-relying on it (`$DD` as above; `drydock/` in a checkout of this repo).
+**Node >= 20.17**, on PATH, as declared in `engines` and tested in CI on 20, 22
+and 24. This read "Node >= 22" for several releases, on the strength of
+`path.matchesGlob` being stdlib from 22; both scripts in fact ran on 20.20, and
+the plugin no longer calls that function at all, because it does not match
+dotfiles (`src/**` did not cover `src/.env`, so no task could write the dotfiles
+inside a directory it owned). A fifteen-line matcher in `lib/owns-match.mjs`
+replaced it.
+
+Since v0.6.0 the ownership hook and the audit script are Node programs; before
+that the plugin was markdown-only and ran wherever Claude Code ran. That is a
+real adoption cost rather than a footnote. The host must also support
+`PreToolUse` hooks, or ownership enforcement silently does nothing. Run
+`node "$DD/hooks/enforce-owns.test.mjs"` to confirm the hook behaves before
+relying on it; it runs in a temp directory and touches nothing in your repo.
 
 ## Quickstart
 

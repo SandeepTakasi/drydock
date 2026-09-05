@@ -182,8 +182,13 @@ the reconcile skill.
 **Ownership enforcement (arm before every wave, from v0.7.0):**
 
 ```bash
-node drydock-audit.mjs wave-start <plan> <wave>     # absolute path: see above
+# This file is READ FROM DISK, so ${CLAUDE_PLUGIN_ROOT} is not substituted in it
+# and is empty in a shell. Resolve the install directory once instead:
+DD=$(ls -d ~/.claude/plugins/cache/drydock/drydock/*/ | sort -V | tail -1)
+
+node "$DD/scripts/drydock-audit.mjs" wave-start <plan> <wave>
 # ... the wave's executors run ...
+node "$DD/scripts/drydock-audit.mjs" audit-wave <plan> <wave>
 rm .drydock/wave-owns.json     # closing the wave
 ```
 
@@ -401,8 +406,8 @@ still carry theirs; execution history is not a draft.
 state a gate writes, so they are the ground truth and frontmatter `status:`
 must agree with them:
 
-```
-node drydock-audit.mjs plan-status [--write] <plan.md>
+```bash
+node "$DD/scripts/drydock-audit.mjs" plan-status [--write] <plan.md>
 ```
 
 `validate-plan` fails on a contradiction and `audit-wave` notes one at the wave
