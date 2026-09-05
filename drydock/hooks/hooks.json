@@ -1,9 +1,9 @@
 {
-  "description": "Ownership boundary enforcement. On Write/Edit/NotebookEdit, denies a write to any path outside the owns set of the wave declared in .drydock/wave-owns.json. Inert when that file is absent, which is the normal state of a repo not mid-wave. See hooks/enforce-owns.mjs for the config shape, the wave-level (not per-task) rationale, and the documented ceilings.",
+  "description": "Ownership boundary enforcement. On Write/Edit/MultiEdit/NotebookEdit, denies a write to any path outside the owns set of the wave declared in .drydock/wave-owns.json. Inert when that file is absent, which is the normal state of a repo not mid-wave. See hooks/enforce-owns.mjs for the config shape, the wave-level (not per-task) rationale, and the documented ceilings.",
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Write|Edit|NotebookEdit",
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
         "hooks": [
           {
             "type": "command",
