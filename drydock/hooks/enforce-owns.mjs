@@ -39,26 +39,25 @@
  *     file-tool hooks and are NOT caught here. The post-hoc audit is the backstop.
  *   - Paths outside the project directory are not enforced — the ownership model
  *     describes repo files, and denying scratchpad writes would break unrelated work.
- *   - Requires Node >=22 for `path.matchesGlob`. On anything older this exits 0
- *     with a message rather than wedging every edit in the repo — and writes no
- *     receipt, so the wave audit reports the wave as unenforced instead of the
- *     failure passing unnoticed.
+ *   - Enforcement is WAVE-scoped, so within a wave one task may write another
+ *     task's files. Per-task attribution stays with the commit audit.
  *
  * FAILURE POSTURE: absent config means inert (exit 0) — that is the normal state
  * of a repo not mid-wave, and it is the escape hatch that makes `deny` safe to
- * ship. A config that exists but cannot be parsed fails CLOSED: a malformed
- * enforcement control must not quietly become no enforcement. Every denial names
- * the remedy, because a hook that can wedge a repo has to say how to unwedge it.
+ * ship. Everything after that fails CLOSED. A config that cannot be parsed, an
+ * `owns` that is not an array of strings, and any exception thrown while
+ * resolving or matching the target all deny. This used to be true of the parse
+ * only: a `file_path` of the wrong type or a non-string glob threw a TypeError,
+ * the process exited 1, and a non-zero-but-not-2 exit is read by the host as a
+ * hook error rather than a denial, so the write went through and no receipt was
+ * written. Three of five failure modes failed open while the docblock claimed
+ * otherwise. Every denial names the remedy, because a hook that can wedge a repo
+ * has to say how to unwedge it.
  */
 
-import { readFileSync, appendFileSync, mkdirSync } from "node:fs";
-// DEFAULT import, deliberately. This was `import { matchesGlob } from "node:path"`,
-// which on Node < 22 is a parse-time SyntaxError: the process exits 1 before a
-// single line of this file runs, so no version guard could catch it — and exit 1
-// is not exit 2, so it is not a deny. The hook failed open on every write while
-// printing an error on every edit, and shipped that way undetected. A named
-// import cannot be guarded; a capability check on a default import can.
+import { readFileSync, appendFileSync, mkdirSync, realpathSync } from "node:fs";
 import path from "node:path";
+import { matchesOwns } from "../lib/owns-match.mjs";
 
 const allow = () => process.exit(0);
 
@@ -71,19 +70,6 @@ const deny = (message) => {
   );
   process.exit(2);
 };
-
-// Fail OPEN on an unsupported Node, and say so once, clearly. Wedging every edit
-// in someone's repo over a runtime version is a worse outcome than not enforcing
-// — and the receipt below is what stops that non-enforcement from being silent:
-// a hook that never ran writes no entries, and `audit-wave` BLOCKs on that.
-if (typeof path.matchesGlob !== "function") {
-  process.stderr.write(
-    `Drydock: ownership enforcement is INACTIVE. Node ${process.version} does not ` +
-      `provide path.matchesGlob (added in v22). Upgrade Node to enforce ownership; ` +
-      `until then the wave audit will report this wave as unenforced.\n`
-  );
-  allow();
-}
 
 let input;
 try {
@@ -109,6 +95,8 @@ let config;
 try {
   config = JSON.parse(raw);
   if (!Array.isArray(config.owns)) throw new Error("`owns` must be an array of globs");
+  if (!config.owns.every((g) => typeof g === "string"))
+    throw new Error("every entry in `owns` must be a string glob");
 } catch (err) {
   deny(
     `Drydock: .drydock/wave-owns.json is present but unusable (${err.message}). ` +
@@ -148,24 +136,50 @@ const record = (decision, rel) => {
   }
 };
 
-// Normalise to a repo-relative POSIX path: plan `owns` globs are written with
-// forward slashes, and on Windows the tool hands us backslashes.
-const absolute = path.isAbsolute(target) ? target : path.resolve(projectDir, target);
-const rel = path.relative(projectDir, absolute).split("\\").join("/");
+// Resolve symlinks before matching. Lexical normalisation alone let a symlinked
+// directory inside an owned subtree point anywhere: with `owns: ["docs/**"]` and
+// `docs/link -> ../site`, a write to `docs/link/x.ts` normalised to a path under
+// `docs/` and was allowed, while landing in `site/`. Only the parent is resolved
+// because the target itself usually does not exist yet.
+const realOr = (p) => {
+  try {
+    return realpathSync.native(p);
+  } catch {
+    return p; // not created yet, or unreadable: fall back to the lexical path
+  }
+};
 
-// Outside the repo entirely — not what the ownership model describes.
-if (rel.startsWith("../")) allow();
+// Everything from here can throw on hostile input, and a throw must deny.
+try {
+  if (typeof target !== "string") throw new Error(`file_path is ${typeof target}, expected a string`);
 
-if (config.owns.some((glob) => path.matchesGlob(rel, glob))) {
-  record("allow", rel);
-  allow();
+  const root = realOr(projectDir);
+  const absolute = path.isAbsolute(target) ? target : path.resolve(root, target);
+  const resolved = path.join(realOr(path.dirname(absolute)), path.basename(absolute));
+  const rel = path.relative(root, resolved).split("\\").join("/");
+
+  // Outside the repo entirely — not what the ownership model describes.
+  if (rel.startsWith("../")) allow();
+
+  if (matchesOwns(rel, config.owns)) {
+    record("allow", rel);
+    allow();
+  }
+
+  record("deny", rel);
+  const where = config.plan ? `${config.plan} wave ${config.wave}` : `wave ${config.wave}`;
+  deny(
+    `Drydock ownership violation: ${where} does not own ${rel}.\n` +
+      `Owned by this wave: ${config.owns.join(", ")}\n` +
+      `If correct implementation needs this file, that is a deviation, report it ` +
+      `rather than widening your own boundary. Stale? delete .drydock/wave-owns.json`
+  );
+} catch (err) {
+  // `allow()` and `deny()` exit the process, so they never land here. Anything
+  // that does is a real fault, and a faulty enforcement control denies.
+  deny(
+    `Drydock: ownership check failed on this write (${err.message}). ` +
+      `Enforcement fails closed rather than letting an unchecked write through. ` +
+      `If no wave is running, delete .drydock/wave-owns.json.`
+  );
 }
-
-record("deny", rel);
-const where = config.plan ? `${config.plan} wave ${config.wave}` : `wave ${config.wave}`;
-deny(
-  `Drydock ownership violation: ${where} does not own ${rel}.\n` +
-    `Owned by this wave: ${config.owns.join(", ")}\n` +
-    `If correct implementation needs this file, that is a deviation, report it ` +
-    `rather than widening your own boundary. Stale? delete .drydock/wave-owns.json`
-);
