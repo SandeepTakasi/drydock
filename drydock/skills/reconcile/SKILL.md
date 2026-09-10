@@ -35,7 +35,7 @@ back by hand prevented it. The gate a closer cannot see is a gate that does not
 hold.
 
 **Testing Gate refusal.** If the plan's `## Testing Gate` section exists and is
-not `N/A - <reason>`, then before doing anything else:
+not `N/A, <reason>`, then before doing anything else:
 
 1. Read `.drydock/testing/<plan-id>/verdict.md`, that exact path, frozen by the
    format contract and written by `drydock:seatrial`.

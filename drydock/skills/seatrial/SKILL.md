@@ -51,7 +51,7 @@ exactly like a full one.
 
 1. **The gate exists.** The plan has a `## Testing Gate` section, its
    `format_version` is supported, and its status is `EXECUTING` or later. If the
-   section reads `N/A - <reason>`, there is nothing to run: say so and stop, with
+   section reads `N/A, <reason>`, there is nothing to run: say so and stop, with
    no sheet written. An absent section on a plan that touches a UI is a planning
    defect: report it, and do not invent cases.
 2. **The gate is not stale.** `git diff <baseline SHA>..HEAD -- <paths the target

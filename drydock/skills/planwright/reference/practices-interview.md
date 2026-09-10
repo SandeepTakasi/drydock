@@ -21,7 +21,7 @@ Skip any question already answered by the repo or by prior context in the conver
 ### End-to-end verification (the Testing Gate)
 
 Ask these only when the change touches something a browser can drive. If it does
-not, the plan's **Testing Gate** section is `N/A - <reason>` and the rest of this
+not, the plan's **Testing Gate** section is `N/A, <reason>` and the rest of this
 block is skipped. Do not ask them for a docs-only or library-only change.
 
 - **Is there a UI or API surface this change affects that a browser can exercise?** *(A "no" here is the N/A reason, written into the plan verbatim. A "yes" means the plan carries written cases before implementation starts, not after.)*
