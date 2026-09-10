@@ -18,9 +18,6 @@ exactly as it always did.
 | **v2** | The team's proven plan template merged with the Drydock execution contract. |
 | **v3** | Adds four optional frontmatter keys, each a closed enumeration with a back-compatible default: `enforcement:` (hook receipts required), `attribution:` (`commit-prefix` \| `manifest`), `lane:` (`full` \| `small`), `execution:` (`fleet` \| `solo`). Absent means the v2 behaviour in every case. |
 
-This heading read `v2` for two releases after v3 shipped, in the one file
-whose own rule is "changing this file means bumping `format_version` and
-updating every consumer".
 
 ## Plan file
 
@@ -182,8 +179,9 @@ the reconcile skill.
 **Ownership enforcement (arm before every wave, from v0.7.0):**
 
 ```bash
-# This file is READ FROM DISK, so ${CLAUDE_PLUGIN_ROOT} is not substituted in it
-# and is empty in a shell. Resolve the install directory once instead:
+# This file is READ FROM DISK, so the host's plugin-root placeholder is not
+# substituted here, and it is empty in a shell besides. Resolve the install
+# directory once instead:
 DD=$(ls -d ~/.claude/plugins/cache/drydock/drydock/*/ | sort -V | tail -1)
 
 node "$DD/scripts/drydock-audit.mjs" wave-start <plan> <wave>
@@ -395,8 +393,8 @@ Ownership rules:
 - Task IDs are never reused; a replan-replaced task gets a suffixed id
   (`T2.1.3r1`) and the original is struck through with a pointer.
 
-**No per-task `Status:` field.** It was in this template until v0.7.3 and
-nothing ever maintained it, measured wrong in 40 of 40 tasks in the field,
+**No per-task `Status:` field.** Nothing maintained it, and it measured wrong in
+40 of 40 tasks in the field,
 because every mechanism that knows a task finished (the wavecheck report, the
 Progress log, the checkpoint commit) writes somewhere else. A field that is
 always stale is worse than an absent one: it reads like state. Plans 001–004
