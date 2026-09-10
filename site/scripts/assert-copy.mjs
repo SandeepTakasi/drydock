@@ -53,11 +53,19 @@ const REQUIRED = [
   // drop off the page first now that there is a green suite to boast about —
   // one engine. A passing suite on one browser is not a compatibility rate.
   "Chromium only",
-  // The one install prerequisite. Below Node 22 the ownership hook exits 0 and
-  // enforces nothing, so a page that sells enforcement without naming the
-  // version sells a guarantee the reader may not have. Pinned so it cannot be
-  // trimmed away as boilerplate.
-  "Node 22 or newer",
+  // The one install prerequisite. A page that sells enforcement without naming
+  // the runtime it needs sells a guarantee the reader may not have. Pinned so it
+  // cannot be trimmed away as boilerplate.
+  //
+  // The FLOOR MOVED at 0.9.0, and this literal is why it had to move here too:
+  // it pinned "Node 22 or newer" and so required the page to keep saying it
+  // after the code stopped meaning it. The hook no longer calls
+  // `path.matchesGlob` (it did not match dotfiles), so the 22 floor and the
+  // fail-open-on-old-Node path both went with it; `engines` declares 20.17.0 and
+  // CI tests 20, 22 and 24. A required literal is a claim this file is asserting
+  // too, and a stale one turns the honesty gate into the thing keeping the page
+  // wrong.
+  "Node 20.17 or newer",
   "Bash-mediated writes bypass file-tool hooks",
   "Deviations logged: 1 (1 discovered by wavecheck)",
   "A2b",
