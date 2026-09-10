@@ -435,6 +435,22 @@ function validatePlan(path, strict) {
     if (strict && t.fields.has("files owned")) {
       const seen = backticked(t.ownsSpan.join(" ")).length;
       if (seen !== t.owns.length) errors.push(`task ${t.id}: **Files owned:** block holds ${seen} backticked path(s) but ${t.owns.length} parsed, the ownership boundary would be ${seen - t.owns.length} file(s) too narrow (strict)`);
+
+      // BOTH counts can be zero and still be wrong. The check above compares a
+      // loose read against a strict one, so `Files owned: src/a.ts, src/b.ts`
+      // -- real paths, no backticks -- agrees with itself at zero and passed.
+      // That is the same silent narrowing as issue #8 taken to its limit: the
+      // task declares two files, the parser sees none, and `wave-start` arms a
+      // boundary owning nothing. A planner writing prose instead of code spans
+      // produces exactly this, so the text has to be looked at, not just counted.
+      const declared = t.ownsSpan.join(" ").trim();
+      const saysNothing = /^(none|n\/a|read-only|none \(read-only\)|-)?\s*(\(.*\))?\s*$/i.test(declared);
+      if (t.owns.length === 0 && declared !== "" && !saysNothing) {
+        errors.push(
+          `task ${t.id}: **Files owned:** reads ${JSON.stringify(declared.slice(0, 60))} but yields no paths, ` +
+            `every path must be in backticks or the boundary is empty and the task owns nothing (strict)`
+        );
+      }
     }
   }
 
@@ -533,7 +549,7 @@ function validatePlan(path, strict) {
       // this accepted only the two dashes, so a plan written to the contract
       // failed the contract's own validator. The em dash is kept because the
       // five plans already in this repo carry it.
-      if (!/^\s*N\/A\s*[—,-]\s*\S/i.test(gate)) errors.push("Testing Gate: `N/A` with no reason, the reason is required (write `N/A, <reason>`)");
+      if (!NA_RE.test(gate)) errors.push("Testing Gate: `N/A` with no reason, the reason is required (write `N/A, <reason>`)");
     } else {
       const caseIds = [...new Set([...gate.matchAll(/\bTG\d+\b/g)].map((m) => m[0]))];
       if (caseIds.length === 0) errors.push("Testing Gate: not N/A but declares no `TG<n>` cases");
@@ -638,7 +654,15 @@ const WAVE_RE = /^### Wave (\d+)\.(\d+|R)\b/;
 // derived as BLOCKED off a heading nobody meant as a gate.
 // The parenthetical is free text and re-audits are ordinary headings, so the
 // LAST verdict for a wave is the one that stands.
-const WAVECHECK_RE = /^### Wavecheck (\d+)\.(\d+)\b.*?[—,-]\s*(PASS|BLOCK)\b/;
+// ONE definition of the separator, referenced everywhere it is honoured.
+// `plan-format.md` quotes this set verbatim ("a comma, a hyphen or an em dash"),
+// and it was four separate inline literals that had already drifted apart once:
+// the N/A check accepted two of them while the contract instructed the third.
+const SEP = "[—,-]";
+const VERDICT = "(PASS|BLOCK)";
+const NA_RE = new RegExp(`^\\s*N/A\\s*${SEP}\\s*\\S`, "i");
+const WAVECHECK_RE = new RegExp(`^### Wavecheck (\\d+)\\.(\\d+)\\b.*?${SEP}\\s*${VERDICT}\\b`);
+const VERDICT_RE = new RegExp(`${SEP}\\s*${VERDICT}\\b`);
 
 // A phase gate spans its `**Phase gate:` line AND the wrapped lines under it.
 // This is not fussiness: plan 005 declared "plus human sign-off" three lines
@@ -955,7 +979,7 @@ function sealedVerdict(plan, wave) {
   let start = -1;
   plan.lines.forEach((l, i) => { if (re.test(l)) start = i; });
   if (start === -1) return null;
-  return plan.lines[start].match(/[—,-]\s*(PASS|BLOCK)\b/)?.[1] ?? "?";
+  return plan.lines[start].match(VERDICT_RE)?.[1] ?? "?";
 }
 
 function sealedRecord(plan, wave) {
@@ -986,7 +1010,7 @@ function sealedRecord(plan, wave) {
     .match(/enforcement active:\s*(\d+)\s*hook decision\(s\) recorded for wave [\d.]+\s*\((\d+) denied\)/);
 
   if (commits.size === 0 && !enforcement) return null;
-  const verdict = plan.lines[start].match(/[—,-]\s*(PASS|BLOCK)\b/)?.[1] ?? "?";
+  const verdict = plan.lines[start].match(VERDICT_RE)?.[1] ?? "?";
   return {
     commits,
     verdict,

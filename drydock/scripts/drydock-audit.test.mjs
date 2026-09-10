@@ -1377,6 +1377,63 @@ cases.push(
 );
 
 // --------------------------------------------------------------------------
+// A DECLARED BOUNDARY THAT YIELDS NOTHING. The strict ownership check compared a
+// loose read of the `Files owned:` block against a strict one, so a line of real
+// paths with no backticks agreed with itself at zero and passed: the task
+// declares two files, the parser sees none, and `wave-start` arms a boundary
+// owning nothing. Issue #8's silent narrowing, taken to its limit.
+
+const ownsPlan = (declared) => `${head}
+### Wave 1.0 - w
+
+#### T1.0.1 - a
+- **Files owned:** ${declared}
+- **Context brief:** none
+- **Acceptance criterion:** \`true\` exits 0.
+`;
+
+cases.push(
+  ["real paths without backticks fail rather than yielding an empty boundary",
+    () => validateRaw("owns-bare", ownsPlan("src/a.ts, src/b.ts"), true),
+    (out) => out.includes("yields no paths")],
+  ["backticked paths are unaffected",
+    () => validateRaw("owns-ticked", ownsPlan("`src/a.ts`, `src/b.ts`"), true),
+    (out) => !out.includes("yields no paths")],
+  // A task that legitimately owns nothing must stay legal: T0 and the review
+  // waves are read-only by design.
+  ["a task that owns nothing on purpose still passes",
+    () => validateRaw("owns-none", ownsPlan("none (read-only)"), true),
+    (out) => !out.includes("yields no paths")],
+);
+
+// --------------------------------------------------------------------------
+// THE CONTRACT'S OWN TEMPLATES MUST PARSE. The doc instructed a grammar the
+// validator rejected, and nothing tied the two together: `plan-format.md` wrote
+// `N/A, <reason>` while the check required a dash, and its wavecheck heading
+// template did not register as a gate at all. These read the literal template
+// lines out of the contract and run them through the validator, so the two
+// cannot drift apart again silently.
+
+cases.push(
+  ["the contract's N/A template is accepted by the validator", () => {
+    const root = fileURLToPath(new URL("..", import.meta.url));
+    const contract = readFileSync(join(root, "skills/planwright/reference/plan-format.md"), "utf8");
+    const tpl = contract.match(/`(N\/A, <reason>)`/)?.[1];
+    if (!tpl) return "CONTRACT NO LONGER TEMPLATES AN N/A FORM";
+    return validateRaw("contract-na", naGatePlan(tpl.replace("<reason>", "no user-facing surface")), true);
+  }, (out) => !out.includes("`N/A` with no reason") && !out.includes("CONTRACT NO LONGER")],
+
+  ["the contract's wavecheck heading template is read as a gate", () => {
+    const root = fileURLToPath(new URL("..", import.meta.url));
+    const contract = readFileSync(join(root, "skills/planwright/reference/plan-format.md"), "utf8");
+    const tpl = contract.match(/`(### Wavecheck <phase>\.<wave>, PASS\|BLOCK, <date>)`/)?.[1];
+    if (!tpl) return "CONTRACT NO LONGER TEMPLATES A WAVECHECK HEADING";
+    const heading = tpl.replace("<phase>.<wave>", "1.0").replace("PASS|BLOCK", "PASS").replace("<date>", "2026-01-01");
+    return status("contract-wc", `${head}\n### Wave 1.0 - w\n\n#### T1.0.1 - a\n- **Files owned:** \`a.txt\`\n\n${heading}\n`).out;
+  }, (out) => /\|\s*1\.0\s*\|\s*PASS\s*\|/.test(out)],
+);
+
+// --------------------------------------------------------------------------
 // WAVE-START PREFLIGHT. It armed from any file at all, including a plan the
 // validator rejects, and a first `audit-wave` in a fresh repo then failed on the
 // tool's own `.drydock/` and the uncommitted plan — a wave that had done nothing
