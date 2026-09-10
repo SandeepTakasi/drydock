@@ -78,7 +78,7 @@ export const meta: Record<
   },
 };
 
-const VERSION = "0.8.16";
+const VERSION = "0.9.0";
 
 /**
  * Docs live in the repo, not in the export — only `site/out` is deployed. So
@@ -362,7 +362,7 @@ export const install: {
   configNote:
     "Configured on enable: where plans live (default docs/plans), which docs reconcile may propose changes to, and where seatrial writes its generated specs (default e2e). If your repo forbids committing planning artifacts and gitignores that path, plans fall back to .drydock/plans and the plan says so in one fixed line rather than arguing its own case. Then run /drydock:planwright on something small.",
   requirement:
-    "Requires Node 22 or newer on PATH: the ownership hook and the plan audit are Node programs. On anything older the hook exits 0 with a message and ownership is not enforced.",
+    "Requires Node 20.17 or newer on PATH, as declared in the plugin manifest and tested on 20, 22 and 24: the ownership hook and the plan audit are Node programs. The hook is inert, by design, whenever no wave is armed.",
   copyLabel: "Copy",
   copyAriaLabel: "Copy install command to clipboard",
   copiedLabel: "Copied",

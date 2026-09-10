@@ -1,5 +1,146 @@
 # Changelog
 
+## 0.9.0: 2026-09-10
+
+Minor rather than patch: the ownership hook and `audit-wave` both changed
+behaviour, and a plan that passed `validate-plan --strict` at 0.8.16 can fail at
+0.9.0. Nothing in the plan format changed, so `format_version` stays at 3 and
+every existing plan still parses.
+
+**The hook claimed to fail closed and did so for one of five failure modes.** A
+`file_path` of the wrong type, or a non-string entry in `owns`, threw a
+`TypeError` after the config check had already passed. Exit 1 is not exit 2, so
+the host read it as a hook error rather than a denial: the write went through
+and no receipt was written. Everything after the config parse is now wrapped,
+and a throw denies.
+
+**Two ownership-matching bugs, one cause.** `path.matchesGlob` does not match
+dotfiles, so `src/**` did not cover `src/.env` and no task could write the
+dotfiles inside a directory the plan said it owned. And a symlinked directory
+inside an owned subtree was normalised lexically, so with `owns: ["docs/**"]`
+and `docs/link -> ../site` a write to `docs/link/x.ts` was allowed while landing
+in `site/`. Matching moved to a 15-line matcher in `lib/owns-match.mjs` and
+parents are resolved with `realpathSync`. That also retires the Node >= 22
+floor the plugin carried for one stdlib call: `engines` now declares
+`>=20.17.0`, and CI tests 20, 22 and 24.
+
+**`MultiEdit` was missing from the hook matcher**, so the hook was never invoked
+for it despite handling the payload correctly.
+
+**The hook's own test deleted the host repo's `.drydock/`** — attribution
+records, the enforcement log, Testing Gate evidence, and any plans living there
+under the `plans_dir` fallback. The QUICKSTART tells a new user to run that
+file. It runs in a temp directory now, and its printed case count is derived
+from the case list rather than typed in, so a criterion greping the count can no
+longer be satisfied by editing a string.
+
+**`audit-wave` never implemented "nothing outside the plan changed".** It only
+inspected commits it could already attribute, so a commit belonging to no task
+was invisible: two clean `drydock(<id>)` commits plus one `chore:` adding an
+unowned file returned `PASS, 2 task(s), 2 commit(s)`. `wavecheck/SKILL.md` has
+asserted this check exists since it was written. The scan is bounded by the
+wave: a live wave runs to HEAD, a sealed wave to its own last commit, and a
+sealed wave reports rather than fails, because failing a closed record on a
+check that did not exist when it ran rewrites history instead of describing it.
+A commit belonging to another wave of the same plan is a note about overlap.
+
+**A reused commit subject no longer manufactures a breach.** `8410e54`, a
+release bump made a day after plan 003 sealed, reused the subject
+`drydock(T1.2.1)`, and the audit reported an ownership violation against a wave
+that never touched that file. Where more than one commit carries a task's
+subject the auditor cannot tell which is the task's, so it reports the task as
+unverifiable and derives no ownership verdict from any of them.
+`attribution: manifest` is the durable fix and is now the **default at
+`format_version: 3`**; the `commit-prefix` reader stays, so plans 001-004 (all
+v2, none declaring the key) audit exactly as they always did.
+
+**Ordering came from commit dates, which have one-second granularity.** Two task
+commits made inside the same second had no defined order, so the wave scan ran
+over an empty range and a stray went unreported. It passed on a slow machine and
+failed on every CI runner. Ancestry (`--topo-order`) answers it now.
+
+**Repo-relative paths were computed by subtracting the root's length.** `git
+rev-parse --show-toplevel` returns a fully resolved path while `resolve()`
+returns whatever the OS hands over, and the two are often different forms of the
+same location: `/var/folders/...` against `/private/var/folders/...`, or a
+Windows `RUNNER~1` 8.3 short path against its long form. The result pointed
+nowhere, so the plan document stopped being recognised as itself — a commit
+touching only the plan was reported as a breach, and `wave-start` could not see
+that the plan was uncommitted. Both sides now normalise through
+`realpathSync.native` before `relative()`.
+
+**One grammar, and it is now tied to the document that instructs it.**
+`plan-format.md` templated `N/A, <reason>` while the validator required a dash,
+so a plan written to the contract failed the contract's own validator; the
+wavecheck heading template did not register as a gate at all, leaving a plan
+reading as ungated with its status unconstrained. Comma, hyphen and em dash all
+parse, from one `SEP` constant the contract quotes, and two tests read the
+literal template lines out of `plan-format.md` and run them through the
+validator so the two cannot drift apart silently again. Verdicts are restricted
+to `PASS` and `BLOCK`: `### Wavecheck 1.0 - NOTE: see above` used to yield the
+verdict `NOTE` and derive the plan as BLOCKED.
+
+**A fenced code block is documentation, not a task.** A markdown sample showing
+a task with `Files owned: **` parsed as a real task, and `wave-start` then armed
+the hook with a boundary permitting every write in the repo.
+
+**A plan the parser reads as having no tasks now fails**, instead of passing
+every other check vacuously — duplicate ids, ownership overlap and dependency
+order all agree with an empty task list.
+
+**A declared boundary that yields nothing now fails under `--strict`.** The
+ownership check compared a loose read of the `Files owned:` block against a
+strict one, and both can be zero and still be wrong: `Files owned: src/a.ts,
+src/b.ts`, real paths without backticks, agreed with itself at zero. The task
+declared two files, the parser saw none, and the armed boundary owned nothing.
+`none` and `none (read-only)` stay legal.
+
+**`wave-start` preflights.** It armed from any file at all, including
+`format_version: 9`, and in a fresh host repo the first `audit-wave` then failed
+on the tool's own `.drydock/` and the uncommitted plan — a wave that had done
+nothing wrong, because the claim that `.drydock/` is gitignored was true of this
+repo only. It now refuses an invalid or uncommitted plan, adds `.drydock/` to
+`.gitignore` itself, and prints a runnable absolute path. `repoRoot` also took a
+path argument at every call site and ignored it for `process.cwd()`, so arming a
+plan in another repo wrote the boundary next to the shell.
+
+**Exit 3 means the tool could not run.** A missing file printed an eleven-line
+`node:fs` stack trace and exited 1, the same code as a legitimate FAIL, so
+nothing could tell "this plan is bad" from "this tool is broken".
+
+**A template and a worked example ship inside the plugin.** There were none:
+`find drydock -iname '*template*' -o -iname '*example*'` returned nothing, and
+the QUICKSTART's worked example linked a path outside the plugin directory, so
+it was absent from an install. `skills/planwright/reference/template.md` is a
+copyable skeleton and `example-small-plan.md` a finished small-lane plan; both
+pass `validate-plan --strict`, which doubles as their regression test.
+
+**Six pasteable commands in the on-ramp did not run** — three `node $DD/...`,
+two bare `node drydock-audit.mjs`, one `node <plugin>/...`. The README spent a
+paragraph explaining why the placeholder breaks instead of giving a path that
+works. The hook confidence check also globbed across every installed version and
+silently ran whichever sorted first. The "about 15 minutes" claim is gone: it
+was never measured and is not close for a first run.
+
+**Two published evidence claims corrected.** `docs/compatibility.md` cited
+`6b8ba31` as A2's artifact; that commit was made on a worktree branch which by
+design was never merged, so it has been pruned and no longer resolves. The
+measurements stand and are dated; the row no longer cites a sha nobody can look
+up. Plan 003's sealed `Wavecheck 1.2 PASS` carries a dated re-audit note
+recording the subject collision above, with the original verdict intact.
+
+**CI gates the plan corpus.** The check ran behind `|| true`, so "the plan is
+checked by a program" was not true in CI. Plan 004 is skipped by name with its
+deviation 15 cited inline; every other plan, including every future one, is
+gated.
+
+**Skill bodies carry less.** `planwright/SKILL.md` went 4,612 to 4,321 words by
+compressing rationale that was restated two or three times, with no instruction
+removed, and the self-history that instructs nobody is deleted from all five
+skills — notes about what a line said two releases ago belong in this file.
+
+Test counts: hook 12 to 21 cases, audit 83 to 111.
+
 ## 0.8.16: 2026-09-04
 
 **`audit-wave` read one repo's enforcement log as if it belonged to one plan.**
