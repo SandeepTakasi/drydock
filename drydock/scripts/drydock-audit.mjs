@@ -28,9 +28,9 @@
  * pointing forwards — are always errors, because those are wrong in any version.
  */
 
-import { readFileSync, writeFileSync, appendFileSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, appendFileSync, mkdirSync, existsSync, realpathSync } from "node:fs";
 import { execFileSync, spawnSync } from "node:child_process";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, resolve, relative, basename } from "node:path";
 // LOCAL matcher, not `path.matchesGlob`. A named import of matchesGlob is a
 // parse-time SyntaxError below Node 20.17 -- the process dies before any version
 // guard can run -- and matchesGlob does not match dotfiles, so `src/**` did not
@@ -843,7 +843,7 @@ function waveStart(planPath, wave) {
   // the wave `audit-wave` reports the plan file as an uncommitted change on a
   // clean run. Committing it first is one command; discovering this at the gate
   // costs a wave.
-  const planRel = resolve(planPath).slice(root.length + 1).split("\\").join("/");
+  const planRel = relFromRoot(planPath, root);
   const planDirty = git(["-C", root, "status", "--porcelain", "--", planRel]);
   if (planDirty) {
     console.error(`wave-start: ${planRel} has uncommitted changes (${planDirty.trim().split("\n")[0]}).`);
@@ -894,7 +894,28 @@ const repoRoot = (from) =>
 // A path as git names it: repo-relative, POSIX separators. `owns` globs and
 // `git show --name-only` both speak that dialect; an absolute path or a `./`
 // prefix matches nothing and reads as a stray.
-const relFromRoot = (p) => resolve(p).slice(repoRoot().length + 1).split("\\").join("/");
+//
+// BOTH SIDES NORMALISED THROUGH realpath, then `relative()`, never a slice.
+// The two paths arrive in different FORMS, not just with different separators.
+// `git rev-parse --show-toplevel` returns a fully resolved path with forward
+// slashes; `resolve()` returns whatever the OS handed over. Measured: a repo at
+// `/var/folders/.../T/x` has toplevel `/private/var/folders/.../T/x`, and on
+// Windows CI a `C:\Users\RUNNER~1\...` 8.3 short path has a long-form
+// toplevel. Subtracting one from the other by length produced a path pointing
+// nowhere, so the plan document stopped being recognised as itself: a commit
+// touching only the plan was reported as a breach, and `wave-start` could not
+// see that the plan was uncommitted. macOS hid it because `process.cwd()`
+// already returns the resolved form; an absolute path passed on the command
+// line does not.
+//
+// The parent is resolved rather than the target, so a path that does not exist
+// yet still normalises.
+const realish = (p) => {
+  const abs = resolve(p);
+  try { return join(realpathSync.native(dirname(abs)), basename(abs)); } catch { return abs; }
+};
+const relFromRoot = (p, root = repoRoot()) =>
+  relative(realish(root), realish(p)).split("\\").join("/");
 
 // ------------------------------------------------------------ audit-wave ----
 
@@ -1174,11 +1195,21 @@ function auditWave(path, wave) {
   if (fullShas.size === 0) {
     notes.push("no attributed commits in this wave, so the unattributed-commit scan cannot run; every task is already reported as unattributed above");
   } else {
+    // ORDER BY ANCESTRY, not by date. This used `--no-walk --date-order`, and a
+    // commit timestamp has one-second granularity: two task commits made inside
+    // the same second have no defined order, so "earliest" and "latest" came
+    // back arbitrarily. It passed on a slow machine and failed in CI, where the
+    // whole fixture commits within one second, silently scanning an empty range.
+    // `--topo-order` walks the graph, so the answer comes from what descends
+    // from what. Bounded by the plan baseline when there is one, to keep the
+    // traversal off the whole history.
     const ordered = (() => {
+      const base = plan.text.match(/\*\*Baseline SHA:\*\*\s*`([0-9a-f]{7,40})`/)?.[1];
+      const args = ["rev-list", "--topo-order", ...fullShas];
+      if (base && reachable(base)) args.push("--not", base);
       try {
-        // Ask git for these commits in history order rather than trusting the
-        // order the plan happens to list its tasks in.
-        return git(["rev-list", "--no-walk", "--date-order", ...fullShas]).split(/\r?\n/).filter(Boolean);
+        const walked = git(args).split(/\r?\n/).filter(Boolean).filter((sha) => fullShas.has(sha));
+        return walked.length > 0 ? walked : [...fullShas];
       } catch { return [...fullShas]; }
     })();
     const earliest = ordered[ordered.length - 1];

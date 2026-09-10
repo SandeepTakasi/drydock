@@ -381,6 +381,20 @@ const commitAs = (dir, files, subject) => {
   git(dir, ["commit", "-q", "-m", subject]);
 };
 
+// EVERY COMMIT IN THE SAME SECOND. A commit timestamp has one-second
+// granularity, so commits made inside one second have no defined date order,
+// and `audit-wave` has to derive "earliest" and "latest" from ancestry instead.
+// Pinning the date makes that condition deterministic: it is the normal case in
+// CI, where a whole fixture commits in well under a second, and it is why an
+// ordering bug here passed on a developer machine and failed on every runner.
+const SAME_SECOND = "2026-01-01T00:00:00Z";
+const commitAtSameSecond = (dir, files, subject) => {
+  for (const f of files) writeFileSync(join(dir, f), `${f}\n`);
+  const env = { ...process.env, GIT_AUTHOR_DATE: SAME_SECOND, GIT_COMMITTER_DATE: SAME_SECOND };
+  execFileSync("git", [...GIT, "add", ...files], { cwd: dir, encoding: "utf8", env, stdio: ["ignore", "pipe", "pipe"] });
+  execFileSync("git", [...GIT, "commit", "-q", "-m", subject], { cwd: dir, encoding: "utf8", env, stdio: ["ignore", "pipe", "pipe"] });
+};
+
 const MANIFEST = (dir) => join(dir, ".drydock", "attribution.jsonl");
 
 // A closed wave: both tasks committed under policy-shaped subjects and recorded.
@@ -1187,10 +1201,10 @@ cases.push(
     // bounded by its own span, so a commit after its last task commit is out of
     // range by design; only one inside the span exercises the downgrade.
     const dir = mkrepo("stray-sealed");
-    commitAs(dir, ["a.txt"], "fix(parser): tighten the thing");
+    commitAtSameSecond(dir, ["a.txt"], "fix(parser): tighten the thing");
     cli(dir, ["task-close", "plan.md", "T1.0.1"]);
-    commitAs(dir, ["evil.ts"], "chore: unrelated refactor");
-    commitAs(dir, ["b.txt"], "feat(core): add the other thing");
+    commitAtSameSecond(dir, ["evil.ts"], "chore: unrelated refactor");
+    commitAtSameSecond(dir, ["b.txt"], "feat(core): add the other thing");
     cli(dir, ["task-close", "plan.md", "T1.0.2"]);
     const plan = readFileSync(join(dir, "plan.md"), "utf8");
     writeFileSync(join(dir, "plan.md"), `${plan}\n### Wave 1.0 - w\n\n### Wavecheck 1.0, PASS, 2026-01-01\n`);
@@ -1198,6 +1212,37 @@ cases.push(
     git(dir, ["commit", "-q", "-m", "plan: seal wave 1.0"]);
     return cli(dir, ["audit-wave", "plan.md", "1.0"]);
   }, (out) => out.includes("audit-wave 1.0: PASS") && out.includes("already sealed")],
+);
+
+cases.push(
+  // The live counterpart, also at one timestamp: the wave must still FAIL on a
+  // stray it cannot date-order.
+  ["a stray is caught even when every commit shares one timestamp", () => {
+    const dir = mkrepo("stray-same-second");
+    commitAtSameSecond(dir, ["a.txt"], "fix(parser): tighten the thing");
+    cli(dir, ["task-close", "plan.md", "T1.0.1"]);
+    commitAtSameSecond(dir, ["b.txt"], "feat(core): add the other thing");
+    cli(dir, ["task-close", "plan.md", "T1.0.2"]);
+    commitAtSameSecond(dir, ["evil.ts"], "chore: unrelated refactor");
+    return cli(dir, ["audit-wave", "plan.md", "1.0"]);
+  }, (out) => out.includes("audit-wave 1.0: FAIL") && out.includes("`evil.ts`")],
+);
+
+cases.push(
+  // PATH FORM, not separators. The repo lives under an UNRESOLVED temp path
+  // (`/var/...`, which git reports as `/private/var/...`; on Windows CI a
+  // `RUNNER~1` 8.3 short path whose toplevel is long-form). Passing the plan by
+  // that absolute path is what Windows CI does implicitly, and subtracting the
+  // root by length then produced a path pointing nowhere: the plan document was
+  // no longer recognised as itself and its own commit was reported as a breach.
+  ["the plan document is recognised through an unresolved absolute path", () => {
+    const dir = closedWave("path-form");
+    writeFileSync(join(dir, "plan.md"), `${readFileSync(join(dir, "plan.md"), "utf8")}\n<!-- deviation log -->\n`);
+    git(dir, ["add", "plan.md"]);
+    git(dir, ["commit", "-q", "-m", "plan: deviation log"]);
+    // join(DIR, ...) is the mkdtemp form, deliberately NOT realpath'd here.
+    return cli(dir, ["audit-wave", join(dir, "plan.md"), "1.0"]);
+  }, (out) => out.includes("audit-wave 1.0: PASS") && out.includes("recorded rather than failed")],
 );
 
 // --------------------------------------------------------------------------
@@ -1363,6 +1408,15 @@ cases.push(
     const out = cli(dir, ["wave-start", "plan.md", "1.0"]);
     return `${out}\nGITIGNORE:${readFileSync(join(dir, ".gitignore"), "utf8")}\nSTATUS:${git(dir, ["status", "--porcelain"])}`;
   }, (out) => out.includes("armed") && /GITIGNORE:[\s\S]*\.drydock\//.test(out) && !out.includes("?? .drydock")],
+
+  // Same path-form hazard as the audit case: wave-start compares the plan against
+  // `git status --porcelain -- <planRel>`, and a planRel computed by subtracting
+  // the root's length matched nothing on Windows CI, so the refusal never fired
+  // and an uncommitted plan armed the wave anyway.
+  ["wave-start sees an uncommitted plan through an unresolved absolute path", () => {
+    const dir = bareRepo("ws-dirty-abs");
+    return cli(dir, ["wave-start", join(dir, "plan.md"), "1.0"]);
+  }, (out) => out.includes("uncommitted changes") && !out.includes("armed")],
 
   ["wave-start prints a path that actually runs", () => {
     const dir = bareRepo("ws-path");
