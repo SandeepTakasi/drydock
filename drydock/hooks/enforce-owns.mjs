@@ -26,13 +26,28 @@
  * enforcement actually run for this wave?" rather than the far weaker "was a
  * config file present?", which a hook that never executed also satisfies.
  *
- * WAVE-LEVEL, NOT PER-TASK, and deliberately so. PreToolUse input carries no
- * subagent identity (only session_id, transcript_path, cwd, permission_mode,
- * hook_event_name, tool_name, tool_input), and a wave runs N executors at once,
- * so a per-task config would be a race. This catches "wrote a file no task in
- * this wave owns" — deviation 13's exact shape. Task-vs-task attribution stays
- * with per-task commits and `drydock-audit.mjs audit-wave`, which is already
- * sound.
+ * WAVE-LEVEL, NOT PER-TASK. This catches "wrote a file no task in this wave
+ * owns" — deviation 13's exact shape. Task-vs-task attribution stays with
+ * per-task commits and `drydock-audit.mjs audit-wave`, which is already sound.
+ *
+ * THE REASON GIVEN HERE USED TO BE WRONG, and it is worth saying how. It read
+ * "PreToolUse input carries no subagent identity (only session_id,
+ * transcript_path, cwd, permission_mode, hook_event_name, tool_name,
+ * tool_input)". That field list was reasoned, never measured, and it is
+ * incomplete: a payload captured on 2026-09-16 (host 2.1.259, A8) carried
+ * ELEVEN keys — cwd, effort, hook_event_name, permission_mode, prompt_id,
+ * scratchpad_dir, session_id, tool_input, tool_name, tool_use_id,
+ * transcript_path.
+ *
+ * What IS measured: a write issued by the orchestrating session carries no
+ * `agent_id` and no `agent_type`, which is exactly what the fallback needs —
+ * an unidentifiable writer resolves to wave-level, never to a denial.
+ *
+ * What is NOT measured, and therefore not claimed either way: whether a write
+ * from inside a subagent carries those fields on this host. Current Claude Code
+ * docs say it does. Until this repo observes one, "carries no subagent
+ * identity" is not a statement this file is entitled to make, so it no longer
+ * makes it. See docs/compatibility.md row A8.
  *
  * CEILINGS, stated because a guarantee with a hidden hole is worse than none:
  *   - Bash writes (`sed -i`, `>` redirect, `git checkout`) do not pass through

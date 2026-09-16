@@ -49,6 +49,25 @@ before approval, while the tree is still the baseline.
 
 Tests: hook 21 to 30 cases, audit 114 to 119.
 
+**A8: the hook's own field list was wrong, and now it is measured.** The docblock
+justified wave-level enforcement with "PreToolUse input carries no subagent
+identity (only session_id, transcript_path, cwd, permission_mode,
+hook_event_name, tool_name, tool_input)". That list was reasoned, never observed,
+and it is short by four: a payload captured on host 2.1.259 carries eleven keys,
+including `effort`, `prompt_id`, `scratchpad_dir` and `tool_use_id`.
+
+Measured by instrumenting the *installed* hook to dump its raw stdin and
+restoring it byte-identically afterwards, verified by checksum. The installed
+copy, because the host loads hooks from the install and the working tree's copy
+is not what runs.
+
+What the measurement supports: an orchestrator's own write carries no `agent_id`
+and no `agent_type`, which is exactly what the wave-level fallback needs. What it
+does not cover: whether a write from inside a subagent carries them. That probe
+needs a subagent spawn and was refused, so the universal claim is **withdrawn
+rather than replaced** — the docblock now states only the case that was observed.
+Per-task enforcement stays unbuilt until the open question is answered.
+
 ## 0.10.0: 2026-09-16
 
 **`task-close --undo`.** `task-close` appends, so a second call for one task --
