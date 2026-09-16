@@ -1,5 +1,54 @@
 # Changelog
 
+## 0.11.0: 2026-09-16
+
+**Per-task attribution in the enforcement receipt, for free.** `validate-plan`
+already rejects a plan whose same-wave tasks own overlapping paths, and
+`wave-start` preflights it, so inside an armed wave a path maps to at most ONE
+task. `wave-start` now writes that map alongside the flattened union, and the
+hook records which task's files each write landed in. No subagent identity, no
+claim protocol, no race -- it is a lookup.
+
+Note precisely what this is and is not: it records which task's files a write
+landed IN, never which task did the writing. Per-task *enforcement* -- denying
+because the writer is the wrong task -- needs writer identity the hook does not
+read, and is not in this release.
+
+`owns` in both the config and the receipt stays exactly what it was, the wave
+union. An old hook reading a new config ignores `tasks`; a new hook reading an
+old config records `task: null` and behaves as before. Both directions matter,
+because the installed plugin cache and the repo are routinely different
+versions. `wave-start` asserts the map flattens back to `owns` and exits 3 if
+not: a map that disagrees would attribute writes to the wrong task while the
+boundary stayed correct, which is a silent wrong answer. A malformed `tasks` map
+denies, matching the posture `owns` already has.
+
+`audit-wave` reports the per-task breakdown and says so plainly when receipts
+predate the map, rather than treating their absence as a fault.
+
+**`prove-failable`: an acceptance criterion that already passes gates nothing.**
+The task could do nothing at all and still be marked done, and the wave gate that
+re-runs the criterion then passes vacuously, which makes the wave's PASS partly
+vacuous too.
+
+Measured rather than supposed: three criteria in one plan failed this way. Two
+failed LOUDLY at the gate -- an unpassable `grep -qx 1` against left-padded BSD
+`wc` output, and a `####` grep at a file using `##`. Only the third was silent:
+already satisfied before its task began. That one is what this catches.
+
+It runs every command-shaped criterion in the current tree and errors on any
+that already exits 0. Prose criteria are reported as unrunnable rather than
+counted as passing or failing, and a criterion that declares itself
+side-effecting is skipped with its reason on the record, in the plan, where a
+reader sees it.
+
+**It is deliberately NOT part of `validate-plan`.** It executes the plan's
+criteria for real, and `wave-start` preflights `validate-plan` -- folding it in
+would mean arming a wave runs arbitrary commands out of a document. Run it
+before approval, while the tree is still the baseline.
+
+Tests: hook 21 to 30 cases, audit 114 to 119.
+
 ## 0.10.0: 2026-09-16
 
 **`task-close --undo`.** `task-close` appends, so a second call for one task --

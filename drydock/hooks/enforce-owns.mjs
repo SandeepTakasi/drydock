@@ -97,6 +97,17 @@ try {
   if (!Array.isArray(config.owns)) throw new Error("`owns` must be an array of globs");
   if (!config.owns.every((g) => typeof g === "string"))
     throw new Error("every entry in `owns` must be a string glob");
+  // Optional. Absent means an older `wave-start` wrote this file, and the hook
+  // falls back to wave-level attribution exactly as before. Present and
+  // malformed is OUR control being unusable, which denies, matching `owns`.
+  if (config.tasks !== undefined) {
+    if (config.tasks === null || typeof config.tasks !== "object" || Array.isArray(config.tasks))
+      throw new Error("`tasks` must be an object mapping task id to an array of globs");
+    for (const [id, globs] of Object.entries(config.tasks)) {
+      if (!Array.isArray(globs) || !globs.every((g) => typeof g === "string"))
+        throw new Error(`\`tasks.${id}\` must be an array of string globs`);
+    }
+  }
 } catch (err) {
   deny(
     `Drydock: .drydock/wave-owns.json is present but unusable (${err.message}). ` +
@@ -116,6 +127,22 @@ try {
 // executors in a wave. Fine at wave scale; revisit if a wave ever writes
 // thousands of lines. The log lives under the already-gitignored .drydock/ and
 // is evidence for one wave, not history.
+// WHICH TASK OWNS THIS PATH. Not "who wrote it" -- the payload carries no task
+// id, and resolving the writer is a separate feature. This is a lookup, and it
+// is sound for one reason: `validate-plan` rejects a plan whose same-wave tasks
+// own overlapping paths, so within an armed wave a path has at most one owner.
+//
+// Deterministic on the pathological case anyway: if a malformed config somehow
+// maps one path to two tasks, take the first by sorted id so the answer is at
+// least reproducible rather than dependent on key order.
+const ownerOf = (rel) => {
+  if (!config.tasks) return null;
+  const hits = Object.keys(config.tasks)
+    .filter((id) => matchesOwns(rel, config.tasks[id]))
+    .sort();
+  return hits[0] ?? null;
+};
+
 const record = (decision, rel) => {
   try {
     mkdirSync(path.join(projectDir, ".drydock"), { recursive: true });
@@ -128,6 +155,11 @@ const record = (decision, rel) => {
         decision,
         path: rel,
         owns: config.owns,
+        // The task whose `owns` covers this path, null when unknown. NOTE the
+        // `owns` field above stays the WAVE union: `audit-wave` unions `owns`
+        // across entries and compares it to the plan's wave union, so narrowing
+        // it to the owning task's globs would fail every clean wave.
+        task: ownerOf(rel),
       }) + "\n"
     );
   } catch {

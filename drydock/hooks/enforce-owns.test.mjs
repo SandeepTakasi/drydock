@@ -64,6 +64,20 @@ const run = (toolInput, { config = DEFAULT_CONFIG, tool = "Write" } = {}) => {
 
 const abs = (...parts) => join(ROOT, ...parts);
 
+// The last receipt line, parsed. Attribution is recorded, not returned, so the
+// only way to assert it is to read the log the hook just appended to.
+const lastReceipt = () => {
+  const LOG = join(CONFIG_DIR, "enforcement.log");
+  if (!existsSync(LOG)) return null;
+  const lines = readFileSync(LOG, "utf8").split(/\r?\n/).filter(Boolean);
+  try { return JSON.parse(lines[lines.length - 1]); } catch { return null; }
+};
+const TASKS_CONFIG = JSON.stringify({
+  plan: "005-x", wave: "2.1",
+  owns: ["docs/**", "e2e/**"],
+  tasks: { "T2.1.1": ["docs/**"], "T2.1.2": ["e2e/**"] },
+});
+
 let total = 0;
 let failed = 0;
 const report = (name, ok, detail) => {
@@ -122,6 +136,69 @@ expectExit("non-string owns entry", { file_path: "docs/x.md" }, DENY, {
 expectExit("owns not an array", { file_path: "docs/x.md" }, DENY, {
   config: '{"plan":"p","wave":"1.0","owns":"docs/**"}',
 });
+
+// --------------------------------------------------------------------------
+// PER-TASK ATTRIBUTION. `validate-plan` rejects a plan whose same-wave tasks own
+// overlapping paths, so inside an armed wave a path has at most ONE owner. That
+// makes attribution a lookup -- no subagent identity, no protocol, no race.
+// It records which task's FILES a write landed in, never who did the writing.
+
+{
+  const cases = [
+    ["attributes a write to the owning task", "docs/x.md", ALLOW, "T2.1.1"],
+    ["attributes the sibling task's path", "e2e/x.spec.ts", ALLOW, "T2.1.2"],
+    ["a denied path is owned by nobody", "site/x.ts", DENY, null],
+  ];
+  for (const [name, file, want, task] of cases) {
+    const { code } = run({ file_path: file }, { config: TASKS_CONFIG });
+    const got = lastReceipt();
+    report(name, code === want && got?.task === task, `exit=${code} want=${want} task=${JSON.stringify(got?.task)} want=${JSON.stringify(task)}`);
+  }
+}
+
+// The `owns` field in the receipt must stay the WAVE union. `audit-wave` unions
+// it across entries and compares against the plan's wave union, so narrowing it
+// to the owning task's globs would fail every clean wave.
+{
+  run({ file_path: "docs/x.md" }, { config: TASKS_CONFIG });
+  const got = lastReceipt();
+  report(
+    "receipt owns stays the wave union",
+    JSON.stringify(got?.owns) === JSON.stringify(["docs/**", "e2e/**"]),
+    `owns=${JSON.stringify(got?.owns)}`
+  );
+}
+
+// BACKWARD COMPATIBILITY, both directions. A config without `tasks` is what an
+// older wave-start wrote; the hook must behave exactly as before and record
+// task: null rather than failing.
+{
+  const { code } = run({ file_path: "docs/x.md" });
+  const got = lastReceipt();
+  report("config without tasks still allows, task null", code === ALLOW && got?.task === null, `exit=${code} task=${JSON.stringify(got?.task)}`);
+}
+
+// A malformed `tasks` map is OUR control being unusable, so it denies -- the
+// same posture as a malformed `owns`, not a silent downgrade to wave-level.
+for (const [name, tasks] of [
+  ["tasks not an object", '"docs/**"'],
+  ["tasks value not an array", '{"T1":"docs/**"}'],
+  ["tasks value holds a non-string", '{"T1":["docs/**",5]}'],
+]) {
+  const { code } = run({ file_path: "docs/x.md" }, {
+    config: `{"plan":"p","wave":"1.0","owns":["docs/**"],"tasks":${tasks}}`,
+  });
+  report(`malformed ${name} fails closed`, code === DENY, `exit=${code} want=${DENY}`);
+}
+
+// Per-task attribution must never widen the boundary: a path in `tasks` but not
+// in `owns` is still denied, because the wave check runs first.
+{
+  const { code } = run({ file_path: "src/x.ts" }, {
+    config: '{"plan":"p","wave":"1.0","owns":["docs/**"],"tasks":{"T1":["docs/**"],"T2":["src/**"]}}',
+  });
+  report("tasks cannot widen past the wave union", code === DENY, `exit=${code} want=${DENY}`);
+}
 
 // The receipt is what `audit-wave` reads to answer "did enforcement actually run
 // for this wave?", so it has to be written on ALLOW as well as DENY — an allow is
