@@ -673,6 +673,77 @@ verification: per-session availability is a property of the environment, and
 
 ---
 
+## A8 — PreToolUse payload fields
+
+**Date:** 2026-09-16
+**Host version:** `claude --version` → `2.1.259 (Claude Code)`
+**Node:** v22.23.1
+**Installed plugin:** 0.9.0 (`~/.claude/plugins/cache/drydock/drydock/0.9.0`)
+**Repo SHA at run time:** `5474f12`, branch `feat/per-task-attribution`
+
+**What this entry claims and does not claim.** It claims one measurement: the
+exact key set a PreToolUse payload carries for a write issued by the
+orchestrating session. It does **not** claim anything about a write issued from
+inside a subagent — that probe was refused by the permission classifier before it
+ran, and the question is open. In particular this entry does not establish that
+subagent identity is available on this host, and it does not establish that it is
+absent.
+
+### Method
+
+The hook script is re-read on every invocation while its registration is fixed at
+session start, which is what made a live probe possible without a restart (the
+same property A6's second run used). The installed hook was backed up, given one
+`appendFileSync` of its raw parsed stdin immediately after the JSON parse — no
+other change, and no change to any verdict — then a single `Write` was issued and
+the hook was restored. Restoration was verified with `diff` and a checksum:
+byte-identical, `68aca5facb95`.
+
+Instrumenting the installed copy rather than the working tree is deliberate. The
+host loads hooks from the install, so the working tree's copy is not what runs.
+
+### Result — one payload captured
+
+Keys, sorted, for a `Write` from the main session:
+
+```
+cwd, effort, hook_event_name, permission_mode, prompt_id,
+scratchpad_dir, session_id, tool_input, tool_name, tool_use_id, transcript_path
+```
+
+| Question | Answer |
+|---|---|
+| Does an orchestrator write carry `agent_id`? | **No** |
+| Does an orchestrator write carry `agent_type`? | **No** |
+| Field count vs the seven the hook's docblock asserted | **11, not 7** |
+| Fields the docblock never mentioned | `effort`, `prompt_id`, `scratchpad_dir`, `tool_use_id` |
+
+### What this changes
+
+`enforce-owns.mjs:29-35` justified wave-level enforcement with "PreToolUse input
+carries no subagent identity (only session_id, transcript_path, cwd,
+permission_mode, hook_event_name, tool_name, tool_input)". The parenthetical is
+measurably incomplete. The claim about identity is now stated only for the case
+measured — the orchestrator's own writes — and the universal is withdrawn rather
+than replaced with a second unmeasured assertion.
+
+The same sentence is repeated at `drydock/README.md:38`,
+`plan-format.md:202-203` and `CHANGELOG.md:1067`. The first two are live docs and
+should be corrected when the subagent case is measured; the CHANGELOG entry is
+history and stays as written.
+
+### Not tested
+
+- **A write from inside a subagent** (S1). The blocking question. Needs one
+  subagent spawn with the dump in place.
+- **Whether a per-invocation agent `name` reaches the payload** (S2). Separately,
+  this session's Agent tool exposes no `name` parameter at all, which is itself
+  relevant: the design that would consume it may not be expressible here.
+- **`agent_id` stability and uniqueness across concurrent subagents** (S3).
+- **A non-Drydock subagent's payload** (S5).
+- **The `cwd` a hook sees inside an `isolation: worktree` executor** (S6).
+
+
 ## A7 — Seatrial Testing Gate, end to end (plan 004, TG1–TG6)
 
 **Row id assigned 2026-08-22.** This entry was headed `Seatrial gate run` and
