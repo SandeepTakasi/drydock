@@ -1735,13 +1735,29 @@ function proveFailable(planPath) {
       continue;
     }
 
-    let code;
-    try {
-      execFileSync(process.env.SHELL || "/bin/sh", ["-c", cmd], { cwd: root, stdio: "ignore", timeout: 120000 });
-      code = 0;
-    } catch (err) {
-      code = typeof err.status === "number" ? err.status : 1;
+    // `shell: true` uses the PLATFORM's shell -- `/bin/sh` on POSIX, `cmd.exe`
+    // on Windows. This hardcoded `/bin/sh`, which does not exist on Windows, so
+    // every criterion there failed to spawn and was scored "failable": the check
+    // reported success precisely where it was blind.
+    const run = spawnSync(cmd, { cwd: root, shell: true, stdio: "ignore", timeout: 120000 });
+
+    // COULD NOT RUN is not the same as FAILED, and conflating them is how this
+    // check would lie. A criterion whose command does not exist exits non-zero
+    // at baseline and would score "failable" -- while being equally incapable of
+    // ever passing, which is the OTHER half of "can it fail, and can it pass?".
+    // Report it rather than counting it as a healthy gate.
+    const spawnFailed = run.error != null;
+    const notFound = run.status === 127;
+    if (spawnFailed || notFound) {
+      rows.push({ id: task.id, kind: "unrunnable", detail: `${run.error?.code ?? "exit 127"}  ${cmd.slice(0, 60)}` });
+      errors.push(
+        `task ${task.id}: acceptance criterion could not be run at all (${run.error?.code ?? "command not found"}), so it is ` +
+          `not evidence of anything. It fails at baseline and would fail after the task too. Criterion: \`${cmd}\``
+      );
+      continue;
     }
+
+    const code = run.status;
     rows.push({ id: task.id, kind: code === 0 ? "INERT" : "failable", detail: `exit ${code}  ${cmd.slice(0, 70)}` });
     if (code === 0) {
       errors.push(

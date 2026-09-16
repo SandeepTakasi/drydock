@@ -1452,13 +1452,22 @@ const pfRepo = (name, body) => {
 const pfTask = (id, crit) => `#### ${id} - t\n- **Files owned:** \`src/${id}.ts\`\n- **Acceptance criterion:** ${crit}\n\n`;
 
 cases.push(
+  // `node -e` rather than `test -f`: the fixture asserts exit-code
+  // classification, and a POSIX-only command asserts the shell instead. That is
+  // what broke every Windows runner while every POSIX one stayed green.
   ["a criterion that already passes is reported as inert",
-    () => cli(pfRepo("pf-inert", pfTask("T1.0.1", "`test -f src/existing.ts`")), ["prove-failable", "plan.md"]),
+    () => cli(pfRepo("pf-inert", pfTask("T1.0.1", '`node -e "process.exit(0)"`')), ["prove-failable", "plan.md"]),
     (out) => out.includes("INERT") && out.includes("already exits 0") && out.includes("prove-failable: FAIL")],
 
   ["a criterion that fails at baseline passes the check",
-    () => cli(pfRepo("pf-good", pfTask("T1.0.1", "`test -f src/nope.ts`")), ["prove-failable", "plan.md"]),
+    () => cli(pfRepo("pf-good", pfTask("T1.0.1", '`node -e "process.exit(1)"`')), ["prove-failable", "plan.md"]),
     (out) => out.includes("failable") && out.includes("prove-failable: PASS")],
+
+  // Exiting non-zero because the command does not exist is NOT a healthy gate:
+  // it can no more pass after the task than before it.
+  ["a criterion whose command does not exist is unrunnable, not failable",
+    () => cli(pfRepo("pf-missing", pfTask("T1.0.1", "`drydock-no-such-command-xyz`")), ["prove-failable", "plan.md"]),
+    (out) => out.includes("unrunnable") && out.includes("could not be run at all") && out.includes("prove-failable: FAIL")],
 
   // Prose criteria are real and legitimate; wavecheck verifies them by reading.
   // Counting them as passing OR failing would both be lies.
