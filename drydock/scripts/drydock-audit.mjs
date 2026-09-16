@@ -1739,19 +1739,39 @@ function proveFailable(planPath) {
     // on Windows. This hardcoded `/bin/sh`, which does not exist on Windows, so
     // every criterion there failed to spawn and was scored "failable": the check
     // reported success precisely where it was blind.
-    const run = spawnSync(cmd, { cwd: root, shell: true, stdio: "ignore", timeout: 120000 });
+    const run = spawnSync(cmd, { cwd: root, shell: true, encoding: "utf8", timeout: 120000, maxBuffer: 16 << 20 });
 
     // COULD NOT RUN is not the same as FAILED, and conflating them is how this
     // check would lie. A criterion whose command does not exist exits non-zero
     // at baseline and would score "failable" -- while being equally incapable of
     // ever passing, which is the OTHER half of "can it fail, and can it pass?".
     // Report it rather than counting it as a healthy gate.
-    const spawnFailed = run.error != null;
-    const notFound = run.status === 127;
-    if (spawnFailed || notFound) {
-      rows.push({ id: task.id, kind: "unrunnable", detail: `${run.error?.code ?? "exit 127"}  ${cmd.slice(0, 60)}` });
+    // DETECTING "not found" IS SHELL-SPECIFIC, and there is no portable answer.
+    // `sh` exits 127; `cmd.exe` exits 9009 and says "is not recognized"; others
+    // differ again. So corroborate the code with what the shell said, and state
+    // the ceiling rather than pretend the detection is complete: on a shell that
+    // reports neither, an unrunnable criterion scores "failable", which is the
+    // behaviour that existed before this check and is no worse than it.
+    // A criterion that HUNG is not a criterion that was missing, and reading a
+    // timeout as "not found" would be a confident wrong diagnosis. Same for a
+    // criterion that simply printed too much.
+    if (run.error?.code === "ETIMEDOUT") {
+      rows.push({ id: task.id, kind: "timeout", detail: `120s  ${cmd.slice(0, 60)}` });
       errors.push(
-        `task ${task.id}: acceptance criterion could not be run at all (${run.error?.code ?? "command not found"}), so it is ` +
+        `task ${task.id}: acceptance criterion did not finish within 120s, so it proves nothing here and will ` +
+          `stall the wave gate that re-runs it. Criterion: \`${cmd}\``
+      );
+      continue;
+    }
+
+    const spawnFailed = run.error != null;
+    const saidNotFound = /not recognized|not found|No such file|cannot find/i.test(`${run.stderr ?? ""}`);
+    const notFoundCode = run.status === 127 || run.status === 9009;
+    if (spawnFailed || notFoundCode || (saidNotFound && run.status !== 0)) {
+      const why = run.error?.code ?? (notFoundCode ? `exit ${run.status}` : "shell reported the command was not found");
+      rows.push({ id: task.id, kind: "unrunnable", detail: `${why}  ${cmd.slice(0, 55)}` });
+      errors.push(
+        `task ${task.id}: acceptance criterion could not be run at all (${why}), so it is ` +
           `not evidence of anything. It fails at baseline and would fail after the task too. Criterion: \`${cmd}\``
       );
       continue;

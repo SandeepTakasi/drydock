@@ -59,6 +59,15 @@ baseline and scored as a healthy gate, while being equally incapable of ever
 passing -- the other half of "can it fail, and can it pass?". It is now reported
 as `unrunnable` and errors.
 
+Detecting "not found" is shell-specific and there is no portable answer: `sh`
+exits 127, `cmd.exe` exits 9009 and says "is not recognized", others differ
+again. The exit code is corroborated against what the shell actually said, and
+the ceiling is stated rather than papered over -- on a shell reporting neither,
+an unrunnable criterion scores `failable`, which is exactly the behaviour that
+existed before this check. A criterion that HANGS is reported as `timeout`
+rather than as missing, because reading a hang as "not found" would be a
+confident wrong diagnosis.
+
 Tests: hook 21 to 30 cases, audit 114 to 120.
 
 **A8: the hook's own field list was wrong, and now it is measured.** The docblock
