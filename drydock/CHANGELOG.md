@@ -47,7 +47,19 @@ criteria for real, and `wave-start` preflights `validate-plan` -- folding it in
 would mean arming a wave runs arbitrary commands out of a document. Run it
 before approval, while the tree is still the baseline.
 
-Tests: hook 21 to 30 cases, audit 114 to 119.
+`prove-failable` runs criteria through the PLATFORM's shell. It hardcoded
+`/bin/sh`, which does not exist on Windows, so every criterion there failed to
+spawn and was scored "failable" -- the check reported success precisely where it
+was blind. Caught by CI on three Windows runners while every POSIX runner stayed
+green.
+
+That exposed a second fault worth more than the first: **could not run is not the
+same as failed.** A criterion whose command does not exist exits non-zero at
+baseline and scored as a healthy gate, while being equally incapable of ever
+passing -- the other half of "can it fail, and can it pass?". It is now reported
+as `unrunnable` and errors.
+
+Tests: hook 21 to 30 cases, audit 114 to 120.
 
 **A8: the hook's own field list was wrong, and now it is measured.** The docblock
 justified wave-level enforcement with "PreToolUse input carries no subagent
