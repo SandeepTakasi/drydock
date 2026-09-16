@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.10.0: 2026-09-16
+
+**`task-close --undo`.** `task-close` appends, so a second call for one task --
+amend a commit, re-run it -- left two manifest entries claiming the task, which
+`audit-wave` correctly reports as ambiguous attribution and BLOCKs on. The only
+recovery was hand-editing `.drydock/attribution.jsonl`, which is both
+error-prone and the exact "never write this by hand" the manifest exists to
+avoid. `--undo` drops this plan's entries for one task and prints the
+`task-close` line to re-record it. It removes only entries whose `plan` matches,
+because the manifest is shared by every plan in the repo and a task id is unique
+only within a plan, and it never discards a line it cannot parse.
+
+**The case study asserted two statuses the matrix had moved past**, and nothing
+read it. It said "A3 remains MEASURING" and A2b "remains PENDING" long after A3
+reached PUBLISHED and A2b PASSED. `assert-matrix` now checks every other
+document that asserts a row's CURRENT state in the `<id> ... remains <STATUS>`
+form against `compatibility.md`, so the drift-detector no longer misses drift in
+the document the README points a reader to first. Prose describing what was true
+at a dated run is history and is left alone. Proven failable: the check was
+written first and reported both stale claims before either was corrected.
+
+**The homepage said two things were mechanically absolute. One is.** `replan`
+carries `disable-model-invocation`, so a model cannot invoke it; that holds. The
+human approval step does not: `APPROVED` appears once in the whole audit script,
+as a member of the expected-status enum, and nothing stops a session writing
+`status: APPROVED` itself. It is an instruction the format states and a reader
+upholds. That was an over-claim about the one property a reader most needs to be
+true, and the page now says which half is real.
+
+Also: `repoRoot()` in `task-close` ignored the plan's location the same way
+`wave-start` used to, so closing a task against a plan in another repo wrote the
+manifest next to the shell.
+
 ## 0.9.0: 2026-09-10
 
 Minor rather than patch: the ownership hook and `audit-wave` both changed

@@ -1462,6 +1462,47 @@ function auditWave(path, wave) {
 // Appending rather than rewriting is deliberate: a second entry for one task is
 // evidence of ambiguity, and audit-wave reports it. Silently replacing the first
 // would erase the thing worth seeing.
+// UNDO. `task-close` appends, and a second call for one task is an ordinary
+// mistake -- amend a commit, re-run it, and the wave now has two entries claiming
+// the task, which `audit-wave` correctly reports as ambiguous attribution. The
+// only recovery was hand-editing a JSONL file, which is both error-prone and the
+// exact "never write this by hand" the manifest exists to avoid.
+//
+// Removes THIS PLAN's entries for the task and nothing else: the manifest is
+// shared by every plan in the repo, and a task id is unique only within a plan.
+function taskUndo(planPath, taskId) {
+  const plan = parsePlan(planPath);
+  const planId = plan.frontmatter.plan ?? null;
+  const manifestPath = join(repoRoot(planPath), ".drydock", "attribution.jsonl");
+
+  if (!existsSync(manifestPath)) {
+    console.error(`task-close --undo: no manifest at ${manifestPath}, nothing to undo`);
+    process.exit(1);
+  }
+
+  const lines = readFileSync(manifestPath, "utf8").split(/\r?\n/).filter(Boolean);
+  const kept = [];
+  const dropped = [];
+  for (const line of lines) {
+    let entry;
+    try { entry = JSON.parse(line); } catch { kept.push(line); continue; } // never discard what we cannot read
+    const samePlan = entry.plan == null || planId == null || entry.plan === planId;
+    if (samePlan && entry.task === taskId) dropped.push(entry);
+    else kept.push(line);
+  }
+
+  if (dropped.length === 0) {
+    console.error(`task-close --undo: no entry for ${taskId}${planId ? ` in plan ${planId}` : ""}, nothing to undo`);
+    process.exit(1);
+  }
+
+  writeFileSync(manifestPath, kept.length > 0 ? kept.join("\n") + "\n" : "");
+  console.log(`task-close --undo: removed ${dropped.length} entry(s) for ${taskId}`);
+  for (const e of dropped) console.log(`  ${String(e.sha ?? "?").slice(0, 7)}  ${(e.files ?? []).length} file(s)  ${e.at ?? ""}`);
+  console.log(`\n${kept.length} entry(s) remain in ${manifestPath}`);
+  console.log(`re-record with:  drydock-audit.mjs task-close ${planPath} ${taskId}`);
+}
+
 function taskClose(planPath, taskId) {
   const plan = parsePlan(planPath);
   const task = plan.tasks.find((t) => t.id === taskId);
@@ -1483,7 +1524,7 @@ function taskClose(planPath, taskId) {
   // enforcement boundary.
   const strays = files.filter((f) => !task.owns.some((glob) => matchesGlob(f, glob) || f === glob));
 
-  const root = repoRoot();
+  const root = repoRoot(planPath);
   const manifestPath = join(root, ".drydock", "attribution.jsonl");
   mkdirSync(dirname(manifestPath), { recursive: true });
   appendFileSync(
@@ -1581,7 +1622,8 @@ function report(what, path, errors, notes, summary) {
 
 const argv = process.argv.slice(2);
 const strict = argv.includes("--strict");
-const [command, ...rest] = argv.filter((a) => a !== "--strict" && a !== "--write");
+const undo = argv.includes("--undo");
+const [command, ...rest] = argv.filter((a) => a !== "--strict" && a !== "--write" && a !== "--undo");
 
 // EXIT CODES: 0 pass, 1 the plan failed the check, 2 bad usage, 3 the check
 // could not run. A missing file used to print an eleven-line `node:fs` stack
@@ -1602,12 +1644,13 @@ try {
 if (command === "validate-plan" && rest[0]) validatePlan(rest[0], strict);
 else if (command === "audit-wave" && rest[0] && rest[1]) auditWave(rest[0], rest[1]);
 else if (command === "wave-start" && rest[0] && rest[1]) waveStart(rest[0], rest[1]);
-else if (command === "task-close" && rest[0] && rest[1]) taskClose(rest[0], rest[1]);
+else if (command === "task-close" && rest[0] && rest[1]) (undo ? taskUndo : taskClose)(rest[0], rest[1]);
 else if (command === "plan-status" && rest[0]) planStatus(rest[0], argv.includes("--write"));
 else if (command === "resolve-plans-dir") resolvePlansDir(rest[0]);
 else {
   console.error("usage: drydock-audit.mjs wave-start   <plan.md> <wave>      # arm the ownership hook");
   console.error("       drydock-audit.mjs task-close   <plan.md> <task-id>  # record HEAD as this task's work");
+  console.error("       drydock-audit.mjs task-close --undo <plan.md> <task-id>  # drop that record and re-run it");
   console.error("       drydock-audit.mjs audit-wave   <plan.md> <wave>      # audit it afterwards");
   console.error("       drydock-audit.mjs plan-status   [--write] <plan.md>  # derive status from the wavecheck reports");
   console.error("       drydock-audit.mjs resolve-plans-dir [<preferred>]   # where plans go, and whether they can be committed");

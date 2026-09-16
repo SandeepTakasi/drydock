@@ -117,9 +117,15 @@ quality-review rejections were a meaningful share of the total cost.
 - **A3 is not measured by this run.** Gate compliance is meant to be tracked
   across 5–10 pilot plans. Worse, the orchestrator knew it was being measured and
   said so at the gates — the weakest possible conditions for a compliance number.
-  A3 remains MEASURING.
-- **The worktree path is half-verified.** `isolation: none` throughout, so A2b
-  (post-wavecheck merge) was never exercised and remains PENDING.
+  A3 has since reached 5 plans and is published at 28 of 29, and it is still not
+  PASSED: every run was self-observed, so the figure is a ceiling rather than a
+  rate. This run is one of the weakest rows in it. See
+  [compatibility.md](compatibility.md) for the current status, which this page
+  does not restate.
+- **The worktree path is untested by this run.** `isolation: none` throughout,
+  so A2b (post-wavecheck merge) was never exercised here. It was verified
+  separately on 2026-08-19, mechanically rather than agent-driven, with the
+  clean-merge caveat recorded in its row.
 - **Neither phase's final review was re-run after its repairs.** Both gates were
   closed on measured verification and a human browser check instead
   (deviations 36, 49). The reviewer rejected three times and was right three

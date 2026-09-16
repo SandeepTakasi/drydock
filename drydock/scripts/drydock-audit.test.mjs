@@ -1434,6 +1434,44 @@ cases.push(
 );
 
 // --------------------------------------------------------------------------
+// task-close --undo. `task-close` appends, so amending a commit and re-running
+// it leaves two entries claiming one task, which BLOCKs the wave on ambiguous
+// attribution. Recovery used to mean hand-editing the manifest.
+
+cases.push(
+  ["--undo clears a double task-close so the wave passes again", () => {
+    const dir = mkrepo("undo");
+    commitAs(dir, ["a.txt"], "feat: a");
+    cli(dir, ["task-close", "plan.md", "T1.0.1"]);
+    commitAs(dir, ["b.txt"], "feat: b");
+    cli(dir, ["task-close", "plan.md", "T1.0.2"]);
+    // The mistake: amend, then close the same task again.
+    writeFileSync(join(dir, "b.txt"), "b2\n");
+    git(dir, ["add", "b.txt"]);
+    git(dir, ["commit", "-q", "--amend", "--no-edit"]);
+    cli(dir, ["task-close", "plan.md", "T1.0.2"]);
+    const before = cli(dir, ["audit-wave", "plan.md", "1.0"]);
+    cli(dir, ["task-close", "--undo", "plan.md", "T1.0.2"]);
+    cli(dir, ["task-close", "plan.md", "T1.0.2"]);
+    const after = cli(dir, ["audit-wave", "plan.md", "1.0"]);
+    return `BEFORE:${before}\nAFTER:${after}`;
+  }, (out) => /BEFORE:[\s\S]*ambiguous attribution/.test(out) && /AFTER:[\s\S]*audit-wave 1\.0: PASS/.test(out)],
+
+  // Only the named task, and only this plan's entries: the manifest is shared by
+  // every plan in the repo and a task id is unique only within a plan.
+  ["--undo leaves the other task's entry alone", () => {
+    const dir = closedWave("undo-scope");
+    cli(dir, ["task-close", "--undo", "plan.md", "T1.0.2"]);
+    return readFileSync(join(dir, ".drydock", "attribution.jsonl"), "utf8");
+  }, (out) => out.includes('"task":"T1.0.1"') && !out.includes('"task":"T1.0.2"')],
+
+  ["--undo on a task with no entry says so and fails", () => {
+    const dir = closedWave("undo-missing");
+    return cli(dir, ["task-close", "--undo", "plan.md", "T1.0.9"]);
+  }, (out) => out.includes("nothing to undo")],
+);
+
+// --------------------------------------------------------------------------
 // WAVE-START PREFLIGHT. It armed from any file at all, including a plan the
 // validator rejects, and a first `audit-wave` in a fresh repo then failed on the
 // tool's own `.drydock/` and the uncommitted plan — a wave that had done nothing
