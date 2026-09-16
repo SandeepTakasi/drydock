@@ -1434,6 +1434,49 @@ cases.push(
 );
 
 // --------------------------------------------------------------------------
+// prove-failable. A criterion that already exits 0 before its task has run gates
+// nothing: the task could do nothing and still be marked done, and wavecheck's
+// check 4 then passes vacuously. Measured in the field -- planwright/SKILL.md
+// records three criteria that failed this way, one of them silently.
+
+const pfRepo = (name, body) => {
+  const dir = join(DIR, `repo-${name}`);
+  mkdirSync(join(dir, "src"), { recursive: true });
+  git(dir, ["init", "-q", "-b", "main"]);
+  writeFileSync(join(dir, "src", "existing.ts"), "here\n");
+  writeFileSync(join(dir, "plan.md"), `${head}\n### Wave 1.0 - w\n\n${body}`);
+  git(dir, ["add", "-A"]);
+  git(dir, ["commit", "-q", "-m", "baseline"]);
+  return dir;
+};
+const pfTask = (id, crit) => `#### ${id} - t\n- **Files owned:** \`src/${id}.ts\`\n- **Acceptance criterion:** ${crit}\n\n`;
+
+cases.push(
+  ["a criterion that already passes is reported as inert",
+    () => cli(pfRepo("pf-inert", pfTask("T1.0.1", "`test -f src/existing.ts`")), ["prove-failable", "plan.md"]),
+    (out) => out.includes("INERT") && out.includes("already exits 0") && out.includes("prove-failable: FAIL")],
+
+  ["a criterion that fails at baseline passes the check",
+    () => cli(pfRepo("pf-good", pfTask("T1.0.1", "`test -f src/nope.ts`")), ["prove-failable", "plan.md"]),
+    (out) => out.includes("failable") && out.includes("prove-failable: PASS")],
+
+  // Prose criteria are real and legitimate; wavecheck verifies them by reading.
+  // Counting them as passing OR failing would both be lies.
+  ["a prose criterion is reported as unrunnable, not as passing",
+    () => cli(pfRepo("pf-prose", pfTask("T1.0.1", "the helper is exported from the barrel")), ["prove-failable", "plan.md"]),
+    (out) => out.includes("prose") && out.includes("cannot be run here") && out.includes("prove-failable: PASS")],
+
+  // The opt-out must be written in the plan, where a reader sees it.
+  ["a criterion declaring itself side-effecting is skipped with its reason",
+    () => cli(pfRepo("pf-optout", pfTask("T1.0.1", "`npm run build` - side-effecting, cannot be proven at baseline")), ["prove-failable", "plan.md"]),
+    (out) => out.includes("opt-out") && out.includes("on the record") && out.includes("prove-failable: PASS")],
+
+  ["a task with no criterion at all fails",
+    () => cli(pfRepo("pf-none", "#### T1.0.1 - t\n- **Files owned:** `src/a.ts`\n\n"), ["prove-failable", "plan.md"]),
+    (out) => out.includes("nothing to prove failable") && out.includes("prove-failable: FAIL")],
+);
+
+// --------------------------------------------------------------------------
 // task-close --undo. `task-close` appends, so amending a commit and re-running
 // it leaves two entries claiming one task, which BLOCKs the wave on ambiguous
 // attribution. Recovery used to mean hand-editing the manifest.

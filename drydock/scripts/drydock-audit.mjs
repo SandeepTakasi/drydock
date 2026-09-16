@@ -232,7 +232,7 @@ function parsePlan(path) {
     const head = line.match(/^#### (~~)?\s*(T[0-9][\w.]*)\b/);
     if (head) {
       flush();
-      current = { id: head[2], superseded: Boolean(head[1]), wave: heading, owns: [], ownsSpan: [], dependsOn: [], fields: new Set(), body: [] };
+      current = { id: head[2], superseded: Boolean(head[1]), wave: heading, owns: [], ownsSpan: [], dependsOn: [], criterion: null, fields: new Set(), body: [] };
       continue;
     }
     if (/^#{1,4} /.test(line)) { flush(); continue; }
@@ -256,6 +256,11 @@ function parsePlan(path) {
     if (label === "files owned") {
       current.owns = backticked(bullet[2]);
       current.ownsSpan = [bullet[2]];
+    } else if (label === "acceptance criterion") {
+      // Kept as text so `prove-failable` can run it. The first backticked span
+      // is the command; prose criteria ("X is exported from Z") have none and
+      // are reported as unrunnable rather than silently skipped.
+      current.criterion = bullet[2];
     } else if (label === "depends on") {
       // May also name decisions and open questions — only task refs matter here.
       current.dependsOn = [...bullet[2].matchAll(/\bT[0-9][\w.]*/g)].map((m) => m[0]);
@@ -887,16 +892,40 @@ function waveStart(planPath, wave) {
     console.log(`wave-start: added \`.drydock/\` to ${ignorePath}, its state files are not part of your history`);
   }
 
+  // PER-TASK MAP, alongside the flattened union. `validate-plan` rejects a plan
+  // whose same-wave tasks own overlapping paths, and this function preflights
+  // it, so inside an armed wave a path maps to at most ONE task. That makes
+  // per-task ATTRIBUTION free: no subagent identity, no protocol, no race, just
+  // a lookup. (Per-task ENFORCEMENT -- denying because the WRITER is the wrong
+  // task -- is a separate thing and needs identity the hook does not yet read.)
+  //
+  // `owns` stays exactly what it was, the flattened union checked first, so an
+  // old hook reading this file behaves identically and a new hook reading an old
+  // file finds no `tasks` and falls back to wave-level. The plugin cache and the
+  // repo are routinely different versions, so both directions matter.
+  const taskOwns = Object.fromEntries(tasks.map((t) => [t.id, t.owns]));
+
+  // The two representations must not be able to drift. A `tasks` map that does
+  // not flatten back to `owns` would make the receipt attribute writes to the
+  // wrong task while the boundary itself stayed correct -- a silent wrong answer,
+  // which is worse than a loud failure.
+  const flattened = [...new Set(Object.values(taskOwns).flat())].sort();
+  if (JSON.stringify(flattened) !== JSON.stringify([...owns].sort())) {
+    console.error(`wave-start: internal error, the per-task map does not flatten back to the wave's owns set.`);
+    console.error(`  union(tasks): ${flattened.join(", ")}`);
+    console.error(`  owns:         ${[...owns].sort().join(", ")}`);
+    process.exit(3);
+  }
+
   const configPath = join(root, ".drydock", "wave-owns.json");
   mkdirSync(dirname(configPath), { recursive: true });
   writeFileSync(
     configPath,
-    JSON.stringify({ plan: plan.frontmatter.plan ?? null, wave, owns }, null, 2) + "\n"
+    JSON.stringify({ plan: plan.frontmatter.plan ?? null, wave, owns, tasks: taskOwns }, null, 2) + "\n"
   );
 
   console.log(`wave-start: armed ${plan.frontmatter.plan ?? planPath} wave ${wave}`);
-  console.log(`  tasks: ${tasks.map((t) => t.id).join(", ")}`);
-  for (const o of owns) console.log(`  owns:  ${o}`);
+  for (const t of tasks) console.log(`  ${t.id.padEnd(10)} ${t.owns.join(", ")}`);
   console.log(`\nwrote ${configPath}`);
   // Forward slashes, always: this line is meant to be copy-pasted into a shell,
   // and join() would hand a Windows user a backslash path for a POSIX command.
@@ -1404,6 +1433,41 @@ function auditWave(path, wave) {
         `enforcement active: ${entries.length} hook decision(s) recorded for wave ${wave} ` +
           `(${entries.filter((e) => e.decision === "deny").length} denied)`
       );
+
+      // PER-TASK BREAKDOWN. Free, because `validate-plan` guarantees same-wave
+      // `owns` are disjoint, so the path a decision names has at most one owner
+      // and `wave-start` records the map. This says which task's files the wave's
+      // writes landed in -- NOT which task did the writing, which needs subagent
+      // identity the hook does not read.
+      //
+      // Read through `?? null`: receipts written before this field existed are
+      // ordinary, not an error. Same null-tolerance as `e.plan` above.
+      const attributed = entries.filter((e) => e.task != null);
+      if (attributed.length === 0 && entries.length > 0) {
+        notes.push(
+          `receipts carry no per-task attribution, so this wave was armed by a wave-start older than the ` +
+            `per-task map (or by a hand-written config). Wave-level enforcement is unaffected.`
+        );
+      } else if (attributed.length > 0) {
+        const byTask = new Map();
+        for (const e of attributed) {
+          const row = byTask.get(e.task) ?? { allow: 0, deny: 0 };
+          row[e.decision === "deny" ? "deny" : "allow"] += 1;
+          byTask.set(e.task, row);
+        }
+        const summary = [...byTask.keys()].sort()
+          .map((id) => `${id}: ${byTask.get(id).allow} allow, ${byTask.get(id).deny} deny`)
+          .join("; ");
+        notes.push(`writes landed in these tasks' files: ${summary}`);
+
+        const unowned = entries.length - attributed.length;
+        if (unowned > 0) {
+          notes.push(
+            `${unowned} decision(s) named a path no task in this wave owns, which is the wave boundary ` +
+              `doing its job rather than an attribution gap`
+          );
+        }
+      }
     }
   }
 
@@ -1618,6 +1682,83 @@ function report(what, path, errors, notes, summary) {
   console.log(`\n${what}: PASS, ${path} (${summary()})`);
 }
 
+// ---------------------------------------------------------- prove-failable ----
+//
+// AN ACCEPTANCE CRITERION THAT ALREADY PASSES GATES NOTHING. The task could do
+// nothing at all and still be marked done, and `wavecheck` check 4 -- which runs
+// every criterion rather than trusting the executor -- then passes vacuously,
+// which makes the wave's PASS partly vacuous too.
+//
+// Measured, not hypothetical: three criteria in one plan failed this way
+// (planwright/SKILL.md). Two failed LOUDLY at the gate -- an unpassable
+// `grep -qx 1` against left-padded BSD `wc` output, and a `####` grep at a file
+// using `##`. Only the third was silent: already satisfied before its task
+// began. That one is what this catches.
+//
+// RUN IT BEFORE THE WAVE EXECUTES, in the current tree. The tree at that moment
+// IS the baseline, which is why this does not check anything out: a subcommand
+// that moves someone's HEAD to run assertions would be a far worse trade than
+// the narrower guarantee.
+//
+// Ceilings, stated rather than discovered:
+//   - a criterion with side effects (a build, a migration) runs for real here.
+//   - a criterion that is prose, not a command, cannot be run and is reported
+//     as such rather than counted as passing or failing.
+//   - passing here means "fails at this moment". A criterion that starts failing
+//     for an unrelated reason still looks fine.
+function proveFailable(planPath) {
+  const plan = parsePlan(planPath);
+  const tasks = plan.tasks.filter((t) => !t.superseded);
+  const root = repoRoot(planPath);
+  const rows = [];
+  const errors = [];
+  const notes = [];
+
+  for (const task of tasks) {
+    const raw = task.criterion;
+    if (!raw) {
+      rows.push({ id: task.id, kind: "none", detail: "no **Acceptance criterion:**" });
+      errors.push(`task ${task.id}: no acceptance criterion, so there is nothing to prove failable`);
+      continue;
+    }
+    // An explicit, written opt-out. A criterion that cannot be proven failable
+    // here must say why, in the plan, where a reader sees it.
+    if (/\bunprovable\b|\bside[- ]effecting\b/i.test(raw)) {
+      rows.push({ id: task.id, kind: "opt-out", detail: raw.trim().slice(0, 60) });
+      notes.push(`task ${task.id}: criterion declares itself unprovable-at-baseline, skipped with its reason on the record`);
+      continue;
+    }
+    const cmd = backticked(raw)[0];
+    if (!cmd) {
+      rows.push({ id: task.id, kind: "prose", detail: raw.trim().slice(0, 60) });
+      notes.push(`task ${task.id}: criterion is prose, not a command, so it cannot be run here; wavecheck verifies it by reading`);
+      continue;
+    }
+
+    let code;
+    try {
+      execFileSync(process.env.SHELL || "/bin/sh", ["-c", cmd], { cwd: root, stdio: "ignore", timeout: 120000 });
+      code = 0;
+    } catch (err) {
+      code = typeof err.status === "number" ? err.status : 1;
+    }
+    rows.push({ id: task.id, kind: code === 0 ? "INERT" : "failable", detail: `exit ${code}  ${cmd.slice(0, 70)}` });
+    if (code === 0) {
+      errors.push(
+        `task ${task.id}: acceptance criterion already exits 0 before the task has run, so it gates nothing. ` +
+          `Criterion: \`${cmd}\``
+      );
+    }
+  }
+
+  console.log(`\n### prove-failable, ${planPath}\n`);
+  console.log("| Task | Result | Detail |");
+  console.log("|------|--------|--------|");
+  for (const r of rows) console.log(`| ${r.id} | ${r.kind} | ${r.detail} |`);
+  console.log("");
+  report("prove-failable", planPath, errors, notes, () => `${rows.filter((r) => r.kind === "failable").length} of ${rows.length} criteria fail at baseline`);
+}
+
 // ------------------------------------------------------------------ main ----
 
 const argv = process.argv.slice(2);
@@ -1646,6 +1787,7 @@ else if (command === "audit-wave" && rest[0] && rest[1]) auditWave(rest[0], rest
 else if (command === "wave-start" && rest[0] && rest[1]) waveStart(rest[0], rest[1]);
 else if (command === "task-close" && rest[0] && rest[1]) (undo ? taskUndo : taskClose)(rest[0], rest[1]);
 else if (command === "plan-status" && rest[0]) planStatus(rest[0], argv.includes("--write"));
+else if (command === "prove-failable" && rest[0]) proveFailable(rest[0]);
 else if (command === "resolve-plans-dir") resolvePlansDir(rest[0]);
 else {
   console.error("usage: drydock-audit.mjs wave-start   <plan.md> <wave>      # arm the ownership hook");
@@ -1654,6 +1796,7 @@ else {
   console.error("       drydock-audit.mjs audit-wave   <plan.md> <wave>      # audit it afterwards");
   console.error("       drydock-audit.mjs plan-status   [--write] <plan.md>  # derive status from the wavecheck reports");
   console.error("       drydock-audit.mjs resolve-plans-dir [<preferred>]   # where plans go, and whether they can be committed");
+  console.error("       drydock-audit.mjs prove-failable <plan.md>            # every criterion must FAIL before its task runs");
   console.error("       drydock-audit.mjs validate-plan [--strict] <plan.md>");
   process.exit(2);
 }

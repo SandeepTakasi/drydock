@@ -214,6 +214,15 @@ on original assumptions.
 
 ## Required sections, in order
 
+**Prove the criteria failable before approval.** A criterion that already exits
+0 gates nothing: the task could do nothing and still be marked done, and the
+wave gate that re-runs it passes vacuously. Run
+`drydock-audit.mjs prove-failable <plan>` while the tree is still the baseline.
+It is a SEPARATE command and deliberately not part of `validate-plan`, because
+it executes the plan's criteria for real, and `wave-start` preflights
+`validate-plan` -- folding it in would mean arming a wave runs arbitrary commands
+out of a document.
+
 **Separator grammar.** Wherever a plan writes a reason or a verdict after a
 label, the validator accepts a **comma, a hyphen or an em dash**, and documents
 write the comma form: `N/A, <reason>`, `### Wavecheck 1.0, PASS, 2026-08-19`.
