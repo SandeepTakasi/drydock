@@ -78,7 +78,7 @@ export const meta: Record<
   },
 };
 
-const VERSION = "0.9.0";
+const VERSION = "0.10.0";
 
 /**
  * Docs live in the repo, not in the export — only `site/out` is deployed. So
@@ -391,7 +391,7 @@ export const faq: FaqItem[] = [
   },
   {
     q: "Can the model skip the gates?",
-    a: "Honestly: gates are named as blocking instructions in every plan, and compliance is measured (A3), not asserted. The figure is 28 of 29 invoked at their boundary across 5 pilot plans, and one was skipped. That skip is on the record because the next gate caught it and the retroactive audit found a real ownership breach behind it. Every one of those sessions knew it was being watched, so it is a ceiling rather than a rate. Two things are mechanically absolute. A human flips a plan to APPROVED, and replan cannot be model-invoked.",
+    a: "Honestly: gates are named as blocking instructions in every plan, and compliance is measured (A3), not asserted. The figure is 28 of 29 invoked at their boundary across 5 pilot plans, and one was skipped. That skip is on the record because the next gate caught it and the retroactive audit found a real ownership breach behind it. Every one of those sessions knew it was being watched, so it is a ceiling rather than a rate. One thing is mechanically absolute: replan carries `disable-model-invocation`, so a model cannot invoke it. The human approval step is not. It is an instruction the plan format states and a reader upholds, and nothing in the tooling stops a session writing `status: APPROVED` itself. This line said two until 0.10.0, which was an over-claim about the one property a reader most needs to be true.",
   },
   {
     q: "Does anything actually touch a browser?",

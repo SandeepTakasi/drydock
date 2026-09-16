@@ -332,6 +332,32 @@ for (const file of readdirSync(PLANS).filter((f) => /^\d{3}-.*\.md$/.test(f))) {
   }
 }
 
+// --- check: prose elsewhere must not assert a status the matrix has moved ----
+// `compatibility.md` is the source of truth, and every OTHER document that names
+// a row's status is a copy that can go stale silently. The case study did: it
+// said "A3 remains MEASURING" and A2b "remains PENDING" for weeks after A3 moved
+// to PUBLISHED and A2b to PASSED, and nothing here read it, so the drift-detector
+// missed drift in the document the README points a reader to first.
+//
+// Deliberately narrow: only the explicit `<id> ... remains <STATUS>` form, which
+// is an assertion about the row's CURRENT state. Prose describing what was true
+// at the time of a dated run is history and is left alone.
+const caseStudy = readFileSync(join(DOCS, "case-study-001-homepage.md"), "utf8");
+for (const row of rows) {
+  const re = new RegExp(`\\b${row.id}\\b[^.]{0,240}?\\bremains ([A-Z][A-Z ]{2,})`, "g");
+  for (const m of caseStudy.matchAll(re)) {
+    const claimed = m[1].trim();
+    if (!row.status.toUpperCase().includes(claimed)) {
+      fail(
+        `case-study-001-homepage.md says ${row.id} "remains ${claimed}", but ` +
+          `compatibility.md now reads "${row.status.trim()}". The matrix is the ` +
+          `source of truth; a second document restating a moved status is how a ` +
+          `reader is told something that stopped being true.`
+      );
+    }
+  }
+}
+
 // --- report ----------------------------------------------------------------
 if (failures.length > 0) {
   console.error(`assert-matrix: FAIL (${failures.length})`);
