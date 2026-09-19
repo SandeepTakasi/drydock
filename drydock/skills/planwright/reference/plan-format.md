@@ -301,7 +301,7 @@ section body. "N/A" without a reason is not valid.
 | `preconditions` | What must already be true; a false precondition is a HALT, not a FAIL |
 | `steps` | Given / When / Then. Written to be performed exactly as stated |
 | `expected` | The observable result, including which evidence must exist |
-| `evidence` | Exactly one of `screenshot` \| `video` \| `network assertion` |
+| `evidence` | Exactly one of `screenshot` \| `network assertion`. **`video` is rejected by `validate-plan --strict`**: the supported driver cannot capture it at all (A5), so a case declaring it fails its evidence clause on every possible run, which describes the harness rather than the software |
 | `severity` | Exactly one of `blocker` \| `major` \| `minor` |
 
 A case whose expected outcome is itself a failure (used to prove the gate can
