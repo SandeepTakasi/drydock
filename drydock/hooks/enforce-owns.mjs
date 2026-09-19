@@ -51,7 +51,11 @@
  *
  * CEILINGS, stated because a guarantee with a hidden hole is worse than none:
  *   - Bash writes (`sed -i`, `>` redirect, `git checkout`) do not pass through
- *     file-tool hooks and are NOT caught here. The post-hoc audit is the backstop.
+ *     file-tool hooks and are NOT prevented here, and never will be: the set of
+ *     commands that write is not decidable from a command string. They are
+ *     DETECTED instead, by `detect-bash-writes.mjs`, which diffs the working
+ *     tree after every Bash command and records anything that landed outside
+ *     `owns`. The write still happens; the audit fails the wave on it.
  *   - Paths outside the project directory are not enforced — the ownership model
  *     describes repo files, and denying scratchpad writes would break unrelated work.
  *   - Enforcement is WAVE-scoped, so within a wave one task may write another
@@ -175,6 +179,10 @@ const record = (decision, rel) => {
         // across entries and compares it to the plan's wave union, so narrowing
         // it to the owning task's globs would fail every clean wave.
         task: ownerOf(rel),
+        // Which layer produced this decision. `audit-wave` splits on it, and a
+        // receipt written before this field existed has no `mechanism`, which is
+        // exactly how old logs are recognised: absent means file-tool.
+        mechanism: "file-tool",
       }) + "\n"
     );
   } catch {

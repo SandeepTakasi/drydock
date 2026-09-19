@@ -1,6 +1,7 @@
 # The plugin's gate. Until this file existed there was none: `deploy.yml` is the
 # only other workflow, it is filtered to `site/**`, and it runs the site build
-# gate. So `drydock-audit.test.mjs` and `enforce-owns.test.mjs`
+# gate. So `drydock-audit.test.mjs`, `enforce-owns.test.mjs` and
+# `detect-bash-writes.test.mjs`
 # had never run automatically — every release was verified only because somebody
 # chose to run them by hand — and `assert-matrix.mjs`, which exists to stop the
 # A3 figure drifting across documents, sat inside a workflow that ignores
@@ -56,6 +57,7 @@ jobs:
           node-version: ${{ matrix.node }}
       - run: node drydock/scripts/drydock-audit.test.mjs
       - run: node drydock/hooks/enforce-owns.test.mjs
+      - run: node drydock/hooks/detect-bash-writes.test.mjs
 
   docs:
     name: honesty matrix

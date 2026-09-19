@@ -1370,7 +1370,42 @@ function auditWave(path, wave) {
           .filter((e) => e && e.wave === wave && samePlan(e))
       : [];
 
-    if (entries.length === 0 && sealed?.decisions !== null && sealed?.decisions !== undefined) {
+    // TWO LAYERS, COUNTED SEPARATELY. `enforcement: required` is a claim about
+    // PREVENTION, and prevention is the file-tool hook; the Bash layer detects
+    // after the fact and cannot deny. Counting them together would let a wave
+    // whose every write went through Bash satisfy a claim it did not meet.
+    //
+    // A receipt written before the Bash layer existed carries no `mechanism`,
+    // which is exactly how old logs are recognised: absent means file-tool.
+    const bashEntries = entries.filter((e) => e.mechanism === "bash-tree");
+    const fileEntries = entries.filter((e) => e.mechanism !== "bash-tree");
+    const detected = bashEntries.filter((e) => e.decision === "detected");
+
+    // A DETECTED WRITE IS A BREACH, and one the commit audit can miss entirely:
+    // a Bash write that was made and then reverted, or made and never committed,
+    // leaves nothing for `git show` or the dirty-tree check to find. This is the
+    // only place it is visible at all.
+    //
+    // Reported per path, deduplicated: one command touching twelve unowned files
+    // is twelve receipts and should be one error naming twelve paths, not twelve
+    // errors that bury the rest of the report.
+    if (detected.length > 0) {
+      const byCommand = new Map();
+      for (const e of detected) {
+        const key = e.command ?? "(command not recorded)";
+        if (!byCommand.has(key)) byCommand.set(key, new Set());
+        byCommand.get(key).add(e.path);
+      }
+      for (const [command, paths] of byCommand) {
+        errors.push(
+          `a Bash command wrote outside this wave's \`owns\`: ${[...paths].sort().map((f) => `\`${f}\``).join(", ")}. ` +
+            `Command: \`${command}\`. The file-tool hook cannot see Bash, so this was detected after it landed ` +
+            `rather than prevented at the boundary, and it may not appear in any commit.`
+        );
+      }
+    }
+
+    if (fileEntries.length === 0 && sealed?.decisions !== null && sealed?.decisions !== undefined) {
       // A FOURTH cause, and the one the three below could not distinguish: the
       // wave closed with receipts and the gitignored log was cleaned afterwards.
       // Diagnosing that as "the hook never ran here" is a confident false
@@ -1389,7 +1424,7 @@ function auditWave(path, wave) {
           `wrote the report. Treat this wave as enforced-on-record, and re-run the gate before the artifacts ` +
           `are cleaned if you need the stronger claim.`
       );
-    } else if (entries.length === 0) {
+    } else if (fileEntries.length === 0) {
       // Which of the three sub-cases this is, decided from evidence the tool
       // already holds rather than handed to a model as "one innocent cause
       // exists, consider it". That instruction was prose-compliance of exactly
@@ -1410,9 +1445,16 @@ function auditWave(path, wave) {
         : 0;
       const cause = !logExists
         ? `no \`${logPath}\` exists at all, so the hook never ran here: \`wave-start\` was never invoked, the host does not register PreToolUse hooks, or Node is older than 22 (the hook exits 0 with a message rather than wedging every edit)`
-        : elsewhere > 0
-          ? `the log holds ${elsewhere} decision(s) for OTHER waves or plans, so the hook is alive and registered, this wave's writes simply never reached it, which is what happens when they go through Bash (\`sed -i\`, a heredoc, \`>\`), since a PreToolUse file-tool hook cannot see those`
-          : `the log exists but is empty, armed at some point, invoked never`;
+        : bashEntries.length > 0
+          // No longer a hypothesis. The Bash layer ran, which proves hooks are
+          // registered and the wave was armed, and it saw the writes the
+          // file-tool hook could not. This is the ambiguity the detector was
+          // built to end: an empty prevention log used to have four possible
+          // causes and this tool had to guess between them.
+          ? `the Bash layer recorded ${bashEntries.length} decision(s) for this wave, so the hook is registered and the wave WAS armed: this wave's writes went through Bash, which a PreToolUse file-tool hook cannot see. Measured here, not inferred`
+          : elsewhere > 0
+            ? `the log holds ${elsewhere} decision(s) for OTHER waves or plans, so the hook is alive and registered, this wave's writes simply never reached it, which is what happens when they go through Bash (\`sed -i\`, a heredoc, \`>\`), since a PreToolUse file-tool hook cannot see those`
+            : `the log exists but is empty, armed at some point, invoked never`;
       errors.push(
         `plan declares \`enforcement: required\` but ${logPath} holds no entries for wave ${wave}: ${cause}. ` +
           `Prevention did not run for this wave. Detection did, check 2 above audited every task commit against its \`owns\` regardless, so read this as an unmet claim, not as an unaudited wave.`
@@ -1429,10 +1471,24 @@ function auditWave(path, wave) {
             `Re-arm with \`wave-start\` rather than editing the config by hand.`
         );
       }
+      // DO NOT CHANGE THIS SENTENCE. `sealedRecord` regex-parses it out of
+      // wavecheck reports committed into plans, so rewording it breaks re-audit
+      // of every sealed wave in the repo. Bash coverage goes in its own note
+      // below rather than being folded in here.
       notes.push(
-        `enforcement active: ${entries.length} hook decision(s) recorded for wave ${wave} ` +
-          `(${entries.filter((e) => e.decision === "deny").length} denied)`
+        `enforcement active: ${fileEntries.length} hook decision(s) recorded for wave ${wave} ` +
+          `(${fileEntries.filter((e) => e.decision === "deny").length} denied)`
       );
+
+      if (bashEntries.length > 0) {
+        const observed = bashEntries.filter((e) => e.decision === "observed").length;
+        const unavailable = bashEntries.filter((e) => e.decision === "unavailable").length;
+        notes.push(
+          `bash layer: ${bashEntries.length} command(s) seen for wave ${wave}, ${observed} with nothing outside ` +
+            `\`owns\`, ${detected.length} write(s) detected outside it` +
+            (unavailable > 0 ? `, ${unavailable} where detection could not run` : "")
+        );
+      }
 
       // PER-TASK BREAKDOWN. Free, because `validate-plan` guarantees same-wave
       // `owns` are disjoint, so the path a decision names has at most one owner
@@ -1766,7 +1822,10 @@ function proveFailable(planPath) {
 
     const spawnFailed = run.error != null;
     const saidNotFound = /not recognized|not found|No such file|cannot find/i.test(`${run.stderr ?? ""}`);
-    const notFoundCode = run.status === 127 || run.status === 9009;
+    // 127 not found, 126 found but not executable (wrong architecture, missing
+    // +x), 9009 cmd.exe's "is not recognized". All three mean the criterion did
+    // not run, which is not the same as failing.
+    const notFoundCode = run.status === 127 || run.status === 126 || run.status === 9009;
     if (spawnFailed || notFoundCode || (saidNotFound && run.status !== 0)) {
       const why = run.error?.code ?? (notFoundCode ? `exit ${run.status}` : "shell reported the command was not found");
       rows.push({ id: task.id, kind: "unrunnable", detail: `${why}  ${cmd.slice(0, 55)}` });

@@ -1,5 +1,56 @@
 # Changelog
 
+## 0.12.0: 2026-09-19
+
+**Bash writes are detected now, and still not prevented.** A `PostToolUse` hook
+on Bash diffs the working tree after each command and records any file that
+changed outside the armed wave's `owns`. `audit-wave` fails the wave on it,
+naming the file and the command.
+
+**Prevention stays file-tool only, permanently and by design.** Issue #3 proposed
+"stop selling prevention" and was closed by documenting the ceiling; this keeps
+that decision. The set of commands that write is not decidable from a command
+string, and the holes are not a short list: `cd site && printf x > a.txt` defeats
+any parser with one token, `OUT=…; > $OUT` needs the shell's own expansion,
+`python - <<'EOF'` puts the write in another language, `npm run build` puts it in
+a file nobody opened, `git checkout other-branch` rewrites arbitrary paths with
+no path argument at all. The false positives are worse than the false negatives:
+a deny-regex that fires on `npm ci` or `pytest` leaves `rm .drydock/wave-owns.json`
+as the only escape, which disarms the real hook.
+
+**The `observed` receipt is the point, more than the `detected` one.** An empty
+prevention log used to have four possible causes — never armed, never registered,
+no writes, or every write through Bash — and `audit-wave` had to guess between
+them. A positive record that the Bash layer was alive and saw nothing outside
+`owns` turns that guess into a measurement, and the diagnosis now says so.
+
+Receipts carry `mechanism`, absent meaning `file-tool`, so every log written
+before this release keeps parsing. `enforcement: required` continues to count
+file-tool decisions only: it is a claim about prevention, and counting the two
+layers together would let a wave meet a claim it did not.
+
+Deliberately untouched: the sentence `enforcement active: N hook decision(s)
+recorded for wave X (M denied)`. `sealedRecord` regex-parses it out of wavecheck
+reports committed into plans, so rewording it would break re-audit of every
+sealed wave in the repo. Bash coverage is a separate note.
+
+**Ceilings, stated and asserted as cases so they fail loudly if quietly
+"fixed":** a gitignored write leaves no receipt (scanning ignored files would
+make every build tank the hook); write-then-restore inside one command shows
+nothing; attribution is "changed around this command", not "caused by it", so
+concurrent executors can be credited with each other's changes; a backgrounded
+command finishes after the hook fires. Registration is unverified in the session
+that ships it, as always — see A9.
+
+**Test suites now spawn `process.execPath`, never the string `node`.** Measured
+here: the first `node` on PATH was an x86_64 build that stopped executing after a
+macOS major upgrade, so every case failed with `spawnSync node Unknown system
+error -86` while the suite's own runtime was fine. A PATH lookup was never what
+these tests meant to exercise. `prove-failable` also treats exit 126, found but
+not executable, as unrunnable alongside 127 and 9009.
+
+Tests: audit 120, hook 30, and a new detector suite of 14.
+
 ## 0.11.0: 2026-09-16
 
 **Per-task attribution in the enforcement receipt, for free.** `validate-plan`

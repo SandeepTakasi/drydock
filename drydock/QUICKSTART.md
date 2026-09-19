@@ -38,10 +38,12 @@ Confirm the ownership hook actually works before relying on it:
 
 ```bash
 node "$DD/hooks/enforce-owns.test.mjs"
+node "$DD/hooks/detect-bash-writes.test.mjs"
 ```
 
-You want `enforce-owns: PASS, <n> cases`. It runs in a temp directory and
-touches nothing in your repo.
+You want `PASS` from both. They run in temp directories and touch nothing in
+your repo. The two are different layers: the first denies a write at the tool
+boundary, the second records a write a Bash command already made.
 
 ## 1. Ask for a plan
 
@@ -99,12 +101,16 @@ That validates the plan, refuses to arm if it fails or is uncommitted, adds
 boundary **from the plan**, and arms the hook. From here a write to a file no
 task in the wave owns is **denied at the tool boundary**.
 
-**Two ceilings, stated plainly.** Bash writes (`sed -i`, `>` redirects) do not
-pass through file-tool hooks and are not caught. Paths outside the project
-directory are not enforced. The post-hoc audit is the backstop for both, and it
-is a different mechanism: the hook *prevents* at the tool boundary and cannot
-see Bash; `audit-wave` *detects* from the commits afterwards and never consults
-the hook.
+**Prevention is file-tool only, and always will be.** A `>` redirect, `sed -i`
+or a heredoc never reaches a file-tool hook, and no amount of reading the command
+string fixes that: `cd site && printf x > a.txt` alone defeats it. So Bash writes
+are **detected, not prevented** — a second hook records any file a Bash command
+changed outside the wave's `owns`, and `audit-wave` fails the wave on it. The
+write still lands; you learn about it immediately instead of at the gate, or not
+at all.
+
+Paths outside the project directory are not enforced by either layer, and a
+gitignored path is invisible to the detector.
 
 ## 4. Let the gate run
 

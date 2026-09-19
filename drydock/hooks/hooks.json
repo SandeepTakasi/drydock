@@ -1,5 +1,5 @@
 {
-  "description": "Ownership boundary enforcement. On Write/Edit/MultiEdit/NotebookEdit, denies a write to any path outside the owns set of the wave declared in .drydock/wave-owns.json. Inert when that file is absent, which is the normal state of a repo not mid-wave. See hooks/enforce-owns.mjs for the config shape, the wave-level (not per-task) rationale, and the documented ceilings.",
+  "description": "Two layers, deliberately different in kind. PreToolUse on Write/Edit/MultiEdit/NotebookEdit DENIES a write to any path outside the owns set of the wave declared in .drydock/wave-owns.json. PostToolUse on Bash cannot deny -- the command has already run -- so it DETECTS instead, recording any file that changed outside that set, plus an `observed` receipt when nothing did. Both are inert when .drydock/wave-owns.json is absent, which is the normal state of a repo not mid-wave. Prevention is file-tool only and always will be: the set of commands that write is not decidable from a command string. See hooks/enforce-owns.mjs and hooks/detect-bash-writes.mjs for the config shape, the rationale, and the ceilings each layer carries.",
   "hooks": {
     "PreToolUse": [
       {
@@ -9,6 +9,18 @@
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/enforce-owns.mjs\"",
             "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/detect-bash-writes.mjs\"",
+            "timeout": 15
           }
         ]
       }

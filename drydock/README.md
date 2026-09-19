@@ -30,14 +30,18 @@ planwright ──► [human approves] ──► execute waves ──► wavechec
 
 - **Disjoint ownership is enforced, not requested** (v0.6.0). A `PreToolUse`
   hook reads `.drydock/wave-owns.json` and **denies** any Write/Edit to a path no
-  task in the active wave owns. Prose did not hold this line: a plan in
+  task in the active wave owns. Bash writes are **detected rather than
+  prevented** by a second hook (v0.12.0), because what a shell command writes
+  cannot be read off the command string. Prose did not hold this line: a plan in
   this repo staged a file outside its `owns` and the stated cause was that the work
   ran inline, where the contract binds nobody. A hook binds every writer in the
-  session. Three ceilings, stated plainly: **Bash writes bypass it** (`sed -i`,
-  `>`, `git checkout`) and the post-hoc audit is the backstop; it is
-  **wave-level, not per-task**, because hook input carries no subagent identity;
-  and it is **inert unless `.drydock/wave-owns.json` exists**, which is both the
-  default state and the escape hatch. Same-wave tasks can additionally be
+  session. Three ceilings, stated plainly: **Bash writes are detected, not
+  prevented** (`sed -i`, `>`, `git checkout` never reach a file-tool hook, so a
+  second hook records what they changed and `audit-wave` fails the wave on it);
+  it is **wave-level, not per-task**, which is a property of what the hook reads
+  rather than a limit anyone has measured (A8); and it is **inert unless
+  `.drydock/wave-owns.json` exists**, which is both the default state and the
+  escape hatch. Same-wave tasks can additionally be
   isolated by git worktrees (`isolation: worktree` in the plan header).
   **`enforcement: required` is a receipt check, not a coverage guarantee**: it
   asserts the hook ran, and the hook is one of two layers. The hook *prevents*

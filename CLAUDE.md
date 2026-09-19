@@ -182,15 +182,20 @@ work — plan 001's has 49 entries and most are still live constraints.
 
 ## Executing a plan here
 
-- **A session told to prefer Bash for file edits will silently produce no
-  enforcement receipts.** `PreToolUse` hooks see Write/Edit and never see a
-  `python` heredoc, a `>` redirect or `sed -i`. A wave whose edits all go
-  through Bash leaves `.drydock/enforcement.log` empty, and on a plan declaring
-  `enforcement: required` that is a wavecheck BLOCK — indistinguishable from a
-  hook that was never armed. **Use Write/Edit for the owned files of an
-  executing wave**, whatever the session's general preference. Measured
-  2026-09-01, plan 005 deviation 1: one changelog write went through Bash and
-  left no receipt while the wave's other 13 decisions were logged.
+- **A session told to prefer Bash for file edits produces no PREVENTION
+  receipts, and that is still worth avoiding.** `PreToolUse` hooks see
+  Write/Edit and never see a `python` heredoc, a `>` redirect or `sed -i`.
+  **Use Write/Edit for the owned files of an executing wave**, whatever the
+  session's general preference: prevention is file-tool only, so a Bash edit to
+  an unowned file lands rather than being refused. Measured 2026-09-01, plan 005
+  deviation 1: one changelog write went through Bash and left no receipt while
+  the wave's other 13 decisions were logged.
+  **What changed in 0.12.0:** such a wave is no longer *indistinguishable* from
+  a hook that was never armed. A PostToolUse Bash hook records an `observed`
+  entry per command and a `detected` entry per file changed outside `owns`, so
+  `audit-wave` can now say which of the four causes an empty prevention log has,
+  from evidence rather than by guessing. A Bash write to an unowned file is now
+  an audit error naming the file and the command.
 - **Close the wave before writing the plan document.** The plan file is owned by
   no task, so while `.drydock/wave-owns.json` is armed the hook **denies** edits
   to it — including the orchestrator's own bookkeeping. Order is: finish the

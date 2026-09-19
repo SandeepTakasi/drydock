@@ -673,6 +673,68 @@ verification: per-session availability is a property of the environment, and
 
 ---
 
+## A9 — Bash write detection (PostToolUse)
+
+**Date:** 2026-09-19
+**Host version:** `claude --version` → `2.1.259 (Claude Code)`
+**Node:** v22.23.1
+**Repo SHA at run time:** working tree, pre-commit, on top of `e214ae8`
+
+**What this entry claims and does not claim.** It claims the detector's logic
+behaves as specified across fourteen cases. It does **not** claim the host
+invokes it: hooks register at session start, so a hook added by the session that
+writes it is not live in that session. This is the same position A6 held on
+2026-08-21, and it was resolved the same way — by a later session observing a
+real decision. Treat live detection as unexercised until then.
+
+### Method
+
+`node drydock/hooks/detect-bash-writes.test.mjs` — fourteen cases, each in a
+throwaway git repo under the OS temp directory, with the payload built by
+`JSON.stringify` rather than a shell heredoc (the fixture lesson from A6).
+
+Each case runs a real shell command, then fires the hook exactly as a host would
+after that command, then reads `.drydock/enforcement.log` back.
+
+### Result — 14 of 14
+
+| Case | Expect | Got |
+|---|---|---|
+| `printf x > site/probe.txt`, `owns: docs/**` | **detected** | detected |
+| receipt names the command | command recorded | recorded |
+| receipt tagged `mechanism: bash-tree` | tagged | tagged |
+| `cd site && printf x > nested.txt` | **detected** | detected |
+| write from inside another language | **detected** | detected |
+| `printf y > docs/new.md` (inside `owns`) | observed | observed |
+| `ls -la` | observed only | observed only |
+| `rm docs/kept.md` (unowned, tracked) | **detected** | detected |
+| no wave armed | nothing written at all | nothing |
+| first Bash command of a wave | observed, says it seeded | said so |
+| gitignored write (`build/out.js`) | **no receipt** (ceiling) | no receipt |
+| not a git repo | `unavailable`, no throw | unavailable |
+| unusable `wave-owns.json` | `unavailable` | unavailable |
+| every shape above | **never exits non-zero** | never |
+
+### The two cases that carry the argument
+
+`cd site && printf x > nested.txt` and the write performed from inside another
+language are the reason this layer diffs the working tree rather than parsing
+`tool_input.command`. Both are invisible to any command-string parser, and the
+second is the exact shape of plan 005 deviation 1, where a `python` heredoc wrote
+`drydock/CHANGELOG.md` and left no receipt.
+
+### Not tested
+
+- **Live registration by the host.** The blocking question, as above.
+- **Concurrent executors.** Attribution is "changed around this command", not
+  "caused by it". Two executors running Bash at once can be credited with each
+  other's changes. Unmeasured, and stated in the docblock rather than assumed
+  away.
+- **Cost on a large repository.** The hook runs one `git status` per Bash call
+  while a wave is armed, and nothing while one is not (an `existsSync` guard
+  precedes any git invocation). Timed on neither this repo nor a large one.
+- **Backgrounded commands**, which finish after the hook fires.
+
 ## A8 — PreToolUse payload fields
 
 **Date:** 2026-09-16
