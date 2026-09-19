@@ -696,19 +696,35 @@ const GATE_HUMAN = /\bhuman\b|sign-?off/i;
 const unsignedHumanGates = (plan) =>
   phaseGateBlocks(plan).filter((g) => !GATE_CLOSED.test(g) && GATE_HUMAN.test(g));
 
+// `## Wave <p>.R verdict, APPROVED|REJECTED, <date>` -- the shape plans 001 and
+// 004 already use, at heading level 2 because it is appended beside the
+// wavecheck reports rather than declared with the waves. Last one wins, so a
+// re-review supersedes the verdict it repeats, exactly like a re-audit.
+const REVIEW_VERDICT_RE = /^#{2,3} Wave (\d+)\.R verdict\b.*?[—,-]\s*(APPROVED|REJECTED)\b/;
+
 function derivePlanState(plan) {
   const waves = [];
   const verdicts = new Map();
+  // Phases that DECLARE a quality review, and the verdicts actually recorded
+  // for them. `Wave x.R` has been specified since the format contract was
+  // written and nothing ever checked it happened: it was prose the orchestrator
+  // was trusted to honour, in a repo whose own A3 data shows gates get skipped.
+  const reviewsDeclared = new Set();
+  const reviewsApproved = new Map();
 
   for (const line of plan.lines) {
     const w = line.match(WAVE_RE);
-    // Review waves take no wavecheck by design and are excluded, exactly as the
-    // A3 ledger excludes them.
+    // Review waves take no wavecheck by design and are excluded from the
+    // implementation-wave count, exactly as the A3 ledger excludes them. They
+    // are tracked separately below rather than ignored.
+    if (w && w[2] === "R") reviewsDeclared.add(w[1]);
     if (w && w[2] !== "R") {
       const id = `${w[1]}.${w[2]}`;
       if (!waves.includes(id)) waves.push(id);
       continue;
     }
+    const r = line.match(REVIEW_VERDICT_RE);
+    if (r) reviewsApproved.set(r[1], r[2]);
     const c = line.match(WAVECHECK_RE);
     if (c) verdicts.set(`${c[1]}.${c[2]}`, c[3]);
   }
@@ -716,6 +732,20 @@ function derivePlanState(plan) {
   const reported = waves.filter((w) => verdicts.has(w));
   const blocked = reported.filter((w) => verdicts.get(w) !== "PASS");
   const started = reported.length > 0;
+  // A declared review with no APPROVED verdict is REPORTED, not failed, and the
+  // distinction is deliberate. `Wave x.R` has been specified since the contract
+  // was written with nothing checking it happened, so making it visible is the
+  // gap worth closing. Making it a FAILURE would retroactively fail plans
+  // already closed in this repo -- measured: plan 001 is RECONCILED and its last
+  // recorded review verdicts are REJECTED for both phases, because neither was
+  // re-run after its repairs (its own deviations 36 and 49 say so). Rewriting a
+  // closed record's verdict afterwards is not this tool's job, and the comment
+  // below already refuses exactly that move for unsigned human gates.
+  //
+  // Ceiling, the same one `a3-gate-compliance.md` records for wave gates: a
+  // retroactively written verdict is a heading like any other, so this bounds
+  // bookkeeping, not honesty.
+  const reviewsMissing = [...reviewsDeclared].filter((p) => reviewsApproved.get(p) !== "APPROVED").sort();
   const complete = waves.length > 0 && reported.length === waves.length && blocked.length === 0;
 
   // Two different questions, deliberately not one set. `expected` is what a
@@ -750,6 +780,9 @@ function derivePlanState(plan) {
   } else if (started) {
     expected = ["EXECUTING", "BLOCKED"];
     writable = "EXECUTING";
+    // Name the review explicitly when it is the only thing left. "3 of 3 wave(s)
+    // reported" while the plan refuses to close reads as a bug in the tool, and
+    // a check whose refusal cannot be explained is one people work around.
     reason = `${reported.length} of ${waves.length} wave(s) reported`;
   } else {
     expected = ["DRAFT", "APPROVED", "EXECUTING", "BLOCKED", "DONE", "RECONCILED"];
@@ -757,7 +790,7 @@ function derivePlanState(plan) {
     reason = "no wavecheck reports, the plan has not been gated, so its status is unconstrained";
   }
 
-  return { waves, verdicts, reported, blocked, started, complete, expected, writable, reason };
+  return { waves, verdicts, reported, blocked, started, complete, expected, writable, reason, reviewsDeclared: [...reviewsDeclared].sort(), reviewsMissing };
 }
 
 // The contradiction, phrased once and reused by validate-plan, audit-wave and
@@ -784,6 +817,20 @@ function planStatus(path, write) {
   for (const w of state.waves) console.log(`| ${w} | ${state.verdicts.get(w) ?? ", none, "} |`);
   console.log(`\nfrontmatter: ${status}`);
   console.log(`derived:     ${state.expected.join(" or ")}  (${state.reason})`);
+
+  // THE REVIEW THAT WAS DECLARED BUT NOT RECORDED. Reported on every run,
+  // including a passing one, because the point is visibility: `Wave x.R` was
+  // prose nobody checked, in a repo whose own A3 ledger shows gates get skipped
+  // 1 time in 29.
+  if (state.reviewsMissing.length > 0) {
+    console.log(
+      `\nnote: phase ${state.reviewsMissing.join(", ")} declare(s) a \`Wave x.R\` quality review with no ` +
+        `APPROVED verdict recorded. Record one as \`## Wave <p>.R verdict, APPROVED, <date>\`, or drop the review ` +
+        `wave if it is not going to run. Reported, not failed: a closed plan's verdict is not this tool's to rewrite.`
+    );
+  } else if (state.reviewsDeclared.length > 0) {
+    console.log(`\nnote: ${state.reviewsDeclared.length} declared quality review(s), all with an APPROVED verdict recorded`);
+  }
 
   const bad = statusContradiction(plan);
   if (!bad) {
