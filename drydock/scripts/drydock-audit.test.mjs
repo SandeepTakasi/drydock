@@ -1443,6 +1443,58 @@ cases.push(
 );
 
 // --------------------------------------------------------------------------
+// DECLARED QUALITY REVIEWS. `Wave x.R` has been in the format contract since it
+// was written and nothing ever checked it happened -- it was prose the
+// orchestrator was trusted to honour, in a repo whose A3 ledger records gates
+// being skipped 1 time in 29.
+
+const reviewPlan = (body) => `${head}
+### Wave 1.0 - w
+
+#### T1.0.1 - a
+- **Files owned:** \`a.txt\`
+- **Acceptance criterion:** \`true\` exits 0.
+
+### Wavecheck reports
+
+### Wavecheck 1.0, PASS, 2026-01-01
+${body}`;
+
+cases.push(
+  ["a declared review with no verdict is reported",
+    () => status("rev-missing", reviewPlan("\n### Wave 1.R - Quality review\n")).out,
+    (out) => /note: phase 1 declare\(s\)/.test(out) && out.includes("no\nAPPROVED verdict recorded") === false && out.includes("APPROVED verdict recorded")],
+
+  ["a declared review WITH an approved verdict is reported as satisfied",
+    () => status("rev-ok", reviewPlan("\n### Wave 1.R - Quality review\n\n## Wave 1.R verdict, APPROVED, 2026-01-02\n")).out,
+    (out) => out.includes("all with an APPROVED verdict recorded")],
+
+  // A re-review supersedes the verdict it repeats, exactly like a re-audit.
+  ["a REJECTED verdict later approved reads as approved",
+    () => status("rev-rerun", reviewPlan("\n### Wave 1.R - Quality review\n\n## Wave 1.R verdict, REJECTED, 2026-01-02\n\n## Wave 1.R verdict, re-review, APPROVED, 2026-01-03\n")).out,
+    (out) => out.includes("all with an APPROVED verdict recorded")],
+
+  ["a REJECTED verdict alone is not satisfied",
+    () => status("rev-rejected", reviewPlan("\n### Wave 1.R - Quality review\n\n## Wave 1.R verdict, REJECTED, 2026-01-02\n")).out,
+    (out) => /note: phase 1 declare\(s\)/.test(out)],
+
+  // The load-bearing constraint: this REPORTS, it does not fail. Failing would
+  // retroactively fail plans already closed in this repo -- plan 001 is
+  // RECONCILED with both its review verdicts REJECTED.
+  // The load-bearing case. `status: DONE` so the ONLY thing left to object to is
+  // the missing review -- and it must not object, because failing here would
+  // retroactively fail plan 001, which is RECONCILED with both its review
+  // verdicts REJECTED.
+  ["a missing review does not fail an otherwise closed plan",
+    () => status("rev-nofail", reviewPlan("\n### Wave 1.R - Quality review\n").replace("status: EXECUTING", "status: DONE")).out,
+    (out) => out.includes("plan-status: PASS") && /note: phase 1 declare\(s\)/.test(out)],
+
+  ["a plan declaring no review says nothing about reviews",
+    () => status("rev-none", reviewPlan("")).out,
+    (out) => !out.includes("quality review")],
+);
+
+// --------------------------------------------------------------------------
 // prove-failable. A criterion that already exits 0 before its task has run gates
 // nothing: the task could do nothing and still be marked done, and wavecheck's
 // check 4 then passes vacuously. Measured in the field -- planwright/SKILL.md

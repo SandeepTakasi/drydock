@@ -153,9 +153,15 @@ For each case:
    `.drydock/testing/<plan-id>/<case-id>/`:
    - `screenshot`: at the moment the `Then` clause is evaluated, not at the end
      of the case.
-   - `video`: the whole case. If the driver produced no video, the case FAILs on
-     its evidence clause even when its assertions held. The declared evidence
-     type is part of the case, not a preference.
+   - `video`: **not declarable.** `validate-plan --strict` rejects any case that
+     declares it, because the supported driver cannot capture video at all --
+     it is a per-`BrowserContext` setting fixed at creation, and a Playwright MCP
+     server started without it exposes no video, record or trace tool (A5). A
+     case declaring it therefore fails its evidence clause on every possible run,
+     however correct the application is, which describes the harness rather than
+     the software and is the most expensive kind of red. This is listed here so
+     the refusal is findable from the skill that would have executed it; plan
+     004's only NO-GO came from exactly this.
    - `network assertion`: the recorded request/response table the claim rests
      on, saved as a file. A screenshot is not evidence for a network claim.
    Evidence missing or written outside the declared path is a FAIL on the

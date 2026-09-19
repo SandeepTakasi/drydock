@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.13.0: 2026-09-19
+
+**A declared quality review that never ran is now visible.** `Wave x.R` has been
+in the format contract since it was written, and nothing checked it happened --
+it was prose the orchestrator was trusted to honour, in a repo whose own A3
+ledger records a gate being skipped 1 time in 29. `plan-status` now reads the
+`## Wave <p>.R verdict, APPROVED|REJECTED, <date>` headings plans 001 and 004
+already use, last one winning so a re-review supersedes what it repeats, and
+reports any declared review with no APPROVED verdict.
+
+**Reported, not failed, and that is the whole design decision.** Making it a
+failure would retroactively fail plans already closed here: plan 001 is
+RECONCILED and its last recorded review verdicts are REJECTED for both phases,
+because neither was re-run after its repairs -- its own deviations 36 and 49 say
+so. Rewriting a closed record's verdict afterwards is not this tool's job, and
+the code already refuses exactly that move for unsigned human gates. The ceiling
+is the one `a3-gate-compliance.md` records for wave gates: a retroactively
+written verdict is a heading like any other, so this bounds bookkeeping, not
+honesty.
+
+**`video` stopped being two things at once.** `seatrial` documented it as a
+first-class declarable evidence type with run-time semantics, while
+`validate-plan --strict` rejected any case declaring it, because the supported
+driver cannot capture video at all (A5) -- a per-`BrowserContext` setting fixed
+at creation, with no video, record or trace tool exposed. The contract's evidence
+table, planwright's checklist and seatrial's own capture list now all say the
+same thing. Plan 004's only NO-GO came from this contradiction.
+
+Tests: audit 126, hook 30, detector 14.
+
 ## 0.12.0: 2026-09-19
 
 **Bash writes are detected now, and still not prevented.** A `PostToolUse` hook
