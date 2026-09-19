@@ -8,7 +8,25 @@
     {
       "name": "drydock",
       "source": "./drydock",
-      "description": "Plan-first parallel execution: rigorous plan documents, wave-based subagent execution with disjoint file ownership, plan-conformance verification gates, and a reconcile loop that feeds execution learnings back into your docs. Nothing sails until it leaves the dock."
+      "description": "Plan-first parallel execution: rigorous plan documents, wave-based subagent execution with disjoint file ownership, plan-conformance verification gates, and a reconcile loop that feeds execution learnings back into your docs. Nothing sails until it leaves the dock.",
+      "keywords": [
+        "plan",
+        "planning",
+        "spec-driven",
+        "implementation-plan",
+        "subagents",
+        "parallel-execution",
+        "orchestration",
+        "waves",
+        "verification",
+        "code-review",
+        "quality-gate",
+        "file-ownership",
+        "hooks",
+        "git-worktree",
+        "e2e",
+        "playwright"
+      ]
     }
   ]
 }
