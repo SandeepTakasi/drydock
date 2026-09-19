@@ -73,9 +73,14 @@ the audit checks the standard the plan stated.
 It is a **receipt check, not a coverage guarantee.** Ownership has two layers and
 they answer different questions:
 
-- The hook **prevents** a write at the tool boundary. It sees `Write`/`Edit` and
-  is **blind to Bash** (`sed -i`, a heredoc, `>`) and to paths outside the
-  project directory.
+- The hook **prevents** a write at the tool boundary. It sees `Write`/`Edit`
+  only, and to paths outside the project directory it is blind. It does not see
+  Bash and cannot: what a shell command writes is not readable from the command
+  string, so `cd site && printf x > a.txt` defeats any parser.
+- A second hook **detects** Bash writes, by diffing the working tree after each
+  command and recording anything outside `owns`. The write lands; the wave fails
+  on it. Detection is not prevention and the plan should not read as though it
+  is.
 - `audit-wave` **detects** a violation after the fact, from each task's commit
   and the working tree, and it never consults the hook. This layer sees
   everything a commit or a dirty tree carries, Bash-mediated writes included.
@@ -202,8 +207,8 @@ looking exactly like enforcement. A derived boundary cannot exceed its plan, and
 It is wave-level because a wave runs N executors at once and hook input carries
 no subagent identity; per-task attribution remains wavecheck's job. **Leaving a
 stale file behind blocks the next unrelated edit**, so deleting it is part of
-closing the wave. It does not replace the audit. Bash writes bypass file-tool
-hooks entirely.
+closing the wave. It does not replace the audit: prevention covers file tools,
+detection covers Bash, and the commit audit covers what both miss.
 
 **Staleness check (before every wave):**
 `git diff <baseline SHA>..HEAD -- <wave's owned files + wave-0 contract files>`.

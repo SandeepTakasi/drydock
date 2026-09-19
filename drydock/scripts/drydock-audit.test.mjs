@@ -20,6 +20,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+// THE RUNTIME RUNNING THIS FILE, never the string "node". A bare "node" is a
+// PATH lookup, and PATH can resolve to a different binary than the one running
+// the suite -- measured 2026-09-19, where the first node on PATH was an x86_64
+// build that stopped executing after a macOS major upgrade, so every case failed
+// with `spawnSync node Unknown system error -86` (EBADARCH) while the suite's
+// own runtime was fine. `process.execPath` also guarantees the hook is exercised
+// on the same Node version as the assertions about it.
+const NODE = process.execPath;
+
 const CLI = fileURLToPath(new URL("./drydock-audit.mjs", import.meta.url));
 const DIR = mkdtempSync(join(tmpdir(), "drydock-audit-"));
 
@@ -34,7 +43,7 @@ const validateRaw = (name, full, strict = false) => {
   const file = join(DIR, `${name}.md`);
   writeFileSync(file, full);
   const args = strict ? ["validate-plan", "--strict", file] : ["validate-plan", file];
-  const r = spawnSync("node", [CLI, ...args], { encoding: "utf8" });
+  const r = spawnSync(NODE, [CLI, ...args], { encoding: "utf8" });
   return `${r.stdout}${r.stderr}`;
 };
 
@@ -42,7 +51,7 @@ const validate = (name, body, strict = false) => {
   const file = join(DIR, `${name}.md`);
   writeFileSync(file, head + body);
   const args = strict ? ["validate-plan", "--strict", file] : ["validate-plan", file];
-  const r = spawnSync("node", [CLI, ...args], { encoding: "utf8" });
+  const r = spawnSync(NODE, [CLI, ...args], { encoding: "utf8" });
   return `${r.stdout}${r.stderr}`;
 };
 
@@ -327,7 +336,7 @@ const git = (cwd, args) =>
   execFileSync("git", [...GIT, ...args], { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 
 const cli = (cwd, args, env) => {
-  const r = spawnSync("node", [CLI, ...args], { cwd, encoding: "utf8", env: { ...process.env, ...env } });
+  const r = spawnSync(NODE, [CLI, ...args], { cwd, encoding: "utf8", env: { ...process.env, ...env } });
   return `${r.stdout}${r.stderr}`;
 };
 
@@ -508,7 +517,7 @@ const REAUDIT = `### Wavecheck 1.0 — PASS — 2026-09-01
 const status = (name, full, args = []) => {
   const file = join(DIR, `${name}.md`);
   writeFileSync(file, full);
-  const r = spawnSync("node", [CLI, "plan-status", ...args, file], { encoding: "utf8" });
+  const r = spawnSync(NODE, [CLI, "plan-status", ...args, file], { encoding: "utf8" });
   return { out: `${r.stdout}${r.stderr}`, file };
 };
 
@@ -1456,11 +1465,11 @@ cases.push(
   // classification, and a POSIX-only command asserts the shell instead. That is
   // what broke every Windows runner while every POSIX one stayed green.
   ["a criterion that already passes is reported as inert",
-    () => cli(pfRepo("pf-inert", pfTask("T1.0.1", '`node -e "process.exit(0)"`')), ["prove-failable", "plan.md"]),
+    () => cli(pfRepo("pf-inert", pfTask("T1.0.1", `\`${NODE} -e "process.exit(0)"\``)), ["prove-failable", "plan.md"]),
     (out) => out.includes("INERT") && out.includes("already exits 0") && out.includes("prove-failable: FAIL")],
 
   ["a criterion that fails at baseline passes the check",
-    () => cli(pfRepo("pf-good", pfTask("T1.0.1", '`node -e "process.exit(1)"`')), ["prove-failable", "plan.md"]),
+    () => cli(pfRepo("pf-good", pfTask("T1.0.1", `\`${NODE} -e "process.exit(1)"\``)), ["prove-failable", "plan.md"]),
     (out) => out.includes("failable") && out.includes("prove-failable: PASS")],
 
   // Exiting non-zero because the command does not exist is NOT a healthy gate:
@@ -1579,7 +1588,7 @@ cases.push(
 
 cases.push(
   ["a missing plan is a clean error, not a stack trace", () => {
-    const r = spawnSync("node", [CLI, "validate-plan", join(DIR, "nope-does-not-exist.md")], { encoding: "utf8" });
+    const r = spawnSync(NODE, [CLI, "validate-plan", join(DIR, "nope-does-not-exist.md")], { encoding: "utf8" });
     return `EXIT:${r.status}\n${r.stdout}${r.stderr}`;
   }, (out) => out.includes("EXIT:3") && out.includes("no such file") && !out.includes("at ModuleJob")],
 );

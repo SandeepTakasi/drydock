@@ -27,6 +27,15 @@ import { dirname, join, sep } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
+// THE RUNTIME RUNNING THIS FILE, never the string "node". A bare "node" is a
+// PATH lookup, and PATH can resolve to a different binary than the one running
+// the suite -- measured 2026-09-19, where the first node on PATH was an x86_64
+// build that stopped executing after a macOS major upgrade, so every case failed
+// with `spawnSync node Unknown system error -86` (EBADARCH) while the suite's
+// own runtime was fine. `process.execPath` also guarantees the hook is exercised
+// on the same Node version as the assertions about it.
+const NODE = process.execPath;
+
 const HOOK = fileURLToPath(new URL("./enforce-owns.mjs", import.meta.url));
 
 // realpathSync because macOS hands back /var/... for a /private/var/... temp dir,
@@ -49,7 +58,7 @@ const run = (toolInput, { config = DEFAULT_CONFIG, tool = "Write" } = {}) => {
   if (config !== null) writeFileSync(CONFIG, config);
   else rmSync(CONFIG, { force: true });
   try {
-    execFileSync("node", [HOOK], {
+    execFileSync(NODE, [HOOK], {
       input: JSON.stringify({ tool_name: tool, cwd: ROOT, tool_input: toolInput }),
       env: { ...process.env, CLAUDE_PROJECT_DIR: ROOT },
       stdio: ["pipe", "pipe", "pipe"],
