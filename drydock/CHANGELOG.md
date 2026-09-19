@@ -49,6 +49,13 @@ error -86` while the suite's own runtime was fine. A PATH lookup was never what
 these tests meant to exercise. `prove-failable` also treats exit 126, found but
 not executable, as unrunnable alongside 127 and 9009.
 
+The detector's own suite does not shell out, and the reason is the mistake this
+release also fixed elsewhere: it first used `/bin/sh -c`, which does not exist on
+Windows, so every case died with `spawnSync /bin/sh ENOENT` on three runners. The
+detector never reads the command -- it diffs the tree -- so any non-file-tool
+mutation exercises it identically, and Node is the one runtime guaranteed present
+wherever these tests run.
+
 Tests: audit 120, hook 30, and a new detector suite of 14.
 
 ## 0.11.0: 2026-09-16

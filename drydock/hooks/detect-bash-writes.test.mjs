@@ -69,13 +69,24 @@ const receipts = (dir) => {
 // has nothing to diff against and says so.
 const seed = (dir) => fire(dir, "true");
 
-const sh = (dir, cmd) => execFileSync("/bin/sh", ["-c", cmd], { cwd: dir, encoding: "utf8" });
+// THE FIXTURE DOES NOT SHELL OUT, and that is not a compromise. This file first
+// used `/bin/sh -c`, which does not exist on Windows, so every case died with
+// `spawnSync /bin/sh ENOENT` on three runners -- the same POSIX assumption this
+// release fixed in the other two suites, made again here.
+//
+// What the detector actually asserts is that the working tree changed by some
+// means a file-tool hook never saw. It does not read the command, so ANY
+// non-file-tool mutation exercises it identically, and Node is the one runtime
+// guaranteed present wherever these tests run. `cwd` varies where a case is
+// about a path resolved relative to somewhere other than the repo root.
+const mutate = (dir, script, sub) =>
+  execFileSync(NODE, ["-e", script], { cwd: sub ? join(dir, sub) : dir, encoding: "utf8" });
 
 // --- the motivating cases -------------------------------------------------
 {
   const dir = mkrepo("redirect");
   seed(dir);
-  sh(dir, "printf x > site/probe.txt");
+  mutate(dir, "require('fs').writeFileSync('site/probe.txt','x')");
   fire(dir, "printf x > site/probe.txt");
   const det = receipts(dir).filter((e) => e.decision === "detected");
   report("a > redirect outside owns is detected", det.length === 1 && det[0].path === "site/probe.txt",
@@ -90,7 +101,10 @@ const sh = (dir, cmd) => execFileSync("/bin/sh", ["-c", cmd], { cwd: dir, encodi
 {
   const dir = mkrepo("cd-relative");
   seed(dir);
-  sh(dir, "cd site && printf x > nested.txt");
+  // Written from INSIDE site/, by a relative name. A command-string parser
+  // would have to model the shell's cwd to see this; git status is repo-rooted
+  // and does not care.
+  mutate(dir, "require('fs').writeFileSync('nested.txt','x')", "site");
   fire(dir, "cd site && printf x > nested.txt");
   const det = receipts(dir).filter((e) => e.decision === "detected");
   report("cd then a relative redirect is detected", det.some((e) => e.path === "site/nested.txt"),
@@ -103,7 +117,7 @@ const sh = (dir, cmd) => execFileSync("/bin/sh", ["-c", cmd], { cwd: dir, encodi
 {
   const dir = mkrepo("heredoc");
   seed(dir);
-  sh(dir, `${NODE} -e "require('fs').writeFileSync('site/from-node.txt','x')"`);
+  mutate(dir, "require('fs').writeFileSync('site/from-node.txt','x')");
   fire(dir, `${NODE} -e "require('fs').writeFileSync('site/from-node.txt','x')"`);
   const det = receipts(dir).filter((e) => e.decision === "detected");
   report("a write from inside another language is detected", det.some((e) => e.path === "site/from-node.txt"),
@@ -115,7 +129,7 @@ const sh = (dir, cmd) => execFileSync("/bin/sh", ["-c", cmd], { cwd: dir, encodi
 {
   const dir = mkrepo("owned");
   seed(dir);
-  sh(dir, "printf y > docs/new.md");
+  mutate(dir, "require('fs').writeFileSync('docs/new.md','y')");
   fire(dir, "printf y > docs/new.md");
   const r = receipts(dir);
   report("a write inside owns yields observed, not detected",
@@ -139,7 +153,7 @@ const sh = (dir, cmd) => execFileSync("/bin/sh", ["-c", cmd], { cwd: dir, encodi
 {
   const dir = mkrepo("delete", { owns: ["site/**"] });
   seed(dir);
-  sh(dir, "rm docs/kept.md");
+  mutate(dir, "require('fs').unlinkSync('docs/kept.md')");
   fire(dir, "rm docs/kept.md");
   const det = receipts(dir).filter((e) => e.decision === "detected");
   report("deleting an unowned tracked file is detected", det.some((e) => e.path === "docs/kept.md"),
@@ -173,7 +187,7 @@ const sh = (dir, cmd) => execFileSync("/bin/sh", ["-c", cmd], { cwd: dir, encodi
   const dir = mkrepo("ignored");
   seed(dir);
   mkdirSync(join(dir, "build"), { recursive: true });
-  sh(dir, "printf x > build/out.js");
+  mutate(dir, "require('fs').writeFileSync('build/out.js','x')");
   fire(dir, "printf x > build/out.js");
   report("a gitignored write leaves no receipt (stated ceiling)",
     receipts(dir).filter((e) => e.decision === "detected").length === 0,
