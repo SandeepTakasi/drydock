@@ -1,7 +1,7 @@
 {
   "name": "drydock",
   "displayName": "Drydock",
-  "version": "0.13.0",
+  "version": "0.13.1",
   "description": "Plan-first parallel execution: rigorous plan documents, wave-based subagent execution with disjoint file ownership, plan-conformance verification gates, and a reconcile loop that feeds execution learnings back into your docs. Nothing sails until it leaves the dock.",
   "author": {
     "name": "Sandeep Takasi"
@@ -11,11 +11,22 @@
     "node": ">=20.17.0"
   },
   "keywords": [
+    "plan",
     "planning",
+    "spec-driven",
+    "implementation-plan",
     "subagents",
     "parallel-execution",
+    "orchestration",
+    "waves",
     "verification",
-    "spec-driven"
+    "code-review",
+    "quality-gate",
+    "file-ownership",
+    "hooks",
+    "git-worktree",
+    "e2e",
+    "playwright"
   ],
   "userConfig": {
     "plans_dir": {

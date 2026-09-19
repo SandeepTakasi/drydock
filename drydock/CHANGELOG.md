@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.13.1: 2026-09-20
+
+**The marketplace entry carried no keywords at all**, and that is the file a
+marketplace search reads. `plugin.json` had five; both now carry sixteen,
+covering the words people actually search -- plan, spec-driven, orchestration,
+code-review, file-ownership, git-worktree, playwright -- rather than only the
+vocabulary this project invented for itself.
+
+**The skills are NOT renamed, and this is the decision rather than a deferral.**
+An external review recommended retiring `planwright`, `wavecheck`, `seatrial`
+and `replan` as the discoverable identity, on the grounds that nobody searches
+for a coinage. The grounds are right; the remedy is not. Those names are
+contract surface: the orchestrator contract embedded verbatim in every plan
+names `drydock:executor` and `drydock:wavecheck`, and `/drydock:replan` is
+documented as the human-only repair path. Renaming breaks all five plan
+documents plus the format contract, and plans are execution records this repo
+does not rewrite. Discovery is carried by keywords and the `description`
+frontmatter, which is also what the model matches on for invocation, so the
+search problem is solved where it actually lives.
+
+**`engines` is documentation, not enforcement.** `claude plugin validate` reports
+it as an unrecognized field that Claude Code ignores at load time. It has said
+the true floor since 0.9.0 and that stays useful, but the thing that actually
+holds the floor is CI running the suites on Node 20, 22 and 24. Recorded so the
+declaration is not mistaken for a check.
+
 ## 0.13.0: 2026-09-19
 
 **A declared quality review that never ran is now visible.** `Wave x.R` has been
