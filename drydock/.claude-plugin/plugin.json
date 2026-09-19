@@ -1,7 +1,7 @@
 {
   "name": "drydock",
   "displayName": "Drydock",
-  "version": "0.13.1",
+  "version": "0.14.0",
   "description": "Plan-first parallel execution: rigorous plan documents, wave-based subagent execution with disjoint file ownership, plan-conformance verification gates, and a reconcile loop that feeds execution learnings back into your docs. Nothing sails until it leaves the dock.",
   "author": {
     "name": "Sandeep Takasi"
@@ -48,6 +48,13 @@
       "title": "Generated E2E spec directory",
       "description": "Repo-relative directory seatrial writes re-runnable Playwright spec files into",
       "default": "e2e",
+      "required": false
+    },
+    "config_path": {
+      "type": "string",
+      "title": "Host profile path",
+      "description": "Repo-relative path to the drydock.config.yaml host profile written by drydock:init",
+      "default": "drydock.config.yaml",
       "required": false
     }
   }

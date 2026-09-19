@@ -1901,6 +1901,134 @@ function proveFailable(planPath) {
   report("prove-failable", planPath, errors, notes, () => `${rows.filter((r) => r.kind === "failable").length} of ${rows.length} criteria fail at baseline`);
 }
 
+// ---------------------------------------------------------- validate-config ---
+//
+// THE HOST PROFILE. `drydock:init` writes it, `planwright` reads it, and without
+// a check it is one more document asserting things nobody verified -- which is
+// the failure mode this repo keeps finding in its own prose.
+//
+// A YAML SUBSET, NOT YAML, and the ceiling is stated rather than discovered. It
+// reads exactly the shape `config-schema.md` specifies: top-level keys, one
+// level of nesting, scalars, inline `[a, b]` arrays, `#` comments, optional
+// quotes. Anchors, multi-line strings, nested lists of maps and every other YAML
+// feature are unsupported, and a file using them fails with that message rather
+// than being half-read. Adding a YAML dependency to parse one small file we also
+// generate is a worse trade than a 40-line reader with a named limit.
+const CONFIG_VERSIONS = [1];
+const EXECUTION_MODES_CFG = ["solo", "fleet"];
+const ATTRIBUTION_CFG = ["manifest", "commit-prefix"];
+const TESTING_APPROACHES = ["test-first", "test-with", "none"];
+
+function parseConfigSubset(text) {
+  const root = {};
+  let section = null;
+  const lines = text.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    const line = raw.replace(/\s+#.*$/, "").replace(/^#.*$/, "");
+    if (!line.trim()) continue;
+    if (/^\t/.test(raw)) throw new Error(`line ${i + 1}: tab indentation, use spaces`);
+    const m = line.match(/^(\s*)([A-Za-z_][\w-]*):\s*(.*)$/);
+    if (!m) throw new Error(`line ${i + 1}: not a supported key: value line (${line.trim().slice(0, 40)})`);
+    const [, indent, key, rawVal] = m;
+    const val = rawVal.trim();
+    const scalar = (v) => {
+      if (v === "") return null;
+      if (/^\[.*\]$/.test(v)) return v.slice(1, -1).split(",").map((x) => x.trim().replace(/^["']|["']$/g, "")).filter(Boolean);
+      if (/^(true|false)$/i.test(v)) return v.toLowerCase() === "true";
+      if (/^-?\d+$/.test(v)) return Number(v);
+      return v.replace(/^["']|["']$/g, "");
+    };
+    if (indent.length === 0) {
+      if (val === "") { section = {}; root[key] = section; }
+      else { root[key] = scalar(val); section = null; }
+    } else {
+      if (!section) throw new Error(`line ${i + 1}: indented key with no parent section`);
+      section[key] = scalar(val);
+    }
+  }
+  return root;
+}
+
+function validateConfig(path) {
+  const errors = [];
+  const notes = [];
+  let cfg;
+  try {
+    cfg = parseConfigSubset(readFileSync(path, "utf8"));
+  } catch (err) {
+    console.error(`validate-config: FAIL (1), ${path}`);
+    console.error(`  - ${err.message}`);
+    process.exit(1);
+  }
+
+  const ver = cfg.config_version;
+  if (!CONFIG_VERSIONS.includes(Number(ver))) {
+    errors.push(`config_version ${ver ?? "(absent)"} unsupported (supported: ${CONFIG_VERSIONS.join(", ")})`);
+  }
+
+  const sec = (name) => (cfg[name] && typeof cfg[name] === "object" && !Array.isArray(cfg[name]) ? cfg[name] : null);
+  const oneOf = (v, allowed, where) => {
+    if (v === undefined || v === null) errors.push(`${where}: missing`);
+    else if (!allowed.includes(v)) errors.push(`${where}: ${JSON.stringify(v)} unknown (expected: ${allowed.join(" | ")})`);
+  };
+
+  const execution = sec("execution");
+  if (!execution) errors.push("execution: section missing, and it carries the one key most often discovered too late");
+  else oneOf(execution.mode, EXECUTION_MODES_CFG, "execution.mode");
+
+  const vcs = sec("vcs");
+  if (!vcs) errors.push("vcs: section missing");
+  else oneOf(vcs.attribution, ATTRIBUTION_CFG, "vcs.attribution");
+
+  const testing = sec("testing");
+  if (!testing) errors.push("testing: section missing");
+  else {
+    oneOf(testing.approach, TESTING_APPROACHES, "testing.approach");
+    if (testing.approach === "none" && !String(testing.note ?? "").trim()) {
+      errors.push("testing.note: required when approach is `none`, because \"no tests\" is a decision that needs a reason on the record");
+    }
+  }
+
+  const human = sec("gates_human");
+  if (!human || !String(human.signer ?? "").trim()) {
+    errors.push("gates_human.signer: missing, and an unsigned phase gate is why plans never close");
+  }
+
+  const browser = sec("browser");
+  if (browser && browser.present === true) {
+    for (const k of ["base_url", "start_command"]) {
+      if (!String(browser[k] ?? "").trim()) {
+        errors.push(`browser.${k}: required when browser.present is true, a Testing Gate cannot be driven against a target nobody named`);
+      }
+    }
+  }
+
+  // PROVENANCE IS NOT OPTIONAL. A value with no source is an assertion wearing a
+  // measurement's clothes, which is the exact shape of every claim this repo has
+  // had to retract.
+  for (const name of ["execution", "gates", "testing", "vcs", "gates_human", "paths", "browser", "tracker"]) {
+    const block = sec(name);
+    if (block && !String(block.provenance ?? "").trim()) {
+      errors.push(`${name}.provenance: missing, say \`discovered <source>\` or \`stated <date>\``);
+    }
+  }
+
+  const gates = sec("gates");
+  if (!gates || !["test", "lint", "build", "typecheck"].some((k) => String(gates[k] ?? "").trim())) {
+    notes.push("no runnable command in `gates`, so acceptance criteria will fall back to prose and `prove-failable` has nothing to run");
+  }
+  const paths = sec("paths");
+  if (paths && paths.drydock_ignored === false) {
+    notes.push("`.drydock/` is not gitignored, so the first `audit-wave` fails on the tool's own state files; `wave-start` fixes this itself");
+  }
+  if (execution && execution.mode === "fleet" && Number(execution.max_concurrent) === 1) {
+    notes.push("execution.mode is `fleet` but max_concurrent is 1, which is solo with extra steps");
+  }
+
+  report("validate-config", path, errors, notes, () => `config_version ${ver}, execution: ${execution?.mode ?? "?"}`);
+}
+
 // ------------------------------------------------------------------ main ----
 
 const argv = process.argv.slice(2);
@@ -1930,6 +2058,7 @@ else if (command === "wave-start" && rest[0] && rest[1]) waveStart(rest[0], rest
 else if (command === "task-close" && rest[0] && rest[1]) (undo ? taskUndo : taskClose)(rest[0], rest[1]);
 else if (command === "plan-status" && rest[0]) planStatus(rest[0], argv.includes("--write"));
 else if (command === "prove-failable" && rest[0]) proveFailable(rest[0]);
+else if (command === "validate-config" && rest[0]) validateConfig(rest[0]);
 else if (command === "resolve-plans-dir") resolvePlansDir(rest[0]);
 else {
   console.error("usage: drydock-audit.mjs wave-start   <plan.md> <wave>      # arm the ownership hook");
@@ -1939,6 +2068,7 @@ else {
   console.error("       drydock-audit.mjs plan-status   [--write] <plan.md>  # derive status from the wavecheck reports");
   console.error("       drydock-audit.mjs resolve-plans-dir [<preferred>]   # where plans go, and whether they can be committed");
   console.error("       drydock-audit.mjs prove-failable <plan.md>            # every criterion must FAIL before its task runs");
+  console.error("       drydock-audit.mjs validate-config <drydock.config.yaml>  # the host profile drydock:init writes");
   console.error("       drydock-audit.mjs validate-plan [--strict] <plan.md>");
   process.exit(2);
 }
