@@ -723,9 +723,40 @@ language are the reason this layer diffs the working tree rather than parsing
 second is the exact shape of plan 005 deviation 1, where a `python` heredoc wrote
 `drydock/CHANGELOG.md` and left no receipt.
 
+### Live registration: attempted 2026-09-19, and no hook fired
+
+Host 2.1.259, installed plugin 0.13.0 matching the repo, session restarted after
+`claude plugin update` -- the exact condition this row was waiting for. The
+installed copy was checked rather than assumed: its `hooks.json` carries both the
+PreToolUse and PostToolUse blocks, `detect-bash-writes.mjs` is present, and no
+VERSION DRIFT banner appears on any command.
+
+With wave 1.0 of plan 005 armed:
+
+| Probe | Expected if registered | Observed |
+|---|---|---|
+| Bash `printf ... > a9-probe.txt`, outside `owns` | a `detected` receipt | no `enforcement.log` created at all |
+| `Write` to an unowned path | **denied** | **succeeded** |
+
+The second row is the decisive one. Version 0.9.0, installed before the update,
+also carries a PreToolUse hook, so a merely stale registration would still have
+denied that write. It did not. So this is not the plugin-cache staleness
+CLAUDE.md documents: **no Drydock hook is registered in this session at all.**
+
+The detector itself is not the fault. Invoked by hand against the same armed
+repo it seeded its snapshot and wrote an `observed` receipt, exit 0.
+
+Unresolved from here: `installed_plugins.json` records `enabled: None` for
+`drydock@drydock` rather than an explicit true. Whether that is the normal shape
+for a user-scope install or means the plugin is not enabled for this project
+could not be determined -- reading Claude Code config is refused by the
+permission classifier. A9 therefore stays PENDING, and **A6's live-denial
+evidence is worth re-confirming on this host**, since it rests on the same
+mechanism that just failed to fire.
+
 ### Not tested
 
-- **Live registration by the host.** The blocking question, as above.
+- **Live registration by the host.** Attempted and negative, as above.
 - **Concurrent executors.** Attribution is "changed around this command", not
   "caused by it". Two executors running Bash at once can be credited with each
   other's changes. Unmeasured, and stated in the docblock rather than assumed
