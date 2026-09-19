@@ -1,5 +1,45 @@
 # Changelog
 
+## 0.14.0: 2026-09-20
+
+**`drydock:init`, and the host profile it writes.** The practices interview ran
+from scratch on every plan and nothing persisted the answers -- plan 006 asked
+what plan 001 asked. `drydock.config.yaml` is the answer sheet: `init` scans for
+what discovery can settle (quality-gate commands, test framework, commit
+convention, CI, plans directory, whether `.drydock/` is ignored) and interviews
+only for what it cannot. `planwright` reads it and skips every question it
+answers.
+
+It earns its place by REMOVING work rather than adding surface, which is the
+bar an external review rightly set for this plugin. Modelled on `qa-init` in
+the author's other plugin, which solved the same problem for the same reason.
+
+**Three rules make it safe.** A profile holds DEFAULTS, not facts: any plan may
+override any value, and the override goes in that plan's Decision Log, because a
+profile that silently shapes a plan it no longer describes is exactly the drift
+class this repo keeps catching. Every section carries PROVENANCE -- `discovered
+<source>` or `stated <date>` -- so a reader can tell what was measured from what
+was asserted. And unlike `qa-init`, no other skill refuses to run without it:
+Drydock has five plans and a public install that predate any profile, and a hard
+requirement would retroactively break them. Absent profile means interview as
+before.
+
+**`validate-config` checks it**, because a profile nothing verifies is one more
+document asserting things -- the failure mode this repo keeps finding in its own
+prose. A typo in `execution.mode` is refused rather than defaulted, `testing:
+none` must carry a reason, an unsigned human gate fails, a declared browser
+target needs a URL, and a section without provenance fails.
+
+The parser is a documented YAML SUBSET, not YAML: top-level keys, one level of
+nesting, scalars, inline arrays, comments. Anything else fails with that message
+rather than being half-read. Adding a YAML dependency to parse one small file we
+also generate is the worse trade.
+
+Also fixed, found by the vocabulary guard rather than by reading: the skill
+referenced a `config_path` userConfig key that did not exist. It does now.
+
+Tests: audit 126 to 136.
+
 ## 0.13.1: 2026-09-20
 
 **The marketplace entry carried no keywords at all**, and that is the file a

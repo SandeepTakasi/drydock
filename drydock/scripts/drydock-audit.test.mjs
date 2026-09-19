@@ -1096,6 +1096,15 @@ cases.push(
       [...read("agents/executor.md").matchAll(/^([a-z_]+):/gm)].map((m) => m[1])
     );
 
+    // Same scoping, second contract. The HOST PROFILE is its own schema, owned
+    // by `skills/init`, and its vocabulary is legitimate there and nowhere else.
+    // Adding it globally would let any skill say `provenance` and mean whatever
+    // it liked -- the drift this check exists to catch.
+    const initOnly = new Set(
+      [...read("skills/init/reference/config-schema.md").matchAll(/`?([a-z][a-z_]{2,24})`?:/g)].map((m) => m[1])
+    );
+    for (const t of ["discovered", "stated"]) initOnly.add(t);
+
     const consumers = [
       ...readdirSync(join(root, "agents")).map((f) => `agents/${f}`),
       ...readdirSync(join(root, "skills")).map((d) => `skills/${d}/SKILL.md`),
@@ -1103,7 +1112,9 @@ cases.push(
     const unknown = [];
     for (const rel of consumers) {
       const allowed = (tok) =>
-        vocabulary.has(tok) || (rel.startsWith("agents/") && agentOnly.has(tok));
+        vocabulary.has(tok) ||
+        (rel.startsWith("agents/") && agentOnly.has(tok)) ||
+        (rel.startsWith("skills/init/") && initOnly.has(tok));
       for (const m of read(rel).matchAll(/`([a-z][a-z_ ]{2,24})`/g)) {
         const tok = m[1].toLowerCase();
         if (!allowed(tok) && !unknown.some((u) => u.tok === tok && u.rel === rel)) {
@@ -1492,6 +1503,75 @@ cases.push(
   ["a plan declaring no review says nothing about reviews",
     () => status("rev-none", reviewPlan("")).out,
     (out) => !out.includes("quality review")],
+);
+
+// --------------------------------------------------------------------------
+// validate-config. The host profile `drydock:init` writes. Without a check it is
+// one more document asserting things nobody verified, which is the failure mode
+// this repo keeps finding in its own prose.
+
+const GOOD_CFG = [
+  "config_version: 1",
+  "execution:", "  mode: solo", "  max_concurrent: 1", "  provenance: stated 2026-09-20",
+  "gates:", "  test: npm test", "  provenance: discovered package.json",
+  "testing:", "  approach: test-with", "  provenance: stated 2026-09-20",
+  "vcs:", "  attribution: manifest", "  provenance: discovered git log",
+  "gates_human:", "  signer: priya", "  provenance: stated 2026-09-20",
+  "paths:", "  drydock_ignored: true", "  provenance: discovered resolve-plans-dir",
+  "browser:", "  present: false", "  provenance: stated 2026-09-20",
+].join("\n") + "\n";
+
+const cfg = (name, body) => {
+  const file = join(DIR, `${name}.yaml`);
+  writeFileSync(file, body);
+  const r = spawnSync(NODE, [CLI, "validate-config", file], { encoding: "utf8" });
+  return `${r.stdout}${r.stderr}`;
+};
+
+cases.push(
+  ["a complete profile validates", () => cfg("cfg-good", GOOD_CFG),
+    (out) => out.includes("validate-config: PASS")],
+
+  // A typo must not fall through to a default. That is how `attribution:
+  // manfiest` would have looked armed while behaving as the old mode.
+  ["a misspelled execution mode is rejected, not defaulted",
+    () => cfg("cfg-mode", GOOD_CFG.replace("mode: solo", "mode: fleeet")),
+    (out) => out.includes("execution.mode") && out.includes("unknown")],
+
+  ["a misspelled attribution is rejected",
+    () => cfg("cfg-attr", GOOD_CFG.replace("attribution: manifest", "attribution: manfiest")),
+    (out) => out.includes("vcs.attribution") && out.includes("unknown")],
+
+  ["testing: none demands a reason on the record",
+    () => cfg("cfg-none", GOOD_CFG.replace("approach: test-with", "approach: none")),
+    (out) => out.includes("testing.note")],
+
+  ["an unsigned human gate fails",
+    () => cfg("cfg-signer", GOOD_CFG.replace("  signer: priya\n", "")),
+    (out) => out.includes("gates_human.signer")],
+
+  // A value with no source is an assertion wearing a measurement's clothes.
+  ["a section without provenance fails",
+    () => cfg("cfg-prov", GOOD_CFG.replace("  provenance: discovered git log\n", "")),
+    (out) => out.includes("vcs.provenance")],
+
+  ["a browser target with no URL fails",
+    () => cfg("cfg-browser", GOOD_CFG.replace("  present: false", "  present: true")),
+    (out) => out.includes("browser.base_url")],
+
+  ["an unsupported config_version is refused",
+    () => cfg("cfg-ver", GOOD_CFG.replace("config_version: 1", "config_version: 9")),
+    (out) => out.includes("config_version 9 unsupported")],
+
+  // The parser is a documented YAML SUBSET. A file using features it does not
+  // support must fail with that message rather than being half-read.
+  ["tab indentation fails with a clear message",
+    () => cfg("cfg-tab", GOOD_CFG.replace("  mode: solo", "\tmode: solo")),
+    (out) => out.includes("tab indentation")],
+
+  ["a missing gates command is a note, not an error",
+    () => cfg("cfg-nogates", GOOD_CFG.replace("  test: npm test\n", "")),
+    (out) => out.includes("validate-config: PASS") && out.includes("has nothing to run")],
 );
 
 // --------------------------------------------------------------------------
