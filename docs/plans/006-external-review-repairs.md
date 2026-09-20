@@ -660,6 +660,7 @@ load the repaired hooks.
 
 | # | Task | What deviated | Why | Impact | Recorded |
 |---|---|---|---|---|---|
+| 1 | T0 | T0's checkpoint commit `54b1c0c` contains `docs/plans/006-external-review-repairs.md`, which is outside its `owns`, and `task-close` warned about it. | T0's deliverable is the Baseline table, which lives in the plan file, and the plan file is owned by no task by design. The warning is correct in general and unavoidable here. | None on any gate: T0 sits under `## Phase 0` with no `### Wave` heading, so no `audit-wave` run covers it. Recorded rather than suppressed because the warning is real and a future reader will see it in the manifest. | orchestrator, 2026-09-21 |
 
 ## Wavecheck reports
 
