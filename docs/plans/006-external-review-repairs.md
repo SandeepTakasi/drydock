@@ -1,0 +1,671 @@
+---
+plan: 006-external-review-repairs
+format_version: 3
+status: APPROVED
+isolation: none
+enforcement: required
+attribution: manifest
+lane: full
+execution: fleet
+created: 2026-09-20
+approved_by: Sandeep Takasi
+---
+
+# 006 - External review repairs
+
+**Plan location:** `docs/plans/`, committed with the repo.
+
+> **Execution protocol.** Spawn each task in the current wave as its declared
+> executor agent (`drydock:executor`, or `drydock:executor-isolated` when the
+> header says `isolation: worktree`) with its declared model and thinking
+> budget, passing ONLY the task's context brief. Before starting any wave, run
+> the staleness check below. Wait for all tasks in the wave, then invoke the
+> `drydock:wavecheck` skill with this plan path and the wave id. Do not begin
+> the wave's quality-review task, or the next wave, until wavecheck reports
+> PASS. On BLOCK, set status BLOCKED and stop, do not self-repair; the paths
+> out are `/drydock:replan` or a human decision. Quality-review rejections
+> follow the escalation policy (max 2 retries → tier up → human); wavecheck
+> BLOCKs on ownership violations or unlogged deviations get NO retries. When
+> the final wave and phase gate pass, invoke `drydock:reconcile`.
+>
+> **If you cannot spawn executors**, a standing instruction against unprompted
+> agents, agents unavailable, that is a deviation to log **before the wave
+> opens**, not after it closes, and it does not become permission to skip the
+> wave gate. Two obligations survive intact: stage **only** the task's owned
+> files in its checkpoint commit (a spawned executor gets this for free; by hand
+> it is the first thing to slip), and tell wavecheck the diff is self-authored,
+> because its forbidden audit is weakened when the auditor wrote the code and it
+> must say so rather than imply independence it does not have.
+
+**Ownership enforcement (arm before every wave):**
+
+```bash
+DD=$(ls -d ~/.claude/plugins/cache/drydock/drydock/*/ | sort -V | tail -1)
+node "$DD/scripts/drydock-audit.mjs" wave-start docs/plans/006-external-review-repairs.md <wave>
+# ... the wave's executors run ...
+node "$DD/scripts/drydock-audit.mjs" audit-wave docs/plans/006-external-review-repairs.md <wave>
+rm .drydock/wave-owns.json
+```
+
+**This plan document is owned by no task.** While `.drydock/wave-owns.json` is
+armed the hook denies every write to it, including the orchestrator's own
+bookkeeping. Anything written into this file, the Baseline table, the Wave 1.R
+verdict, the Deviation Log, the wavecheck report, is written either before a
+wave is armed or after `rm .drydock/wave-owns.json`. Widening `owns` to include
+the plan file is the wrong fix and is what the denial message says not to do.
+
+**Staleness check (before every wave):**
+`git diff <baseline SHA>..HEAD -- <wave's owned files>`. Non-empty → re-validate
+the wave's tasks against current code and update the baseline SHA and Decision
+Log before executing.
+
+## Requirement
+
+The eight findings raised by the 2026-09-20 external review of drydock 0.14.0
+are resolved or consciously deferred: the ownership hook no longer allows a
+write to escape `owns` through a directory junction (F1), the Bash detector
+reports renames correctly and stops issuing a clean receipt over an undetected
+write (F2, F3), `audit-wave` stops falsely blocking commits containing non-ASCII
+filenames (F4), both test suites run to completion on stock Windows (F5), the
+documentation stops making four claims the code does not support (F6, F8),
+`prove-failable` stops refusing correct plans whose criteria happen to print the
+words "not found" (F9), and F7 is recorded as a deferral rather than silently
+dropped. The result ships as `0.15.0`, because a fix that is not released is a
+fix no host session can load.
+
+## Spec reference
+
+None. The requirement is complete: the review's findings, each reproduced
+first-hand and recorded with its evidence in *Findings & constraints*, are the
+specification. Where this plan and the review disagree, this plan is right and
+says why (F3 in particular is worse than reported).
+
+## Surgical-scope statement
+
+Three source files and their three suites, three documentation files, one index
+row, and four release files. Each change is the narrowest one that closes its
+finding: a resolve-the-deepest-existing-ancestor walk, a `-z` rename parse, a
+content-aware snapshot, `-z` on three `git show` calls, a narrowed stderr scan,
+two test-harness repairs, and deleting four sentences. No refactor, no new
+dependency, no new module.
+
+## Baseline
+
+Filled by T0 before any wave is armed.
+
+Recorded by T0 on 2026-09-21, before any wave was armed.
+
+| | |
+|---|---|
+| Commit SHA | `fdb862d6fe12cf45aaa997aecbfc2c0d5698f26c` |
+| `node drydock/scripts/drydock-audit.test.mjs` | **RED.** `134/136 passed`. The two failures are the F5 `process.execPath` quoting defect. |
+| `node drydock/hooks/enforce-owns.test.mjs` | **RED.** Aborts at module scope with `EPERM: operation not permitted, symlink`. 30 cases declared, 0 executed. |
+| `node drydock/hooks/detect-bash-writes.test.mjs` | **GREEN.** `detect-bash-writes: PASS, 14 cases`. |
+| `node site/scripts/assert-matrix.mjs` | **RED until T0's own row landed.** `FAIL (1)`, no index row for this plan. Green after T0. |
+
+**Known-red at baseline, and excluded from every acceptance criterion except
+the task that repairs it:** the audit suite reports 134/136 on Windows, the
+`enforce-owns` suite aborts before its first case, and `assert-matrix` fails
+until T0 adds this plan's index row. All three are work items (F5, and defect 1
+of the pressure test), not pre-existing conditions to route around.
+
+## Practices in effect
+
+| Practice | Value | Source |
+|---|---|---|
+| Test approach | Test-first per task: the regression case is written, watched failing, then fixed. One task, not two. | planwright TDD rule; repo convention (every hook and script carries a sibling suite) |
+| Quality gates | `node <suite>` per area; `npm run verify` in `site/` for the release task | CLAUDE.md |
+| CI | `.github/workflows/verify.yml`, Node **20, 22 and 24** × ubuntu and windows, no path filter | `verify.yml:45` |
+| Runtime floor | `engines.node: ">=20.17.0"`. **No Node 21+ API may be used in a hook or script.** | `drydock/.claude-plugin/plugin.json:11` |
+| Commit granularity | One checkpoint commit per task, owned files only | plan-format contract |
+| Attribution | `manifest` via `drydock-audit.mjs task-close` | D8 |
+| Branching | Work on `main`, as the repo does | git history |
+| Human gate | Phase 2 release requires a named human approval before the tag | D9 |
+| Tracker mirroring | None | no tracker in repo |
+
+## Findings & constraints
+
+Every finding below was reproduced in this session against the working tree at
+`fdb862d`, in a scratch git repo, with the hook or script invoked directly, and
+independently re-measured by the adversarial reviewer. The review's claim is
+recorded only where it could be made to happen.
+
+**F1 (HIGH, confirmed). The ownership hook can be escaped through a directory
+junction when the intermediate directory does not yet exist.**
+[enforce-owns.mjs:213](drydock/hooks/enforce-owns.mjs:213) resolves only
+`path.dirname(absolute)`. `realOr` falls back to the lexical path when the
+target's parent does not exist, so a junction higher up is never resolved.
+Measured, with `owns: ["docs/**"]` and `docs/jn` a junction to `site/`:
+
+```
+docs/jn/a.ts          -> exit 2 (denied, parent exists and resolves)
+docs/jn/new/deep.ts   -> exit 0 (ALLOWED, parent absent; Write creates it, file lands in site/)
+```
+
+This defeats the plugin's headline claim. A junction needs no administrator
+rights on Windows. The existing suite covers only the one-level case. Note also
+that the final path component is never resolved today, so an owned path that is
+itself a symlink to an unowned file escapes by the same route.
+
+**F2 (MEDIUM, confirmed). The Bash detector mangles the old path of a rename.**
+[detect-bash-writes.mjs:136](drydock/hooks/detect-bash-writes.mjs:136) applies
+`e.slice(3)` to every NUL-separated record. Under `-z`, a rename emits
+`R  <new>\0<old>`, and the second field carries no status prefix, so three
+characters are cut off the front of a real path. Measured: `git mv docs/b.md
+docs/c.md` under `owns: ["docs/**"]` produced `"path":"s/b.md"` — a fabricated
+path, reported as a violation, for a rename entirely inside the boundary.
+
+**F3 (MEDIUM, confirmed, and worse than reported). A write to an
+already-dirty unowned file is invisible, and the receipt asserts the opposite.**
+[detect-bash-writes.mjs:171](drydock/hooks/detect-bash-writes.mjs:171) diffs two
+*sets of paths*. Once a path is in the snapshot, further writes to it produce no
+new entry. Measured, `owns: ["docs/**"]`:
+
+```
+1. seed snapshot (clean tree)          -> observed
+2. echo A >> site/dirty.ts             -> detected  site/dirty.ts
+3. echo B >> site/dirty.ts             -> observed          <-- second write invisible
+4. echo C > site/other.ts              -> detected  site/other.ts
+```
+
+And in the worst case, where the file is already dirty before the wave's first
+Bash command, it is **never** detected at all — both commands recorded
+`observed`. That entry is documented as "positive evidence that this layer was
+alive and saw nothing outside the boundary", so the hook does not merely miss
+the write, it files a receipt stating the boundary was clean. A false negative
+that reports as a positive is the one shape this repo's own docblocks argue
+hardest against.
+
+**F4 (MEDIUM, confirmed). Non-ASCII filenames produce a false ownership
+violation.** `git show --name-only` quotes and octal-escapes any path outside
+ASCII unless told otherwise, and
+[drydock-audit.mjs:1243](drydock/scripts/drydock-audit.mjs:1243),
+[:1345](drydock/scripts/drydock-audit.mjs:1345) and
+[:1687](drydock/scripts/drydock-audit.mjs:1687) parse the raw output. Measured:
+committing `docs/café.md` prints `"docs/caf\303\251.md"`, quotes included, and
+`matchesOwns('"docs/caf\303\251.md"', ["docs/**"])` is `false`. A conforming task
+is BLOCKed for owning a file it owns. `-c core.quotepath=false` fixes the
+accented case but still backslash-escapes a path containing `"`, `\` or a
+newline; those are illegal in NTFS filenames but legal on the Linux runners CI
+uses, so `-z` is the complete fix and the same size.
+
+**F5 (MEDIUM, confirmed). Neither suite can pass on stock Windows.**
+`enforce-owns.test.mjs:47` calls `symlinkSync`, which throws `EPERM` without
+Developer Mode or elevation; the throw is at module scope, so **no case in that
+file runs** (30 cases, 0 executed). `drydock-audit.test.mjs` reports 134/136
+because its two `prove-failable` cases interpolate `process.execPath` unquoted
+into a `cmd.exe` command line, and `C:\Program Files\nodejs\node.exe` splits at
+the space. Both are defects in the tests, not the product — but F1 is exactly the
+class of bug a suite that cannot run will not catch, and F1 shipped.
+
+**F6 (MEDIUM, confirmed by reading). A plan document is executable code, and
+nothing says so.** `proveFailable`
+([drydock-audit.mjs:1845](drydock/scripts/drydock-audit.mjs:1845)) and
+wavecheck's check 4 run backticked strings lifted from a plan through
+`spawnSync(..., { shell: true })`. Running `prove-failable` on a plan from a
+cloned repository executes whatever that document contains. This is inherent to
+the design, is not being changed here (D7), and must be stated.
+
+**F7 (LOW, confirmed by reading, DEFERRED). The hooks go inert when
+`CLAUDE_PROJECT_DIR` is unset and the working directory is a subdirectory.**
+Both hooks resolve `process.env.CLAUDE_PROJECT_DIR ?? input.cwd ?? process.cwd()`
+and then look for `.drydock/wave-owns.json` directly beneath it. Claude Code
+sets the variable, so this is robustness rather than a live hole. Moved to *Out
+of scope* (D11).
+
+**F9 (MEDIUM, confirmed, found while gating this plan, not by the review).
+`prove-failable` misclassifies a legitimately failing criterion as unrunnable
+when its output happens to contain the words "not found".**
+[drydock-audit.mjs:1876](drydock/scripts/drydock-audit.mjs:1876) treats
+`saidNotFound && run.status !== 0` as "the criterion could not be run at all",
+where `saidNotFound` scans the whole of stderr. Measured: T1.1.3's and T1.2.1's
+criteria run `drydock-audit.test.mjs`, whose own baseline failure text contains
+`the command was not found` four times; both criteria exited 1, a clean and
+correct failure, and both were reported `unrunnable`, which is a FAIL of the
+plan's own approval gate. The exit codes this heuristic exists to catch (127,
+126, 9009) are already handled one line above, so the stderr scan only ever adds
+value on a shell reporting neither, and scanning arbitrarily deep nested output
+is what makes it wrong. This defect fails plans; it does not pass bad ones.
+
+**F8 (LOW, confirmed). Four documentation statements the code contradicts.**
+`drydock/README.md:49`, `plan-format.md:85` **and
+[drydock-audit.mjs:1589](drydock/scripts/drydock-audit.mjs:1589)** all say
+`audit-wave` "never consults the hook", while
+[drydock-audit.mjs:1402](drydock/scripts/drydock-audit.mjs:1402) reads
+`.drydock/enforcement.log`, which is the hook's own output.
+`wavecheck/SKILL.md:24` says "stop early only on check 1 failure" and `:60` then
+classifies an empty enforcement log, discovered under check 2, as "a BLOCK on
+check-1 grounds".
+
+**Constraints the plan must respect.**
+
+- **Hooks and skills run from the INSTALLED plugin**, not this working tree.
+  `hooks.json` resolves `${CLAUDE_PLUGIN_ROOT}` to
+  `~/.claude/plugins/cache/drydock/drydock/0.14.0/`. Every wave of this plan is
+  therefore enforced by the **unfixed** 0.14.0 hook, and the repaired hooks are
+  unexercised by any host session until 0.15.0 is released and installed (D6).
+  The acceptance criteria are unaffected: they run the suites from the working
+  tree, so they exercise the repaired code directly.
+- **`assert-matrix.mjs` requires an index row for every plan on disk**, and
+  requires its status column to equal the plan's frontmatter `status:`. It runs
+  in the `docs` CI job with no path filter, so committing this plan without the
+  row turns `main` red immediately. T0 owns that row, and it is updated on every
+  status transition.
+- **`assert-copy.mjs` fails the site build on version drift**, checking both
+  `site/content/copy.ts` and the repository-root `README.md` for the literal
+  `v<version>`.
+- **Acceptance criteria are executed by `cmd.exe` on this machine.**
+  `prove-failable` uses `shell: true`, which is `cmd.exe` on Windows. Every
+  criterion below was run through `spawnSync(cmd, { shell: true })` before being
+  frozen, in both directions. **No criterion uses a backslash escape**: `\d`
+  does not survive the shell layers and silently degrades to a regex that never
+  matches, which made the first draft's criteria unpassable. Character classes
+  (`[0-9]`) are used throughout.
+
+## Decision Log
+
+| # | Question | Decision | Decided by | Rationale |
+|---|---|---|---|---|
+| D1 | Solo or fleet execution? | `fleet` | user | The three code areas are genuinely disjoint, and the repo has no evidence its own fleet path works end to end. Consumed by every task in Wave 1.1. |
+| D2 | Cut the release in this plan? | Yes, Phase 2 bumps to 0.15.0 | user | CLAUDE.md: editing the plugin without bumping is drift the audit cannot detect. Consumed by T2.1.1. |
+| D3 | How does the F1 regression test create a link? | Directory junction on Windows, `symlinkSync` elsewhere, both guarded | user | A junction needs no elevation, and is how F1 was reproduced. A test that skips on the author's own platform is how F1 survived. Consumed by T1.1.1. |
+| D4 | Share a project-root helper between the two hooks? | Moot, F7 deferred (D11) | planner | No shared surface remains, so Wave 1.1 needs no contract wave. |
+| D5 | Testing Gate for this plan? | `N/A`, with the reason recorded in §11 | planner (assumed, flag if wrong) | The only user-facing artifact touched is a version string on the homepage, and `assert-copy.mjs` already asserts it mechanically against `plugin.json` at build time. Driving a browser to read a badge that a build gate already pins is ceremony. |
+| D6 | Can this plan prove its own fixes work in a host session? | No, and it says so rather than implying otherwise | planner (assumed, flag if wrong) | Hooks load from the installed 0.14.0 copy, so every wave here is enforced by the unfixed hook. The suites are the evidence; live host verification is a follow-up after `claude plugin update`. Consumed by T1.1.1, T1.1.2, T2.1.1 and the wavecheck report. |
+| D7 | Fix F6 (plans are executable) in code? | No, document it | planner (assumed, flag if wrong) | Executing criteria is the mechanism by which `prove-failable` and wavecheck work at all. A confirmation prompt would break non-interactive use; the honest fix is that the README stops omitting it. Consumed by T1.2.1. |
+| D8 | Attribution mode? | `manifest` | planner (assumed, flag if wrong) | Default from `format_version: 3`, and this repo's commit subjects follow its own convention rather than `drydock(<id>):`. Consumed by every implementation task. |
+| D9 | Who signs the Phase 2 human gate? | Sandeep Takasi, recorded by name and date in the phase gate line | planner (assumed, flag if wrong) | `drydock:reconcile` refuses to close a plan on an unsigned human gate, and nothing infers approval from surrounding text. |
+| D10 | Docs task parallel with the code fixes it describes? | **No.** Docs moved to Wave 1.2, after the code wave | planner, on the pressure test's finding | `drydock-audit.test.mjs` (T1.1.3) reads `plan-format.md` and scans every `SKILL.md` for backticked vocabulary and for `${CLAUDE_PLUGIN_ROOT}` inside fences. A parallel docs task could therefore break a sibling's acceptance criterion from a file it does not own. Sequencing removes the coupling; T1.2.1's criterion re-runs that suite as a backstop. |
+| D11 | Fix F7 in this plan? | No, deferred to *Out of scope* | planner, on the pressure test's finding | It is absent from the Requirement, has no test and no criterion, is graded robustness rather than a live hole, and its fix would be duplicated across the two highest-risk tasks. Invisible to every gate while widening their blast radius. |
+| D12 | `-c core.quotepath=false` or `-z` for F4? | `-z` on the three path-parsing call sites | planner, on the pressure test's finding | `quotepath=false` still backslash-escapes paths containing `"`, `\` or a newline. Those cannot occur on NTFS but can on the Linux CI runners. Same effort, complete instead of partial. Consumed by T1.1.3. |
+| D13 | How do acceptance criteria resist a token-in-a-comment cheat? | Each asserts the suite's reported case count rose **and** the named case exists **and** the suite passes | planner, on the pressure test's finding | A substring check over a test file is satisfied by writing the token in a comment; the pressure test built that cheat and passed the first draft's criterion with no fix written. A case count cannot be raised without a case. Consumed by T1.1.1, T1.1.2, T1.1.3. |
+| D14 | Fix F9, found while gating this plan rather than by the review? | Yes, folded into T1.1.3 | planner (assumed, flag if wrong) | It is a two-line change in a file that task already owns, and it is a **false FAIL in this plan's own approval gate**: two correct criteria were reported unrunnable. Leaving it means every future plan whose criteria produce that text is refused for a defect in the checker. It fails good plans rather than passing bad ones, so it is a correctness fix, not a loosening. Consumed by T1.1.3. |
+
+## Open questions
+
+None. No task is BLOCKED.
+
+## Out of scope / follow-ups
+
+- **F7, the `CLAUDE_PROJECT_DIR` fallback.** Both hooks go inert rather than
+  walking up to find `.drydock/`. Deferred per D11; the fix is a shared helper
+  and a wave-0 contract, which is a plan of its own if it is ever worth it.
+- **Live host verification of the repaired hooks.** Requires releasing 0.15.0,
+  `claude plugin update drydock@drydock`, and a restarted session. The natural
+  successor to this plan; cannot be done inside it (D6).
+- **Per-task ownership enforcement.** The hook records which task's files a
+  write landed in, never who wrote it. Unchanged here.
+- **Reducing `drydock-audit.mjs`** (2,077 lines) and the process surface a new
+  adopter meets. A real finding of the review, and a redesign, not a repair.
+- **Retiring the `planwright` / `wavecheck` / `seatrial` coinages.** Decided
+  against in 0.13.1; not reopened here.
+
+## Execution policies
+
+- **Per task:** the acceptance criterion must exit 0, verified by the executor
+  before it reports, and re-run independently by wavecheck.
+- **Per wave:** `drydock:wavecheck` is the blocking gate. PASS is required
+  before the next wave opens.
+- **Per phase:** Wave 1.R is a fresh-context quality review of the Phase 1 diff,
+  Judgment tier, run after wavecheck PASS on Wave 1.2. APPROVED is required for
+  the Phase 1 gate; a REJECTED verdict does not satisfy it.
+- **Escalation:** quality-review rejections get max 2 retries with the feedback
+  injected, then one model tier up, then a human. Wavecheck BLOCKs on ownership
+  violations or unlogged deviations get **no** retries: `/drydock:replan` or a
+  human decision.
+- **Checkpointing:** one commit per task, staging only that task's owned files,
+  followed immediately by `drydock-audit.mjs task-close`. The rollback unit is
+  one task.
+- **Human gates:** the Phase 2 gate requires a named signature and date (D9).
+- **Tracker mirroring:** none.
+
+## Testing Gate
+
+N/A, the only user-facing surface this plan touches is the version string
+rendered on the homepage, and `site/scripts/assert-copy.mjs` already asserts it
+against `drydock/.claude-plugin/plugin.json` at build time, so a browser run
+would re-verify mechanically-gated text and nothing else. No interactive
+behaviour changes. See D5.
+
+## Pressure-test verdict
+
+**REJECTED on the first draft, 2026-09-20, by a fresh-context adversarial
+reviewer; all twelve confirmed defects fixed and re-verified, verdict now
+APPROVED.** The reviewer independently re-measured all eight findings against
+the repo and confirmed every file:line citation except one, then broke the plan
+on twelve points. The material ones, each fixed above:
+
+1. **`assert-matrix.mjs` requires an index row for every plan**, so committing
+   this plan would have turned CI red at T0, with no task owning the file. T0
+   now owns `docs/plans/README.md`.
+2. **Wave 1.1 was not parallel.** `drydock-audit.test.mjs`, owned by T1.1.3,
+   reads `plan-format.md` and scans every `SKILL.md`, both owned by the docs
+   task, so the docs task could break a sibling's criterion from a file it did
+   not own. Docs moved to Wave 1.2 (D10).
+3. **Every criterion was passable by writing the token in a comment.** The
+   reviewer built the cheat and passed T1.1.1 with no fix written. All criteria
+   now assert the suite's case count (D13).
+4. **T1.R.1 could not write its own verdict** while its wave was armed, and
+   `REJECTED` satisfied its criterion. Both fixed.
+5. **`:812` was a stale line number** carried from before the last `git pull`;
+   the `git` helper is at `:1022`, and pointing the executor at three call sites
+   instead of the one helper was the more expensive error.
+6. **The CI matrix was wrong** (20/22/24, not 22/24), and the missing entry is
+   the runtime floor, so an F3 fix written against a Node 22+ API would ship
+   green locally and red on the floor CI deliberately tests.
+7. **The F1 walk had no termination clause** (`path.dirname("C:\\")` is a fixed
+   point, so a naive loop hangs a `PreToolUse` hook on every write), and its
+   stated invariant was false.
+8. **The F3 sketch left three things to invention**: what identity a deleted or
+   renamed-away path gets, an unnumbered "hash if small" threshold, and a new
+   false positive the pinned docs were told not to mention.
+9. **A fourth copy of the retracted claim** sits at `drydock-audit.mjs:1589`, in
+   a file the docs task was forbidden to touch.
+10. **F7 was invisible to every gate** while widening the two highest-risk
+    tasks; deferred (D11).
+11. **`core.quotepath=false` is an incomplete fix** for F4 (D12).
+12. **T2.1.1's criterion omitted the root `README.md`**, which is exactly what
+    `assert-copy.mjs` fails on.
+
+**Defect 13, found by the gate rather than by either reviewer.** Running
+`prove-failable` on the corrected draft reported T1.1.3's and T1.2.1's criteria
+as `unrunnable`. Both were correct and exited 1; the checker was fooled because
+the suite they invoke prints "the command was not found" four times at baseline,
+and the heuristic scans all of stderr. That is F9, now fixed by T1.1.3 (D14),
+and the two criteria additionally suppress the nested output so they do not
+depend on the fix they gate. Worth recording as evidence for the practice: the
+adversarial review read the plan and found twelve real defects, and the
+mechanical gate then found a thirteenth that no reader would have, in the
+checker rather than in the plan.
+
+Not defects, recorded so they are not re-litigated: `sort -V` correctly selects
+`0.14.0` over `0.8.16`; D6 does not undermine the criteria, which run the
+working tree's suites; UNC and extended-length paths hit the documented
+"outside the repo" branch and are existing stated behaviour.
+
+## Phase 0: Pre-flight
+
+#### T0 - Baseline verification and plan index row
+
+- **Description:** Record the current commit SHA and the verbatim result of each
+  of the four gate commands into the *Baseline* section, then add this plan's
+  row to `docs/plans/README.md` so `assert-matrix.mjs` passes. Confirm the audit
+  suite is 134/136 and the `enforce-owns` suite aborts before its first case, so
+  the F5 defects are on the record as the starting state.
+- **Files owned:** `docs/plans/README.md` (the *Baseline* section of this plan
+  is also written here, before any wave is armed)
+- **Depends on:** none
+- **Model / thinking:** Mechanical / off   **Executor:** orchestrator, inline
+- **Context brief:** this plan's *Baseline* section; `docs/plans/README.md` and
+  its existing rows as the format; `site/scripts/assert-matrix.mjs` for what the
+  row must contain. The status column must track this plan's frontmatter
+  `status:` and be updated on every transition.
+- **Forbidden:** editing any other plan's row; running any implementation work.
+- **Acceptance criterion:** `node -e "const fs=require('fs');const p=fs.readFileSync('docs/plans/006-external-review-repairs.md','utf8'),i=fs.readFileSync('docs/plans/README.md','utf8');const m=p.match(/Commit SHA [|] .?([0-9a-f]{7,40})/);process.exit(m&&i.includes('006-external-review-repairs')?0:1)"`
+
+## Phase 1: Repair
+
+**Exit state:** All seven addressed findings are closed in the working tree,
+every suite passes on this machine, and no documentation statement contradicts
+the code.
+**Phase gate:** all three suites exit 0 + `node site/scripts/assert-matrix.mjs`
+exits 0 + Wave 1.R APPROVED.
+**Phase gate: OPEN.**
+
+### Wave 1.1 - The three code repairs
+
+> Genuinely parallel: the three tasks own disjoint source files and no task
+> reads a file another writes. The documentation that describes their behaviour
+> is deliberately NOT in this wave (D10).
+
+#### T1.1.1 - Close the junction escape in the ownership hook
+
+- **Description:** Resolve the deepest *existing* ancestor of the write target
+  instead of only its immediate parent, then re-append the unresolved remainder,
+  so a junction or symlink anywhere above or at the target is followed before the
+  path is matched against `owns`. Add a regression case that creates a real
+  directory junction and asserts a write through it to a not-yet-existing
+  subdirectory is denied. Repair the `EPERM` crash in the same file by creating
+  the link with a junction on Windows and `symlinkSync` elsewhere (D3), so the
+  suite runs to completion here.
+- **Files owned:** `drydock/hooks/enforce-owns.mjs`,
+  `drydock/hooks/enforce-owns.test.mjs`
+- **Depends on:** none
+- **Model / thinking:** Complex / extended   **Executor:** drydock:executor
+- **Context brief:** F1, F5 and D3, D6, D13 in this plan;
+  `drydock/hooks/enforce-owns.mjs` in full, with attention to `realOr` and the
+  `resolved`/`rel` computation at line 213; `drydock/lib/owns-match.mjs`;
+  `drydock/hooks/enforce-owns.test.mjs`. **Runtime floor is Node 20.17**, and CI
+  runs Node 20, 22 and 24 on ubuntu and windows: no Node 21+ API.
+- **Forbidden:** changing `lib/owns-match.mjs`; changing the deny/allow exit
+  codes or the receipt JSON shape (`audit-wave` and `sealedRecord` parse it);
+  widening or narrowing what `owns` means; adding a dependency; making the hook
+  fail closed on a missing config, which is the documented escape hatch;
+  introducing an unbounded loop into a `PreToolUse` hook.
+- **Implementation sketch:** replace
+  `path.join(realOr(path.dirname(absolute)), path.basename(absolute))` with an
+  ascent that **starts at `absolute` itself**, so the final component is resolved
+  too, closing the symlinked-leaf hole in the same change. Collect skipped
+  segments while ascending, `realpath` the first ancestor that exists, then
+  rejoin. **Termination is load-bearing:** `path.dirname` reaches a fixed point
+  at the filesystem root (`path.dirname("C:\\") === "C:\\"`), so the loop must
+  stop when the parent equals the current path, not merely when a path exists.
+  Invariants: a target outside the repo still short-circuits to `allow()`; a
+  throw anywhere still reaches the `catch` and denies; a fully-existing chain
+  resolves at least as strictly as today, and may now resolve a final-component
+  symlink it previously missed, which is an intended improvement and should be
+  asserted. The new case must be named `f1-junction-escape` and must assert
+  `exit === 2` for a path **two levels** below the junction. Create the link with
+  `execFileSync('cmd', ['/c','mklink','/J',link,target])` on Windows and
+  `symlinkSync(target, link, 'dir')` elsewhere, wrapped so a box permitting
+  neither degrades to a recorded skip rather than aborting the file.
+- **Acceptance criterion:** `node -e "const{execFileSync:e}=require('child_process');const o=e(process.execPath,['drydock/hooks/enforce-owns.test.mjs'],{encoding:'utf8'});const m=o.match(/enforce-owns: PASS, ([0-9]+) cases/);const s=require('fs').readFileSync('drydock/hooks/enforce-owns.test.mjs','utf8');process.exit(m&&+m[1]>=31&&s.includes('f1-junction-escape')?0:1)"`
+
+#### T1.1.2 - Make the Bash detector report renames and repeat writes honestly
+
+- **Description:** Parse `git status --porcelain -z` correctly, consuming the
+  second NUL-separated field of a rename or copy record as a bare path rather
+  than slicing three characters off it. Replace the path-set snapshot with one
+  that also carries per-path content identity, so a second write to an
+  already-dirty file is detected instead of silently producing an `observed`
+  receipt that asserts the boundary was clean. Update the docblock's CEILINGS
+  list to match the new behaviour.
+- **Files owned:** `drydock/hooks/detect-bash-writes.mjs`,
+  `drydock/hooks/detect-bash-writes.test.mjs`
+- **Depends on:** none
+- **Model / thinking:** Complex / extended   **Executor:** drydock:executor
+- **Context brief:** F2, F3 and D6, D10, D13 in this plan;
+  `drydock/hooks/detect-bash-writes.mjs` in full, especially `gitStatus` at line
+  128, the snapshot round-trip and the `changed`/`unowned` computation at line
+  171; `drydock/hooks/detect-bash-writes.test.mjs`. **Runtime floor is Node
+  20.17**, CI runs 20, 22 and 24: no Node 21+ API. The docblock's CEILINGS list
+  is owned by this task; the README's copy of it is T1.2.1's, and T1.2.1's brief
+  pins the same wording, so the two must agree.
+- **Forbidden:** exiting non-zero on any path (`PostToolUse` cannot block, and a
+  non-zero exit is transcript noise); removing the `observed` receipt, which is
+  what makes an empty log diagnosable; scanning gitignored files, which would
+  make every build tank the hook; reading `tool_input.command` to decide what
+  changed, which is the parser design this file exists to reject; adding a
+  dependency.
+- **Implementation sketch:** in `gitStatus`, walk the NUL-separated records with
+  an index rather than mapping: a record whose status field starts `R` or `C`
+  consumes the **following** record whole, as the old path. Snapshot becomes an
+  object mapping path to a content identity, not an array of paths. Identity is
+  `statSync(p, { bigint: true })` rendered as `${size}:${mtimeNs}`; **use the
+  nanosecond field**, because a sub-millisecond rewrite is exactly what the
+  reviewer is told to hunt for. **A path that does not exist on disk** (a
+  deletion, or the old side of a rename) gets the literal identity `absent`,
+  which is a value like any other, so its appearance and disappearance both
+  register as changes. `changed` is any path absent from `before` **or** whose
+  identity differs. Invariants: the first command of a wave still records
+  `observed` with the seeded-snapshot reason; a corrupt snapshot is still
+  treated as missing; every failure path still exits 0. **New ceiling to
+  document in the docblock:** size-and-mtime identity means a content-identical
+  rewrite of an already-dirty path (a `touch`, or a `git add` that normalises
+  line endings) now yields a `detected` receipt with no content change. That is
+  a false positive traded for the false negative in F3, and it must be stated
+  rather than discovered. New cases must be named `f2-rename-path` and
+  `f3-redirty`.
+- **Acceptance criterion:** `node -e "const{execFileSync:e}=require('child_process');const o=e(process.execPath,['drydock/hooks/detect-bash-writes.test.mjs'],{encoding:'utf8'});const m=o.match(/detect-bash-writes: PASS, ([0-9]+) cases/);const s=require('fs').readFileSync('drydock/hooks/detect-bash-writes.test.mjs','utf8');process.exit(m&&+m[1]>=16&&s.includes('f2-rename-path')&&s.includes('f3-redirty')?0:1)"`
+
+#### T1.1.3 - Stop non-ASCII filenames failing the ownership audit, and make the suite runnable
+
+- **Description:** Pass `-z` to the three `git show --name-only` calls whose
+  output is parsed as paths, and split on NUL, so a committed non-ASCII filename
+  is compared in the form `owns` globs are written in rather than as a quoted
+  octal escape. Stop `prove-failable` reporting a genuinely failing criterion as
+  unrunnable because its nested output contains "not found" (F9). Repair the two
+  `prove-failable` cases that interpolate `process.execPath` unquoted into a
+  shell command line. Correct the comment at line 1589 that claims this check
+  never consults the hook.
+- **Files owned:** `drydock/scripts/drydock-audit.mjs`,
+  `drydock/scripts/drydock-audit.test.mjs`
+- **Depends on:** none
+- **Model / thinking:** Standard / default   **Executor:** drydock:executor
+- **Context brief:** F4, F5, F8, F9 and D12, D13, D14 in this plan; the
+  `saidNotFound` heuristic at
+  [drydock-audit.mjs:1871](drydock/scripts/drydock-audit.mjs:1871) and the
+  branch that consumes it at line 1876; the `git` helper at
+  **`drydock/scripts/drydock-audit.mjs:1022`** and the three
+  `show --name-only` call sites at lines 1243, 1345 and 1687, which are the only
+  three whose output reaches `matchesOwns`; the enforcement-log read at line
+  1402 and the comment at line 1589; the two failing cases in
+  `drydock/scripts/drydock-audit.test.mjs`, which are the ones spawning
+  `process.execPath`. Node here lives at `C:\Program Files\nodejs\node.exe`.
+  **Pinned replacement for line 1589:** the comment must stop saying the check
+  never consults the hook, and must instead say that the ownership *derivation*
+  comes from commits and the working tree, while the enforcement receipt is read
+  separately; deleting the sentence outright loses a real distinction.
+- **Forbidden:** changing the receipt or manifest JSON shapes; changing
+  `SUPPORTED_FORMAT_VERSIONS`, the required-section list, or any user-visible
+  verdict string that `sealedRecord` re-parses out of committed wavecheck
+  reports; altering how `owns` globs are matched; adding a dependency; editing
+  any `.md` file.
+- **Implementation sketch:** `-z` changes the record separator, so each of the
+  three sites splits on `\0` instead of a newline and drops the trailing empty
+  field. `core.quotepath=false` is **not** the fix chosen here and must not be
+  substituted for it (D12). For F9, the exit codes the heuristic exists to catch
+  are already handled by `notFoundCode` on the preceding line, so narrow the
+  stderr scan to the **first line** of stderr, where a shell emits its own
+  diagnostic, rather than the whole stream. Invariant: a criterion that ran and
+  exited non-zero must be reported `failable`, never `unrunnable`, however deep
+  its nested output. State the residual ceiling in the comment: a compound
+  command whose *second* half is missing can still put the diagnostic off line
+  one. The new cases must be named `f4-non-ascii`, which commits a path outside
+  ASCII and asserts it matches its owning glob, and `f9-notfound-heuristic`,
+  which asserts a failing criterion whose output contains the words is reported
+  failable.
+- **Acceptance criterion:** `node -e "const{execFileSync:e}=require('child_process');const fs=require('fs');let o='';try{o=e(process.execPath,['drydock/scripts/drydock-audit.test.mjs'],{encoding:'utf8',stdio:['ignore','pipe','ignore']})}catch(x){process.exit(1)}const m=o.match(/([0-9]+)[/]([0-9]+) passed/);const s=fs.readFileSync('drydock/scripts/drydock-audit.test.mjs','utf8');process.exit(m&&m[1]===m[2]&&+m[2]>=138&&s.includes('f4-non-ascii')&&s.includes('f9-notfound-heuristic')?0:1)"`
+
+  > The `try/catch` and `stdio` are not decoration. Without them the child's
+  > failure text reaches this process's stderr, and F9 then reports this very
+  > criterion as unrunnable. Do not simplify them away.
+
+### Wave 1.2 - The documentation that describes them
+
+#### T1.2.1 - Delete the claims the code does not support
+
+- **Description:** Remove the statement that `audit-wave` "never consults the
+  hook" from the two documentation files carrying it, since the audit reads
+  `.drydock/enforcement.log`, which the hook writes. Resolve the wavecheck
+  ordering contradiction between "stop early only on check 1 failure" and an
+  empty-log BLOCK raised under check 2. Add one paragraph to the plugin README
+  stating that a plan document is executed, not merely read.
+- **Files owned:** `drydock/README.md`,
+  `drydock/skills/wavecheck/SKILL.md`,
+  `drydock/skills/planwright/reference/plan-format.md`
+- **Depends on:** T1.1.1, T1.1.2, T1.1.3
+- **Model / thinking:** Standard / default   **Executor:** drydock:executor
+- **Context brief:** F3, F6, F8 and D7, D10 in this plan; the Wave 1.1 diff,
+  which is what these files must now describe; `drydock/README.md` around line
+  49; `plan-format.md` around line 85; `wavecheck/SKILL.md` lines 24 and 58 to
+  64. **Pinned wording:** the README's statement of the Bash layer's ceilings
+  must list that a gitignored write leaves no receipt, that a write-then-restore
+  inside one command shows nothing, that attribution is "changed around this
+  command" rather than "caused by it", that a backgrounded command finishes
+  after the hook fires, **and the new one T1.1.2 introduces**, that a
+  content-identical rewrite of an already-dirty path now reports as detected. It
+  must **not** claim that a repeat write to an already-dirty file is missed,
+  which T1.1.2 closed. The new README paragraph must contain the exact phrase
+  `runs commands from the plan`.
+- **Forbidden:** editing any `.mjs` file; renaming any skill; changing the
+  wavecheck report heading format or the `enforcement active:` sentence, both
+  regex-parsed out of committed plans; weakening the description of what the
+  hook does prevent; adding an em dash (repo convention since 0.8.15);
+  **introducing a new backticked lowercase token into any `SKILL.md`, or a
+  fenced `${CLAUDE_PLUGIN_ROOT}` into `drydock/README.md`** — both are scanned
+  by `drydock-audit.test.mjs` and either will fail the criterion below.
+- **Acceptance criterion:** `node -e "const{execFileSync:e}=require('child_process');const fs=require('fs');try{e(process.execPath,['drydock/scripts/drydock-audit.test.mjs'],{encoding:'utf8',stdio:['ignore','pipe','ignore']})}catch(x){process.exit(1)}const r=fs.readFileSync('drydock/README.md','utf8'),p=fs.readFileSync('drydock/skills/planwright/reference/plan-format.md','utf8'),w=fs.readFileSync('drydock/skills/wavecheck/SKILL.md','utf8');process.exit(!r.includes('never consults the hook')&&!p.includes('never consults the hook')&&r.includes('runs commands from the plan')&&!w.includes('check-1 grounds')?0:1)"`
+
+  > Runs T1.1.3's suite as the backstop for D10: these three files are scanned
+  > by it, so a documentation edit can break a sibling's work from a file it
+  > does not own. The `try/catch` and `stdio` are required for the reason given
+  > under T1.1.3.
+
+### Wave 1.R - Quality review
+
+#### T1.R.1 - Fresh-context quality review of Phase 1
+
+- **Description:** Review the Phase 1 diff for correctness, conventions and edge
+  cases, after wavecheck has already audited conformance. Pay particular
+  attention to whether the F1 ancestor walk terminates on every path shape and
+  can be defeated a second way, and whether the F3 content identity misses a
+  same-size rewrite inside one mtime tick or mishandles a deleted path.
+- **Files owned:** none. **The verdict is appended to this plan by the
+  orchestrator after `rm .drydock/wave-owns.json`**, because the plan file is
+  owned by no task and the armed hook denies writes to it.
+- **Depends on:** T1.2.1
+- **Model / thinking:** Judgment / extended   **Executor:** drydock:executor
+- **Context brief:** the Phase 1 diff; this plan's *Findings & constraints* and
+  Decision Log; `drydock/lib/owns-match.mjs` as read-only context. A junction
+  created mid-wave is out of scope: resolution happens at write time, so it is
+  covered by construction.
+- **Acceptance criterion:** `node -e "const s=require('fs').readFileSync('docs/plans/006-external-review-repairs.md','utf8');process.exit(/Wave 1.R verdict, APPROVED, 20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]/.test(s)?0:1)"`
+
+## Phase 2: Release
+
+**Exit state:** 0.15.0 is published with the findings described, the site badge
+and root README match `plugin.json`, and the installed plugin can be updated to
+load the repaired hooks.
+**Phase gate:** `npm run verify` in `site/` exits 0 + human approval.
+**Phase gate: OPEN.**
+
+### Wave 2.1 - Cut 0.15.0
+
+#### T2.1.1 - Bump to 0.15.0 and write the release notes
+
+- **Description:** Set the plugin version to `0.15.0`, write the CHANGELOG entry
+  describing each finding and what was done about it, and update the two
+  hand-copied version references so the site's drift gate stays green. The entry
+  states plainly that the repaired hooks are unexercised by any host session
+  until the plugin is reinstalled (D6), and that F7 was deferred.
+- **Files owned:** `drydock/.claude-plugin/plugin.json`,
+  `drydock/CHANGELOG.md`, `README.md`, `site/content/copy.ts`
+- **Depends on:** T1.R.1
+- **Model / thinking:** Standard / default   **Executor:** drydock:executor
+- **Context brief:** D2, D6, D11 and every finding in *Findings & constraints*;
+  the Phase 1 diff; the existing CHANGELOG entries for 0.13.0 and 0.14.0 as the
+  house style; `site/scripts/assert-copy.mjs` lines 211 to 248 for what the
+  drift check requires, **including that the repository-root `README.md` must
+  contain the literal `v0.15.0`** (its status line at line 11 currently reads
+  `v0.14.0`). Note that `README.md` here is the **repository root** readme, not
+  `drydock/README.md`, which belongs to T1.2.1.
+- **Forbidden:** editing any file under `drydock/hooks/`, `drydock/scripts/` or
+  `drydock/skills/`; claiming any fix was verified in a live host session;
+  rewriting an older CHANGELOG entry; adding an em dash or a double hyphen to
+  page copy.
+- **Acceptance criterion:** `node -e "const fs=require('fs'),v='0.15.0';const p=JSON.parse(fs.readFileSync('drydock/.claude-plugin/plugin.json','utf8')).version,c=fs.readFileSync('site/content/copy.ts','utf8'),g=fs.readFileSync('drydock/CHANGELOG.md','utf8'),r=fs.readFileSync('README.md','utf8');process.exit(p===v&&c.includes(JSON.stringify(v))&&g.includes('## '+v)&&r.includes('v'+v)?0:1)"`
+
+## Deviation Log
+
+| # | Task | What deviated | Why | Impact | Recorded |
+|---|---|---|---|---|---|
+
+## Wavecheck reports
+
+## Progress log
+
+| Date | Task | Result | Notes |
+|---|---|---|---|
+
+## Reconcile report
