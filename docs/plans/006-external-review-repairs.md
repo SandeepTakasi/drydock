@@ -280,6 +280,8 @@ check-1 grounds".
 | D12 | `-c core.quotepath=false` or `-z` for F4? | `-z` on the three path-parsing call sites | planner, on the pressure test's finding | `quotepath=false` still backslash-escapes paths containing `"`, `\` or a newline. Those cannot occur on NTFS but can on the Linux CI runners. Same effort, complete instead of partial. Consumed by T1.1.3. |
 | D13 | How do acceptance criteria resist a token-in-a-comment cheat? | Each asserts the suite's reported case count rose **and** the named case exists **and** the suite passes | planner, on the pressure test's finding | A substring check over a test file is satisfied by writing the token in a comment; the pressure test built that cheat and passed the first draft's criterion with no fix written. A case count cannot be raised without a case. Consumed by T1.1.1, T1.1.2, T1.1.3. |
 | D14 | Fix F9, found while gating this plan rather than by the review? | Yes, folded into T1.1.3 | planner (assumed, flag if wrong) | It is a two-line change in a file that task already owns, and it is a **false FAIL in this plan's own approval gate**: two correct criteria were reported unrunnable. Leaving it means every future plan whose criteria produce that text is refused for a defect in the checker. It fails good plans rather than passing bad ones, so it is a correctness fix, not a loosening. Consumed by T1.1.3. |
+| D15 | How is the Wave 1.R rejection repaired? | A new **Wave 1.3** of fix tasks, then a re-review, following plan 004's precedent (its Wave 1.R was REJECTED, repaired in a Wave 1.3, then re-reviewed APPROVED). Not a second commit under T1.1.1. | planner, on the review's verdict | The escalation policy allows retries, but a second commit and `task-close` entry under T1.1.1 would make sealed wave 1.1's attribution ambiguous, which is exactly what per-task commits exist to prevent. A later wave may re-own a file (sequential handoff), so a new task id keeps both waves auditable. This is retry 1 of the policy's 2. Consumed by T1.3.1, T1.3.2, T1.R.1. |
+| D16 | Fold the review's finding 3 (`audit-wave` cannot see a rename out of an unowned path) into this plan? | Yes, as T1.3.2 | planner, on the review's finding | It is MAJOR, it is the audit-side twin of F2, and it makes a documentation sentence false: `plan-format.md` says the audit "sees everything a commit or a dirty tree carries". Stopping documentation from claiming what the code does not do is in this plan's Requirement. The fix is one flag on three lines T1.1.3 already edited, and `git log --diff-filter=R` over the whole history is empty, so no sealed audit of plans 001 to 005 can change. Consumed by T1.3.2. |
 
 ## Open questions
 
@@ -294,6 +296,7 @@ None. No task is BLOCKED.
   `claude plugin update drydock@drydock`, and a restarted session. The natural
   successor to this plan; cannot be done inside it (D6).
 - **F10, cross-drive writes are denied rather than allowed** (Deviation 6). On Windows `path.relative` between drives returns the absolute target, so the hook's `rel.startsWith("../")` outside-the-repo test misses it and the path is matched against `owns` and denied. Pre-existing, fails closed. Fix is `path.isAbsolute(rel)` alongside the `../` test, with a case.
+- **Review findings 4 to 6, and two suspicions, from the Wave 1.R review** (MINOR or NIT, pre-existing): deleting an untracked unowned file, or restoring a tracked one with `git checkout --`, records `observed`, because the detector compares only paths present after the command; a snapshot written by the pre-0.15.0 detector is read after a mid-wave upgrade as "first command of the wave", mislabelling one real write; `git()` in the audit trims leading and trailing spaces off paths; an exact-nanosecond mtime restore (`touch -r`) would evade the F3 identity, which adding `ctimeNs` would close; and `.drydock/bash-tree.json` is never reset between waves.
 - **Per-task ownership enforcement.** The hook records which task's files a
   write landed in, never who wrote it. Unchanged here.
 - **Reducing `drydock-audit.mjs`** (2,077 lines) and the process surface a new
@@ -603,6 +606,36 @@ exits 0 + Wave 1.R APPROVED.
   > does not own. The `try/catch` and `stdio` are required for the reason given
   > under T1.1.3.
 
+### Wave 1.3 - Fixes for the Wave 1.R rejection
+
+> Added after approval (Deviation 7, D15, D16). Retry 1 of the escalation
+> policy's 2. The two tasks own disjoint files and neither reads the other's.
+
+#### T1.3.1 - Deny a write through a link that exists but does not resolve
+
+- **Description:** In `resolveAncestry`, stop treating every `realpath` failure as "this path does not exist". When `realpath` throws but `lstat` succeeds, the entry exists and cannot be resolved (a dangling symlink or junction, a loop, an unreadable entry), so the hook must deny rather than climb past it and match the link's own lexical path. Add a regression case with a dangling link, and make each link-dependent case record its own skip when a box cannot create links.
+- **Files owned:** `drydock/hooks/enforce-owns.mjs`, `drydock/hooks/enforce-owns.test.mjs`
+- **Depends on:** T1.1.1
+- **Model / thinking:** Complex / extended   **Executor:** drydock:executor
+- **Context brief:** F1 and D15 in this plan, and the Wave 1.R verdict below (findings 1 and 2); `resolveAncestry` in `drydock/hooks/enforce-owns.mjs`; `drydock/hooks/enforce-owns.test.mjs`, especially the `f1-junction-escape` and `f1-leaf-symlink-escape` cases and their skip branches. **Measured by the orchestrator on this Windows box, unprivileged:** `mklink /J docs\dj site\nope` (target absent) succeeds, and the current hook ALLOWS both `docs/dj/x.ts` and `docs/dj` (exit 0) under `owns: ["docs/**"]`. The reviewer measured the POSIX twin: `docs/dangle.ts -> ../site/brandnew.ts` is allowed, and a write through it creates `site/brandnew.ts`. Runtime floor Node 20.17; CI runs 20, 22 and 24 on ubuntu and windows.
+- **Forbidden:** everything forbidden to T1.1.1 still applies (no `lib/owns-match.mjs` edit, no exit-code or receipt-shape change, no dependency, no fail-closed on a MISSING config, no unbounded loop); weakening any existing case.
+- **Implementation sketch:** in the `catch` around `realpathSync.native(current)`, call `lstatSync(current)`. If it succeeds, throw, so the outer `try` denies. Only when `lstat` itself fails with `ENOENT` (or `ENOTDIR`) does the walk climb. A false deny on an unreadable directory is acceptable and fails closed. Termination at the filesystem root is unchanged. New case named exactly `f1-dangling-link`: create a link whose target does not exist, a junction via `mklink /J` on Windows and `symlinkSync` elsewhere, and assert exit 2 for a path beneath it. Every link-dependent case reports its OWN skip line when links cannot be created, so a skip never stands in for two cases.
+- **Acceptance criterion:** `node -e "const{execFileSync:e}=require('child_process');const o=e(process.execPath,['drydock/hooks/enforce-owns.test.mjs'],{encoding:'utf8'});const m=o.match(/enforce-owns: PASS, ([0-9]+) cases/);process.exit(m&&+m[1]>=33&&/ok +f1-dangling-link +exit=2 want=2/.test(o)?0:1)"`
+
+  > Requires the dangling-link case to have actually RUN and been denied, not
+  > skipped: a skip line does not carry `exit=2 want=2`.
+
+#### T1.3.2 - Make the audit see a rename out of an unowned path
+
+- **Description:** Add `--no-renames` to the three `git show -z --name-only` calls whose output is compared against `owns`, so a commit that renames a file out of an unowned path lists both sides instead of only the destination. Today a task owning `docs/**` can delete an unowned `site/s.ts` by `git mv`-ing it into `docs/` and pass the audit.
+- **Files owned:** `drydock/scripts/drydock-audit.mjs`, `drydock/scripts/drydock-audit.test.mjs`
+- **Depends on:** T1.1.3
+- **Model / thinking:** Standard / default   **Executor:** drydock:executor
+- **Context brief:** D16 in this plan and the Wave 1.R verdict below (finding 3); the three `show` call sites in `drydock/scripts/drydock-audit.mjs` that T1.1.3 changed to `-z` (search for `"-z"`). **Measured by the reviewer:** for a `git mv site/s.ts docs/s.ts` commit, `git show -z --name-only --format=` prints only `docs/s.ts`, and with `--no-renames` prints `docs/s.ts` and `site/s.ts`. `git log --diff-filter=R` over this repository's whole history is empty, so no sealed audit changes.
+- **Forbidden:** everything forbidden to T1.1.3 still applies; changing any other git invocation; editing any `.md` file.
+- **Implementation sketch:** one flag per call site. New case named exactly `r3-rename-out`: in a temp repo, commit a `git mv` of a file from an unowned path into an owned one, and assert the audit reports the unowned source path as outside `owns`.
+- **Acceptance criterion:** `node -e "const{execFileSync:e}=require('child_process');const fs=require('fs');let o='';try{o=e(process.execPath,['drydock/scripts/drydock-audit.test.mjs'],{encoding:'utf8',stdio:['ignore','pipe','ignore']})}catch(x){process.exit(1)}const m=o.match(/([0-9]+)[/]([0-9]+) passed/);const s=fs.readFileSync('drydock/scripts/drydock-audit.test.mjs','utf8');process.exit(m&&m[1]===m[2]&&+m[2]>=139&&s.includes('r3-rename-out')?0:1)"`
+
 ### Wave 1.R - Quality review
 
 #### T1.R.1 - Fresh-context quality review of Phase 1
@@ -615,7 +648,7 @@ exits 0 + Wave 1.R APPROVED.
 - **Files owned:** none. **The verdict is appended to this plan by the
   orchestrator after `rm .drydock/wave-owns.json`**, because the plan file is
   owned by no task and the armed hook denies writes to it.
-- **Depends on:** T1.2.1
+- **Depends on:** T1.2.1, T1.3.1, T1.3.2
 - **Model / thinking:** Judgment / extended   **Executor:** drydock:executor
 - **Context brief:** the Phase 1 diff; this plan's *Findings & constraints* and
   Decision Log; `drydock/lib/owns-match.mjs` as read-only context. A junction
@@ -667,6 +700,7 @@ load the repaired hooks.
 | 4 | T1.1.1, T1.1.2 | Complex-tier tasks ran on Sonnet, not Opus. | Chosen after the Opus round exhausted the usage window. The rubric permits it: Complex is "Sonnet + extended thinking, or Opus". | None on the plan's contract. Recorded so the model actually used is on the record. | wavecheck 1.1, 2026-09-21 |
 | 5 | T1.1.3 | T1.1.3 ran after T1.1.1 and T1.1.2 rather than concurrently. | The orchestrator's spawn message was cut off mid-stream and the third spawn was lost; it was issued separately. | None: the three tasks share no files, and the audit's per-commit attribution is order-independent. The wave is still "genuinely parallel" in structure, not in this run's timing. | wavecheck 1.1, 2026-09-21 |
 | 6 | Wave 1.1 | Found **F10**, pre-existing and out of this wave's scope: the ownership hook DENIES a write to a path on a different drive (`Z:/nope/x.ts`, `D:/x.ts`) rather than allowing it as "outside the repo", because `path.relative` across Windows drives returns the absolute target, which does not start with `../`. Measured identical in the pre-plan hook (`a439b08`) and the repaired one. | Discovered while re-running the F1 reproduction against the repaired hook. | Not a regression and not a security hole: it fails closed. It does contradict the documented "outside the repo is not enforced" ceiling. Added to *Out of scope*; T1.R.1 is told about it. `discovered-by-wavecheck`. | wavecheck 1.1, 2026-09-21 |
+| 7 | Phase 1 structure | Wave 1.3 (T1.3.1, T1.3.2) added after the plan was approved, and T1.R.1 now depends on it. | The Wave 1.R quality review REJECTED Phase 1 on a confirmed MAJOR finding (a dangling link still escapes the ownership hook) and raised a second MAJOR finding in the audit (D15, D16). | Scope grows by two tasks. No completed wave, task id or report changes. Recorded because it changes an approved plan without `/drydock:replan`: the contract offers "a targeted fix task appended" as a remediation that does not require replan, and plan 004 did the same. | orchestrator, 2026-09-21 |
 
 ## Wavecheck reports
 
@@ -714,6 +748,15 @@ Execution is `fleet`; audited by the orchestrating session, which wrote none of 
 
 Deviations logged: 0 (0 discovered by wavecheck)
 
+## Wave 1.R verdict, REJECTED, 2026-09-21
+
+Fresh-context review, Opus, of `a439b08..53349e1`. Rejected on one confirmed MAJOR finding in the Phase 1 diff. Every new regression case was confirmed to fail against the pre-fix code; none passes vacuously. F2, F3, F4 and F9 behave as intended under measurement, the F1 walk terminates on every path shape tried (drive root, nonexistent drive, UNC, extended-length and device paths, alternate data streams, trailing dot and space), and Phase 1 did not make F10 worse.
+
+1. **MAJOR, confirmed.** A dangling link as a path component still escapes the ownership hook: `resolveAncestry` treats any `realpath` throw as "does not exist" and climbs past it. POSIX: `docs/dangle.ts -> ../site/brandnew.ts` allowed, and a write through it created `site/brandnew.ts`. Windows, unprivileged: a dangling junction `docs/dj -> site/nope` allowed. Not a regression, but it is the case F1 names and the new code comment claims closed. **T1.3.1.**
+2. **MINOR, confirmed.** `f1-leaf-symlink-escape` targets a junction to a directory rather than a file symlink, and when links cannot be created one skip stands in for two cases. **T1.3.1.**
+3. **MAJOR, confirmed, pre-existing.** `audit-wave` and `task-close` cannot see a rename out of an unowned path, because `git show` without `--no-renames` lists only the destination; this falsifies `plan-format.md`'s "sees everything a commit carries". **T1.3.2** (D16).
+4. to 6. **MINOR or NIT, pre-existing:** moved to *Out of scope / follow-ups*.
+
 ## Progress log
 
 | Date | Task | Result | Notes |
@@ -725,5 +768,6 @@ Deviations logged: 0 (0 discovered by wavecheck)
 | 2026-09-21 | Wave 1.1 | PASS | wavecheck |
 | 2026-09-21 | T1.2.1 | done | `53349e1`, four false claims corrected, F6 paragraph, Bash ceilings listed |
 | 2026-09-21 | Wave 1.2 | PASS | wavecheck |
+| 2026-09-21 | T1.R.1 | REJECTED | one MAJOR in the diff, one MAJOR pre-existing; Wave 1.3 added |
 
 ## Reconcile report
