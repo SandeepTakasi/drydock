@@ -1,7 +1,7 @@
 ---
 plan: 006-external-review-repairs
 format_version: 3
-status: APPROVED
+status: EXECUTING
 isolation: none
 enforcement: required
 attribution: manifest
@@ -293,6 +293,7 @@ None. No task is BLOCKED.
 - **Live host verification of the repaired hooks.** Requires releasing 0.15.0,
   `claude plugin update drydock@drydock`, and a restarted session. The natural
   successor to this plan; cannot be done inside it (D6).
+- **F10, cross-drive writes are denied rather than allowed** (Deviation 6). On Windows `path.relative` between drives returns the absolute target, so the hook's `rel.startsWith("../")` outside-the-repo test misses it and the path is matched against `owns` and denied. Pre-existing, fails closed. Fix is `path.isAbsolute(rel)` alongside the `../` test, with a case.
 - **Per-task ownership enforcement.** The hook records which task's files a
   write landed in, never who wrote it. Unchanged here.
 - **Reducing `drydock-audit.mjs`** (2,077 lines) and the process surface a new
@@ -661,12 +662,45 @@ load the repaired hooks.
 | # | Task | What deviated | Why | Impact | Recorded |
 |---|---|---|---|---|---|
 | 1 | T0 | T0's checkpoint commit `54b1c0c` contains `docs/plans/006-external-review-repairs.md`, which is outside its `owns`, and `task-close` warned about it. | T0's deliverable is the Baseline table, which lives in the plan file, and the plan file is owned by no task by design. The warning is correct in general and unavoidable here. | None on any gate: T0 sits under `## Phase 0` with no `### Wave` heading, so no `audit-wave` run covers it. Recorded rather than suppressed because the warning is real and a future reader will see it in the manifest. | orchestrator, 2026-09-21 |
+| 2 | Wave 1.1 | The wave was armed and executed with frontmatter `status: APPROVED`; the contract requires `EXECUTING` before a wave runs. | Orchestrator omission: T0 set APPROVED and the transition was never made when `wave-start` ran. `wave-start` does not check it. | None on the work; the status is now derived by `plan-status --write` from this wave's report. `discovered-by-wavecheck`. | wavecheck 1.1, 2026-09-21 |
+| 3 | T1.1.1, T1.1.2, T1.1.3 | Took three spawn rounds. Round 1 (Opus) was killed by an account rate limit after four tool calls each; T1.1.1's partial edit was reverted by the orchestrator. Round 2 was interrupted by the user and left T1.1.1's work uncommitted again. Round 3's T1.1.1 executor inherited that work, audited it against the task block, re-proved the regression guard against the original line 213, and committed it as the sole T1.1.1 commit. | External interruptions, not task failures. | None on attribution: exactly one commit per task, each within `owns`. T1.1.1's authorship is split across two executor contexts, stated here rather than implied away. | wavecheck 1.1, 2026-09-21 |
+| 4 | T1.1.1, T1.1.2 | Complex-tier tasks ran on Sonnet, not Opus. | Chosen after the Opus round exhausted the usage window. The rubric permits it: Complex is "Sonnet + extended thinking, or Opus". | None on the plan's contract. Recorded so the model actually used is on the record. | wavecheck 1.1, 2026-09-21 |
+| 5 | T1.1.3 | T1.1.3 ran after T1.1.1 and T1.1.2 rather than concurrently. | The orchestrator's spawn message was cut off mid-stream and the third spawn was lost; it was issued separately. | None: the three tasks share no files, and the audit's per-commit attribution is order-independent. The wave is still "genuinely parallel" in structure, not in this run's timing. | wavecheck 1.1, 2026-09-21 |
+| 6 | Wave 1.1 | Found **F10**, pre-existing and out of this wave's scope: the ownership hook DENIES a write to a path on a different drive (`Z:/nope/x.ts`, `D:/x.ts`) rather than allowing it as "outside the repo", because `path.relative` across Windows drives returns the absolute target, which does not start with `../`. Measured identical in the pre-plan hook (`a439b08`) and the repaired one. | Discovered while re-running the F1 reproduction against the repaired hook. | Not a regression and not a security hole: it fails closed. It does contradict the documented "outside the repo is not enforced" ceiling. Added to *Out of scope*; T1.R.1 is told about it. `discovered-by-wavecheck`. | wavecheck 1.1, 2026-09-21 |
 
 ## Wavecheck reports
+
+### Wavecheck 1.1, PASS, 2026-09-21
+
+Execution is `fleet`: each task ran as a spawned `drydock:executor`, and this audit was performed by the orchestrating session, which wrote none of the Wave 1.1 diff.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS, with a logged lapse | `format_version: 3` supported; wave 1.1 exists; no prior wave (T0 is Phase 0, unwaved). Frontmatter read `APPROVED`, not `EXECUTING`, during the wave: Deviation 2, `discovered-by-wavecheck`, corrected below by `plan-status --write`. |
+| 2. Ownership | PASS | `audit-wave 1.1: PASS (3 task(s), 3 commit(s), attribution: manifest)`, table below. Working tree clean. |
+| 2b. Enforcement ran | PASS | `enforcement active: 20 hook decision(s) recorded for wave 1.1 (1 denied)`. The one denial is the orchestrator's deliberate liveness probe (`docs/hook-liveness-probe.txt`), which answers the repo's open A9 question in the affirmative for this session: the installed hook is registered and denies. Bash layer: 61 commands observed, 0 writes detected outside `owns`. Caveat, D6: the hook that enforced this wave is the installed, UNREPAIRED 0.14.0 copy. |
+| 3. Forbidden | PASS | `lib/owns-match.mjs` and every package manifest untouched; no `process.exit` or receipt-field line changed in `enforce-owns.mjs`; detector adds no non-zero exit, no `tool_input.command` read, no ignored-file scan; audit script leaves `enforcement active:`, `SUPPORTED_FORMAT_VERSIONS` and `REQUIRED_SECTIONS` alone and does not use `core.quotepath`. The new ancestor walk (`resolveAncestry`, enforce-owns.mjs:218) terminates on `parent === current`. No `.md` edited by T1.1.3. |
+| 4. Acceptance | PASS | Each criterion re-run by the auditor from the plan text: T1.1.1 exit 0 (`enforce-owns: PASS, 32 cases`), T1.1.2 exit 0 (`detect-bash-writes: PASS, 18 cases`), T1.1.3 exit 0 (`138/138 passed`). Independently, the original F1 reproduction against the repaired hook: `docs/jn/a.ts`, `docs/jn/new/deep.ts` and `docs/jn/a/b/c/d.ts` all exit 2 (the middle one was exit 0 at baseline); `docs/real/ok.ts` exit 0. All three executors report watching their new cases fail against the pre-fix code. |
+| 5. Deviations | PASS | Executor-reported deviations logged (3, the inherited T1.1.1 work). Discovered by wavecheck: Deviations 2 and 6. Process deviations 4 and 5 logged. |
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.1.1 | `6143bac` | `drydock/hooks/enforce-owns.mjs`<br>`drydock/hooks/enforce-owns.test.mjs` | `drydock/hooks/enforce-owns.mjs`<br>`drydock/hooks/enforce-owns.test.mjs` | none |
+| T1.1.2 | `72a9d39` | `drydock/hooks/detect-bash-writes.mjs`<br>`drydock/hooks/detect-bash-writes.test.mjs` | `drydock/hooks/detect-bash-writes.mjs`<br>`drydock/hooks/detect-bash-writes.test.mjs` | none |
+| T1.1.3 | `3438442` | `drydock/scripts/drydock-audit.mjs`<br>`drydock/scripts/drydock-audit.test.mjs` | `drydock/scripts/drydock-audit.mjs`<br>`drydock/scripts/drydock-audit.test.mjs` | none |
+
+**Unproven, stated so a PASS does not imply it:** the repaired hooks passed their suites and a direct reproduction, but no host session has loaded them (D6). That needs the 0.15.0 release and a reinstall.
+
+Deviations logged: 6 (2 discovered by wavecheck)
 
 ## Progress log
 
 | Date | Task | Result | Notes |
 |---|---|---|---|
+| 2026-09-21 | T0 | done | `54b1c0c`, baseline recorded, index row added |
+| 2026-09-21 | T1.1.1 | done | `6143bac`, junction escape closed, suite runnable on Windows (32 cases) |
+| 2026-09-21 | T1.1.2 | done | `72a9d39`, rename parse and repeat-write detection (18 cases) |
+| 2026-09-21 | T1.1.3 | done | `3438442`, NUL-delimited paths, not-found heuristic, execPath quoting (138/138) |
+| 2026-09-21 | Wave 1.1 | PASS | wavecheck |
 
 ## Reconcile report
