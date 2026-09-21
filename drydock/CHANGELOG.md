@@ -1,5 +1,108 @@
 # Changelog
 
+## 0.15.0: 2026-09-21
+
+**Nine findings, eight from a 2026-09-20 external review plus one found by this
+plan's own approval gate, are repaired and released as `docs/plans/
+006-external-review-repairs.md`.** Every review finding was reproduced
+first-hand against the working tree before any fix was written, and a
+fresh-context adversarial review rejected the first repair pass on two further
+findings before approving a second pass.
+
+**F1, the ownership hook's junction escape (HIGH).** `enforce-owns.mjs`
+resolved only the write target's immediate parent directory, so a junction or
+symlink placed above a not-yet-existing target directory was never resolved,
+and a write through it landed outside `owns` while the hook allowed it. It now
+resolves the deepest existing ancestor and re-appends the unresolved
+remainder, which also closes a symlinked final path component that was never
+resolved before. The re-review then found the first fix incomplete: a link
+that exists but cannot itself be resolved (a dangling symlink or junction, a
+loop) was still treated as "does not exist" and climbed past. That case is now
+denied outright.
+
+**F2 and F3, the Bash write detector (MEDIUM).** A rename record under
+`git status -z` had its old path mangled by an off-by-three slice, reporting a
+fabricated path for a rename entirely inside the boundary. Separately, a
+second write to a path already marked dirty produced no new detection at all,
+and the receipt for that command read `observed`, asserting the boundary was
+clean when an out-of-boundary write had in fact occurred. The detector now
+snapshots per-path content identity (size and nanosecond mtime) instead of a
+path set, so a repeat write to a dirty path is now reported as `detected`. The
+traded cost, stated rather than left for a reader to find: a content-identical
+rewrite of an already-dirty path (a touch, a normalizing `git add`) now also
+reports as `detected`, a documented false positive taken on to close the false
+negative.
+
+**F4, non-ASCII filenames falsely blocked, plus a rename out of an unowned
+path invisible to the audit (MEDIUM, MAJOR).** `git show --name-only` without
+`-z` quotes and octal-escapes any non-ASCII path, so a conforming task
+committing an accented filename was blocked for owning a file it owned. The
+three parsing call sites in `drydock-audit.mjs` now pass `-z` and split on
+NUL. The re-review that found the F1 gap also found that `git show` without
+`--no-renames` lists only the destination of a rename, so a task could `git
+mv` a file out of a path it does not own and the audit would never see the
+source side. All three call sites now pass `--no-renames` too.
+
+**F5, both test suites unrunnable on stock Windows (MEDIUM).**
+`enforce-owns.test.mjs` called `symlinkSync` at module scope, which throws
+`EPERM` without Developer Mode or elevation, so none of its 30 declared cases
+ran. `drydock-audit.test.mjs` failed two cases because `process.execPath`, a
+path containing a space on this machine, was interpolated unquoted into a
+`cmd.exe` command line. Both are fixed: link creation now uses a Windows
+junction with a POSIX symlink fallback, and the path is quoted. This is why F5
+mattered beyond itself: F1 is exactly the class of bug a suite that cannot run
+will not catch, and F1 shipped anyway.
+
+**F9, `prove-failable` misreporting a failing criterion as unrunnable
+(MEDIUM, found while gating this plan, not by the review).** A criterion that
+legitimately failed was reported unable to run at all whenever its own nested
+test output happened to contain the words "not found" anywhere in stderr,
+because the heuristic scanned the whole stream. It failed two of this plan's
+own correct criteria during Phase 1 gating. The scan is now narrowed to the
+first line of stderr, where a shell's own diagnostic appears; the exit codes
+the heuristic exists to catch were already handled separately and are
+unaffected.
+
+**F6 and F8, documentation the code contradicted (LOW).** The plugin README
+now states plainly that a plan document is executed, not merely read:
+`prove-failable` and wavecheck run backticked strings lifted from a plan
+through the shell. Four separate statements that `audit-wave` "never consults
+the hook" are corrected: it reads the hook's own enforcement log. The
+wavecheck ordering contradiction between "stop early only on check 1 failure"
+and an empty-log BLOCK raised under check 2 is resolved.
+
+**Deferred, named rather than dropped.** F7, the hooks going inert when
+`CLAUDE_PROJECT_DIR` is unset and the working directory is a subdirectory, is
+documented robustness rather than a live hole under Claude Code, which always
+sets that variable; not fixed here. F10, found during this plan and
+pre-existing: a write to a path on a different drive is DENIED rather than
+allowed as "outside the repo", because `path.relative` across Windows drives
+never returns a path prefixed with the parent marker; fails closed, not a
+regression, but contradicts the documented ceiling, and is not fixed here.
+Carried forward from the re-review, unmeasured and worth stating loudly: on a
+volume where `realpathSync.native` fails while `lstat` succeeds (some SMB
+shares, RAM disks, virtual filesystems), the new "exists but does not resolve"
+branch would deny every write in an armed wave where the old code climbed past
+and allowed it. That is an availability risk rather than an escape, since it
+fails closed; the unwedge is removing `.drydock/wave-owns.json`. Several MINOR
+and NIT items (a working-tree rename's old path still sliced wrong, a
+deny-by-throw writing no receipt, a hard link still followed with no
+documentation saying so, a POSIX parent-directory-after-symlink suspicion) are
+recorded rather than fixed.
+
+**Verification honesty.** Every wave of the plan that produced this release
+was enforced by the INSTALLED, unrepaired 0.14.0 hook, because hooks load from
+the installed plugin, never the working tree. The repaired hooks passed their
+suites and direct reproductions against the pre-fix code, but no host session
+has loaded the repaired code itself: that needs this release installed
+(`claude plugin marketplace update drydock` then `claude plugin update
+drydock@drydock`) and a fresh session. One positive is on the record from this
+same execution: the installed hook was observed live, denying a deliberate
+probe mid-wave, the first recorded answer to this repo's open A9 question.
+
+Tests: audit 136 to 139, hook (enforce-owns) 30 to 33 (previously ran 0 of its
+cases on stock Windows), detector (detect-bash-writes) 14 to 18.
+
 ## 0.14.0: 2026-09-20
 
 **`drydock:init`, and the host profile it writes.** The practices interview ran
