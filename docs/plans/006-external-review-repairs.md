@@ -871,6 +871,7 @@ Deviations logged: 0 (0 discovered by wavecheck)
 | 2026-09-21 | Phase 2 gate | CLOSED | release approved by Sandeep Takasi |
 | 2026-09-21 | reconcile | RECONCILED | 10 proposals (8 CLAUDE.md, 2 docs/architecture.md), none applied |
 | 2026-09-21 | R1 to R10 | applied | accepted by Sandeep Takasi |
+| 2026-09-21 | D6 follow-up | verified live | After `claude plugin update`, the host ran the **0.15.0** hook with no restart (denials name `drydock/0.15.0/hooks/enforce-owns.mjs`). Through the real Write tool, with a probe boundary `owns: ["docs/plans/**"]`: a write via a junction into a not-yet-existing directory was DENIED, resolved to `site/newdir-probe/x.txt` (F1); a write via a dangling junction was DENIED, "exists but does not resolve" (Wave 1.3); an owned write into a new directory was ALLOWED. All probe files and junctions removed. Confirms live the re-review NIT that a deny raised by a throw writes no receipt: the dangling-link deny left no log entry. Supersedes the 0.15.0 CHANGELOG sentence that no host session had loaded the repaired code. |
 
 ## Reconcile report
 
