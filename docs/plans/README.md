@@ -12,7 +12,7 @@ would have lost.
 | [003-hero-revamp](003-hero-revamp.md) | Hero section rebuild | DONE |
 | [004-seatrial-e2e-gate](004-seatrial-e2e-gate.md) | The `seatrial` browser gate (v0.5.0) | RECONCILED |
 | [005-small-lane-and-solo-mode](005-small-lane-and-solo-mode.md) | The `lane: small` / `execution: solo` short-form track (v0.8.0) | RECONCILED |
-| [006-external-review-repairs](006-external-review-repairs.md) | The nine repairs an outside review and this plan's own gate found (v0.15.0) | EXECUTING |
+| [006-external-review-repairs](006-external-review-repairs.md) | The nine repairs an outside review and this plan's own gate found (v0.15.0) | RECONCILED |
 
 Plan 001 also has a [field case study](../case-study-001-homepage.md) written
 against it, including the parts that reflect badly on the tool.

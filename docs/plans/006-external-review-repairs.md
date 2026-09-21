@@ -1,7 +1,7 @@
 ---
 plan: 006-external-review-repairs
 format_version: 3
-status: EXECUTING
+status: RECONCILED
 isolation: none
 enforcement: required
 attribution: manifest
@@ -869,5 +869,190 @@ Deviations logged: 0 (0 discovered by wavecheck)
 | 2026-09-21 | T2.2.1 | done | `b2230fa`, release-note provenance corrected |
 | 2026-09-21 | Wave 2.2 | PASS | wavecheck; Phase 2 gate mechanically met, awaiting human sign-off |
 | 2026-09-21 | Phase 2 gate | CLOSED | release approved by Sandeep Takasi |
+| 2026-09-21 | reconcile | RECONCILED | 10 proposals (8 CLAUDE.md, 2 docs/architecture.md), none applied |
 
 ## Reconcile report
+
+Reconciled 2026-09-21. Preconditions checked: every implementation wave (1.1, 1.2, 1.3, 2.1, 2.2) has a PASS report and the 1.R review wave an APPROVED verdict; the one human gate (Phase 2) reads `CLOSED, approved by Sandeep Takasi - 2026-09-21`; the Testing Gate is `N/A` with a reason, so no `verdict.md` is required. Proposal targets are limited to `CLAUDE.md`, `docs/decisions` and `docs/architecture.md`. **Nothing below has been applied.**
+
+### Deviation synthesis
+
+| Cluster | Deviations | Produces |
+|---|---|---|
+| (a) An assumption was false | 7 (the planner's F1 sketch, "realpath the first ancestor that exists", assumed a path either resolves or does not exist; a dangling link does neither), 6 (F10: "paths outside the repo are not enforced" is false across Windows drives) | R9, R10 |
+| (b) Instructions were ambiguous or incomplete | 1 (T0 writes the plan file, which no task owns), 2 (nothing says who moves `APPROVED` to `EXECUTING`, and `wave-start` does not), 8 (no criterion covered the accuracy of release prose) | R4, R5, R8; planwright feedback |
+| (c) The environment moved mid-execution | 3 (a usage limit killed all three parallel executors; a user interrupt left uncommitted work), 4 (model tier dropped to Sonnet after the limit), 5 (a cut-off orchestrator message lost one spawn) | R7 |
+| (d) Executor overreach | none. Every executor stayed inside `owns`; the one inheriting a predecessor's uncommitted work reported it as a deviation and re-proved it rather than trusting it. | none |
+
+### Assumption postmortem
+
+| Id | Assumption | Verdict |
+|---|---|---|
+| D1 | Fleet execution, three genuinely parallel code tasks | **held**, with caveats: parallelism made one usage-limit cutoff cost all three tasks (Deviation 3) |
+| D2 | Cut the release in this plan | **held** |
+| D3 | A junction makes the link tests run on stock Windows | **held**: junctions, including DANGLING ones, need no privilege |
+| D4 | No shared project-root helper | **held** (moot once F7 was deferred) |
+| D5 | Testing Gate `N/A`: `assert-copy` already pins the badge | **held**: `assert-copy: PASS ... version matches plugin.json` |
+| D6 | The plan cannot prove its fixes in a host session | **held**; still true until 0.15.0 is installed |
+| D7 | Document F6 rather than change it | **held** |
+| D8 | `attribution: manifest` | **held**: all 10 tasks attributed, no ambiguity |
+| D9 | Sandeep signs the release gate | **held** |
+| D10 | Docs in a later wave, after the code | **held**: the vocabulary scan in the audit suite passed with the docs edited against landed code |
+| D11 | Defer F7 | **never-exercised** |
+| D12 | `-z`, not `core.quotepath=false` | **held** |
+| D13 | Case-count criteria resist the token-in-a-comment cheat | **held**: every executor watched its new cases fail first |
+| D14 | Fix F9 | **held**: later criteria that invoke the audit suite classified correctly |
+| D15 | Repair a review rejection in a new wave | **held**: sealed waves 1.1 and 2.1 stayed unambiguous |
+| D16 | `--no-renames` cannot change a sealed audit | **held**: `git log --diff-filter=R` over the whole history is empty |
+| D17 | Fix the release-note provenance | **held** |
+| F1 | The ancestor walk closes the junction escape | **failed as specified**: closed for resolvable links, open for dangling ones until Wave 1.3 |
+| F3 | A path-set diff misses repeat writes | **held**, and its fix introduced a stated false positive |
+| Constraint | Hooks run from the installed plugin | **held**: the installed 0.14.0 hook enforced every wave and denied a deliberate probe, the first recorded observation answering A9 |
+| Constraint | Criteria run through `cmd.exe`; `\d` does not survive | **held**, measured twice (R1) |
+
+### New knowledge
+
+Facts execution established that no target doc states: backslash escapes in a `node -e` criterion do not survive `prove-failable`'s shell (R1); `$?` read after a `$(...)` in the same string reports the substitution, which produced a false "no regression" reading mid-gate (R2); directory junctions, dangling or not, need no privilege on Windows while file symlinks do (R3); `wave-start` refuses a dirty plan (R4) and does not advance status (R5); a review rejection after a sealed wave needs new task ids (R6); an executor cut off mid-task leaves real work uncommitted in its owned files (R7); `plan-status` counts every `**Phase gate:` line as a gate (R8).
+
+### Proposals
+
+#### Proposal R1 | target: CLAUDE.md | kind: addition
+Finding: the first draft of this plan shipped acceptance criteria that could fail but never pass, because `\d` in a `node -e` criterion is eaten on its way through `cmd.exe` (Findings, constraints; Pressure-test verdict).
+Confidence: high
+```diff
+@@ Toolchain facts that cost time to discover @@
+   regardless of repo state, and the idiom was written on Linux `wc` habits.
++- **Acceptance criteria run through the PLATFORM shell, which is `cmd.exe` on
++  Windows** (`prove-failable` and wavecheck use `spawnSync(cmd, {shell: true})`).
++  A backslash escape inside a `node -e "..."` criterion does not survive the
++  trip: `/PASS, (\d+) cases/` arrives as a regex that never matches, so the
++  criterion can fail but can never pass. Use character classes (`[0-9]`, `[/]`)
++  and no backslashes. Prove BOTH halves by running the criterion through
++  `spawnSync(..., {shell: true})`, not through Git Bash, which adds its own
++  quoting layer. A criterion that runs a test suite should pass
++  `stdio: ['ignore','pipe','ignore']` and wrap it in `try/catch`, so the
++  suite's failure text never reaches the criterion's own stderr. Measured
++  2026-09-20, plan 006.
+```
+
+#### Proposal R2 | target: CLAUDE.md | kind: addition
+Finding: during wavecheck 1.1 a comparison harness reported every probe as exit 0, "proving" old and new hooks identical, because `$?` was read after a command substitution in the same `echo` (Deviation 6's investigation).
+Confidence: high
+```diff
+@@ Toolchain facts that cost time to discover @@
++- **`$?` read after a `$(...)` in the same string reports the substitution,
++  not your command.** `node hook.mjs; echo "$(basename $H) -> $?"` prints the
++  exit status of `basename`, always 0. Capture first: `node hook.mjs; rc=$?;
++  echo "... -> $rc"`. It produced a false "no difference between old and new
++  hook" reading mid-gate in plan 006 before the capture was fixed.
+```
+
+#### Proposal R3 | target: CLAUDE.md | kind: addition
+Finding: the enforce-owns suite ran 0 of its 30 cases on stock Windows because it used `symlinkSync`; a junction needs no privilege, even to a target that does not exist, and that is how both F1 and its dangling-link twin were reproduced and tested (F5, D3, T1.3.1).
+Confidence: high
+```diff
+@@ Toolchain facts that cost time to discover @@
++- **On Windows, directory junctions need no privilege; file symlinks do.**
++  `cmd /c mklink /J <link> <target>` works unelevated, even when `<target>`
++  does not exist (a dangling junction), while `fs.symlinkSync` throws `EPERM`
++  without Developer Mode. A test that creates links at module scope with
++  `symlinkSync` dies before its first case here: the enforce-owns suite ran 0
++  of 30 cases on this machine until plan 006. Create junctions on Windows,
++  symlinks elsewhere, and give every link-dependent case its own skip line.
+```
+
+#### Proposal R4 | target: CLAUDE.md | kind: correction
+Finding: after writing the Deviation Log between waves, `wave-start` refused to arm because the plan had uncommitted changes; the existing bullet says when to write the plan but not that the write must be committed before the next wave (Deviation 1 and the refusal that followed it).
+Confidence: high
+```diff
+@@ Executing a plan here @@
+   tasks, `rm .drydock/wave-owns.json`, then write the Deviation Log and the
+-  wavecheck report. Measured 2026-09-01, plan 005 deviation 2. Widening `owns`
++  wavecheck report, **then commit it**: `wave-start` refuses to arm the next
++  wave over a plan with uncommitted changes (measured 2026-09-21, plan 006).
++  Measured 2026-09-01, plan 005 deviation 2. Widening `owns`
+```
+
+#### Proposal R5 | target: CLAUDE.md | kind: addition
+Finding: plan 006 ran its first wave with `status: APPROVED`; the contract requires `EXECUTING`, and neither `wave-start` nor any skill moves it (Deviation 2, discovered by wavecheck).
+Confidence: high
+```diff
+@@ Executing a plan here @@
++- **Set `status: EXECUTING` yourself, in the commit before the first
++  `wave-start`, and move the plan's row in `docs/plans/README.md` with it.**
++  `wave-start` arms a wave on an `APPROVED` plan without complaint, and
++  `plan-status --write` only corrects it after a wavecheck report exists.
++  `assert-matrix` fails CI whenever the index row and the frontmatter disagree.
++  Measured 2026-09-21, plan 006 deviation 2.
+```
+
+#### Proposal R6 | target: CLAUDE.md | kind: addition
+Finding: when a quality review rejects work in an already-sealed wave, a second commit and `task-close` under the sealed task id would make that wave's attribution ambiguous; plan 006 (and plan 004 before it) repaired in a new wave with new ids (D15, Deviation 7).
+Confidence: high
+```diff
+@@ Executing a plan here @@
++- **Repair a quality-review rejection in a NEW wave with NEW task ids**, never a
++  second commit under a task whose wave is sealed. Two `task-close` entries for
++  one task are ambiguity, not last-wins, and would break the sealed wave's
++  re-audit. A later wave may re-own the same files (sequential handoff). The
++  contract's "targeted fix task appended" remedy needs no `/drydock:replan`;
++  log it as a deviation. Plans 004 and 006 both did this.
+```
+
+#### Proposal R7 | target: CLAUDE.md | kind: addition
+Finding: a usage limit killed three parallel executors at once, and a later interrupt left an executor's correct, passing work uncommitted in its owned files (Deviation 3).
+Confidence: high
+```diff
+@@ Executing a plan here @@
++- **An executor cut off mid-task leaves real work uncommitted in its owned
++  files, and parallel spawns share one fate.** A usage limit ended all three of
++  plan 006's Wave 1.1 executors together. Before respawning, run `git status`
++  and the task's criterion: either revert the owned files to a clean baseline,
++  or tell the next executor the work is inherited and must be audited against
++  the task block and re-proved before its one commit. Report the split
++  authorship as a deviation. When the budget is tight, spawn a wave's tasks one
++  at a time so each finished task is committed before the next starts.
+```
+
+#### Proposal R8 | target: CLAUDE.md | kind: addition
+Finding: `plan-status` reported "2 phase gates ask for human approval" for one gate, because it treats every line starting `**Phase gate:` as its own gate, and plan 006 wrote the declaration and its status on separate lines.
+Confidence: high
+```diff
+@@ Executing a plan here @@
++- **Write each phase gate as ONE `**Phase gate:` line and rewrite it in place
++  when it closes.** `plan-status` and `reconcile` treat every line beginning
++  `**Phase gate:` as a separate gate, so a declaration line plus an
++  `OPEN`/`CLOSED` status line reads as two gates, and the declaration, which
++  still says "human approval" with no signature, stays unsigned forever.
+```
+
+#### Proposal R9 | target: docs/architecture.md | kind: correction
+Finding: the detector's gate row lists four blind spots; 0.15.0 adds a stated false positive, and the Wave 1.R review measured two more misses (a deletion of an untracked unowned file, and a `git checkout --` restore, both record `observed`) (Wave 1.R verdicts; T1.1.2).
+Confidence: high
+```diff
+-| `detect-bash-writes.mjs` (PostToolUse) | any file a Bash command changed outside the armed wave's `owns`, recorded immediately, including writes that are never committed — plus an `observed` receipt proving the layer was alive | it cannot PREVENT, the command has already run; gitignored paths, write-then-restore inside one command, paths outside the repo, and backgrounded commands that finish after the hook |
++| `detect-bash-writes.mjs` (PostToolUse) | any file a Bash command changed outside the armed wave's `owns`, recorded immediately, including writes that are never committed and repeat writes to an already-dirty path (from 0.15.0) — plus an `observed` receipt proving the layer was alive | it cannot PREVENT, the command has already run; gitignored paths, write-then-restore inside one command, paths outside the repo, backgrounded commands that finish after the hook, and a path that LEAVES `git status` (deleting an untracked file, a `git checkout --` restore), which records `observed`. Also over-reports: a content-identical rewrite of an already-dirty path reads as detected |
+```
+
+#### Proposal R10 | target: docs/architecture.md | kind: correction
+Finding: the ownership hook's row says it is blind to paths outside the project directory; plan 006 measured that a path on another Windows drive is DENIED rather than ignored (F10, Deviation 6), and that a hard link is followed (Wave 1.R re-review).
+Confidence: high
+```diff
+-| `enforce-owns.mjs` (PreToolUse) | Write/Edit to a path the armed wave does not own — denied at the tool boundary, before the edit lands | **Bash-mediated writes**, which it cannot see and which the detector below covers instead, and paths outside the project directory |
++| `enforce-owns.mjs` (PreToolUse) | Write/Edit to a path the armed wave does not own, including through a junction or symlink anywhere in the path, dangling or not (0.15.0) — denied at the tool boundary, before the edit lands | **Bash-mediated writes**, which it cannot see and which the detector below covers instead; paths outside the project directory (but a path on a DIFFERENT Windows drive is denied, not ignored: F10); and hard links, which resolve to the unowned file |
+```
+
+#### Question for the human (outside the allowed targets)
+`docs/compatibility.md` is the site's source of truth for verification claims and is not a reconcile target. This plan observed the installed hook live in a host session, denying a deliberate probe (Wavecheck 1.1, check 2b), which is direct evidence on the open A9 question. Whether one session's observation is enough to move that row is a judgement for you under the honesty rule; nothing here promotes it.
+
+### Feedback for the skills
+
+**planwright (cluster b):**
+- An implementation sketch that resolves paths must say how to tell "does not exist" from "exists but cannot be resolved". The F1 sketch said "realpath the first ancestor that exists", the executor built exactly that, and a dangling link walked through it. The adversarial pressure test read the sketch and missed it; only the post-implementation review, which measured, caught it.
+- Prose-heavy tasks (release notes, doc corrections) need either a claims checklist in the brief or a reviewer read. No mechanical criterion caught the release note crediting the wrong review (Deviation 8).
+- The template should state that T0 writes the plan file and that its `task-close` warning is expected, or give T0 no `task-close`.
+- The template's phase-gate form should be one line (R8).
+
+**executor (cluster d):** no feedback. The inheritance protocol already in the contract ("verify with `git log`, report the situation as a deviation") worked as written when an executor inherited uncommitted work.
+
+**Tooling, noted for a later plan:** `wave-start` could refuse, or advance, a plan that is not `EXECUTING` (R5).
