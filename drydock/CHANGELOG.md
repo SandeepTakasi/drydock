@@ -3,8 +3,7 @@
 ## 0.15.0: 2026-09-21
 
 **Nine findings, eight from a 2026-09-20 external review plus one found by this
-plan's own approval gate, are repaired and released as `docs/plans/
-006-external-review-repairs.md`.** Every review finding was reproduced
+plan's own approval gate, ship as 0.15.0, produced by plan `docs/plans/006-external-review-repairs.md`.** Every review finding was reproduced
 first-hand against the working tree before any fix was written, and a
 fresh-context adversarial review rejected the first repair pass on two further
 findings before approving a second pass.
@@ -15,7 +14,7 @@ symlink placed above a not-yet-existing target directory was never resolved,
 and a write through it landed outside `owns` while the hook allowed it. It now
 resolves the deepest existing ancestor and re-appends the unresolved
 remainder, which also closes a symlinked final path component that was never
-resolved before. The re-review then found the first fix incomplete: a link
+resolved before. The first quality review then found the first fix incomplete: a link
 that exists but cannot itself be resolved (a dangling symlink or junction, a
 loop) was still treated as "does not exist" and climbed past. That case is now
 denied outright.
@@ -38,7 +37,7 @@ path invisible to the audit (MEDIUM, MAJOR).** `git show --name-only` without
 `-z` quotes and octal-escapes any non-ASCII path, so a conforming task
 committing an accented filename was blocked for owning a file it owned. The
 three parsing call sites in `drydock-audit.mjs` now pass `-z` and split on
-NUL. The re-review that found the F1 gap also found that `git show` without
+NUL. The first quality review that found the F1 gap also found that `git show` without
 `--no-renames` lists only the destination of a rename, so a task could `git
 mv` a file out of a path it does not own and the audit would never see the
 source side. All three call sites now pass `--no-renames` too.
