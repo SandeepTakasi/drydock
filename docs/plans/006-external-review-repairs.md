@@ -663,8 +663,7 @@ exits 0 + Wave 1.R APPROVED.
 **Exit state:** 0.15.0 is published with the findings described, the site badge
 and root README match `plugin.json`, and the installed plugin can be updated to
 load the repaired hooks.
-**Phase gate:** `npm run verify` in `site/` exits 0 + human approval.
-**Phase gate: OPEN.** Mechanical conditions met on 2026-09-21: `npm run verify` in `site/` exits 0, ending `assert-copy: PASS ... version matches plugin.json` and `assert-matrix: PASS`; suites 33/33, 18/18 and 139/139; waves 2.1 and 2.2 PASS. **Awaiting the named human approval (D9).** Not inferred from the instruction to execute the plan: a release gate exists so that a person looks at the release.
+**Phase gate: CLOSED, approved by Sandeep Takasi - 2026-09-21.** Human release approval given in session, recorded by name and date per D9. Conditions met: `npm run verify` in `site/` exits 0, ending `assert-copy: PASS ... version matches plugin.json` and `assert-matrix: PASS`; suites 33/33, 18/18 and 139/139; waves 2.1 and 2.2 PASS.
 
 ### Wave 2.1 - Cut 0.15.0
 
@@ -869,5 +868,6 @@ Deviations logged: 0 (0 discovered by wavecheck)
 | 2026-09-21 | Wave 2.1 | PASS | wavecheck; provenance finding, Wave 2.2 added |
 | 2026-09-21 | T2.2.1 | done | `b2230fa`, release-note provenance corrected |
 | 2026-09-21 | Wave 2.2 | PASS | wavecheck; Phase 2 gate mechanically met, awaiting human sign-off |
+| 2026-09-21 | Phase 2 gate | CLOSED | release approved by Sandeep Takasi |
 
 ## Reconcile report
