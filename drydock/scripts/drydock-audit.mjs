@@ -1248,7 +1248,13 @@ function auditWave(path, wave) {
       // escapes. The trailing element after the last NUL is empty; `filter
       // (Boolean)` below drops it, same as it already drops a merge commit's
       // empty output.
-      const files = git(["show", "-z", "--name-only", "--format=", sha]).split("\0").map((s) => s.trim()).filter(Boolean);
+      // `--no-renames` (finding 3, Wave 1.R): without it, a rename is collapsed
+      // to its destination alone -- `git mv site/s.ts docs/s.ts` prints only
+      // `docs/s.ts` -- so a task owning `docs/**` could delete an unowned
+      // `site/s.ts` by renaming it into its own tree and the source would never
+      // reach the `owns` check. `--no-renames` prints both sides and overrides
+      // any local `diff.renames` config.
+      const files = git(["show", "-z", "--no-renames", "--name-only", "--format=", sha]).split("\0").map((s) => s.trim()).filter(Boolean);
       const strays = files.filter((f) => !task.owns.some((glob) => matchesGlob(f, glob) || f === glob));
       for (const f of files) {
         if (claimed.has(f) && claimed.get(f) !== task.id) {
@@ -1350,10 +1356,11 @@ function auditWave(path, wave) {
         const [sha, subject] = line.split("\x1f");
         if (fullShas.has(sha)) continue;
 
-        // `-z`, see the F4 comment on the sibling call above: newline-separated
-        // output quotes and octal-escapes non-ASCII paths, which then matches no
-        // glob at all.
-        const files = git(["show", "-z", "--name-only", "--format=", sha]).split("\0").map((x) => x.trim()).filter(Boolean);
+        // `-z` and `--no-renames`, see the F4 and finding-3 comments on the
+        // sibling call above: newline-separated output quotes and
+        // octal-escapes non-ASCII paths, and without `--no-renames` a rename
+        // out of an unowned path shows only its destination.
+        const files = git(["show", "-z", "--no-renames", "--name-only", "--format=", sha]).split("\0").map((x) => x.trim()).filter(Boolean);
         if (files.length === 0) continue; // merge or empty commit
 
         // The plan document is owned by no task BY DESIGN -- the orchestrator
@@ -1699,10 +1706,12 @@ function taskClose(planPath, taskId) {
   }
 
   const sha = git(["rev-parse", "HEAD"]);
-  // `-z`, same reason as the two call sites in `auditWave`: newline-separated
-  // `git show --name-only` quotes and octal-escapes a non-ASCII path, and the
-  // manifest would then record a string the plan's `owns` globs never match.
-  const files = git(["show", "-z", "--name-only", "--format=", sha]).split("\0").map((s) => s.trim()).filter(Boolean);
+  // `-z` and `--no-renames`, same reason as the two call sites in `auditWave`:
+  // newline-separated `git show --name-only` quotes and octal-escapes a
+  // non-ASCII path, and without `--no-renames` a rename out of an unowned
+  // path shows only its destination -- either way the manifest would then
+  // record a string (or miss a path) the plan's `owns` globs never match.
+  const files = git(["show", "-z", "--no-renames", "--name-only", "--format=", sha]).split("\0").map((s) => s.trim()).filter(Boolean);
 
   // The audit re-derives this from the sha and will catch a mismatch anyway, so
   // this is a fast local signal at the moment it is still cheap to fix — not the

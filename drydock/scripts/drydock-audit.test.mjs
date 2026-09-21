@@ -487,6 +487,39 @@ attribution: manifest
     return cli(dir, ["audit-wave", "plan.md", "1.0"]);
   }, (out) => out.includes("audit-wave 1.0: PASS") && out.includes("café.md") && !out.includes("outside its `owns`")],
 
+  // Finding 3 (Wave 1.R): `git show --name-only` without `--no-renames` prints
+  // only the destination of a rename, so a task owning `docs/**` can `git mv`
+  // an unowned `site/s.ts` into `docs/s.ts` and the source vanishes from what
+  // gets checked against `owns` -- an unowned file deleted by renaming it away,
+  // invisible to the audit. Asserting the source path is named as a stray is
+  // the only way to catch a regression here: a broken parse does not throw, it
+  // just fails to see half the commit.
+  ["r3-rename-out: a rename out of an unowned path is seen as two files, not one", () => {
+    const dir = join(DIR, "repo-r3-rename-out");
+    mkdirSync(join(dir, "site"), { recursive: true });
+    mkdirSync(join(dir, "docs"), { recursive: true });
+    git(dir, ["init", "-q", "-b", "main"]);
+    writeFileSync(join(dir, ".gitignore"), ".drydock/\n");
+    writeFileSync(join(dir, "plan.md"), `---
+plan: 900-fixture
+format_version: 3
+status: EXECUTING
+attribution: manifest
+---
+
+#### T1.0.1 — first
+- **Files owned:** \`docs/**\`
+- **Acceptance criterion:** \`true\` exits 0.
+`);
+    writeFileSync(join(dir, "site", "s.ts"), "export const s = 1;\n");
+    git(dir, ["add", "-A"]);
+    git(dir, ["commit", "-q", "-m", "chore: baseline"]);
+    git(dir, ["mv", "site/s.ts", "docs/s.ts"]);
+    git(dir, ["commit", "-q", "-m", "docs: relocate s"]);
+    cli(dir, ["task-close", "plan.md", "T1.0.1"]);
+    return cli(dir, ["audit-wave", "plan.md", "1.0"]);
+  }, (out) => out.includes("site/s.ts") && out.includes("outside its `owns`")],
+
   ["task-close warns about an unowned file while it is still cheap to fix", () => {
     const dir = mkrepo("warn");
     commitAs(dir, ["a.txt", "stray.txt"], "fix(parser): tighten the thing");
