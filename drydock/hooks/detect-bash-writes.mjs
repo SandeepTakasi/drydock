@@ -42,7 +42,15 @@
  *     output, node_modules, .drydock/ itself) but it means "detects everything"
  *     is false.
  *   - A write-then-restore inside ONE command shows nothing.
- *   - A content-identical rewrite shows nothing.
+ *   - A content-identical rewrite of an ALREADY-DIRTY path (a `touch`, or a
+ *     `git add` normalising line endings) now yields a `detected` receipt with
+ *     no content change. That is a false positive, traded on purpose for the
+ *     false negative it replaces: a SECOND write to a path that was already
+ *     dirty before the wave's first Bash command used to be invisible, because
+ *     a plain path-set diff can't see a path that was already in both sets.
+ *     Identity is `size:mtimeNs` from `statSync`, not a content hash -- cheap,
+ *     and a spurious `detected` on an unchanged file is far cheaper to live
+ *     with than silently missing a real edit.
  *   - Paths outside the repo are invisible, same as the file-tool hook.
  *   - A backgrounded command (`run_in_background: true`) finishes after this
  *     hook fires; its writes land in a later command's diff or nowhere.
@@ -56,7 +64,7 @@
  * receipt so the gap is visible rather than silent.
  */
 
-import { readFileSync, writeFileSync, appendFileSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, appendFileSync, mkdirSync, existsSync, statSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { matchesOwns } from "../lib/owns-match.mjs";
@@ -131,14 +139,49 @@ const gitStatus = () => {
     maxBuffer: 16 << 20,
     timeout: 10000,
   });
-  // NUL-delimited so paths with spaces or newlines survive. Renames emit two
-  // records; both are kept, because both ends of a rename are a change.
-  return new Set(out.split("\0").filter(Boolean).map((e) => e.slice(3)).filter(Boolean));
+  // NUL-delimited so paths with spaces or newlines survive. A rename/copy
+  // record (status starts R or C) is TWO NUL-terminated fields: `XY <new>`
+  // followed by a BARE `<old>` with no "XY " prefix at all. Walking by index
+  // and consuming the following record whole for those two statuses is the
+  // only way to get the old path right -- slice(3) on it eats three real
+  // characters off a field that never had a prefix to slice.
+  const records = out.split("\0").filter(Boolean);
+  const paths = new Set();
+  for (let i = 0; i < records.length; i++) {
+    const rec = records[i];
+    const status = rec.slice(0, 2);
+    paths.add(rec.slice(3));
+    if (status[0] === "R" || status[0] === "C") {
+      i += 1;
+      if (i < records.length) paths.add(records[i]);
+    }
+  }
+  return paths;
 };
 
-let after;
+// Content identity for one repo-relative path: cheap and sufficient to answer
+// "did this path change", not a hash. A path git status reports but that is
+// no longer on disk (deleted, or the old half of a rename) gets the literal
+// "absent" -- itself an identity, so a path going absent->present or
+// present->absent still counts as changed.
+const identityOf = (rel) => {
+  try {
+    const st = statSync(path.join(projectDir, rel), { bigint: true });
+    return `${st.size}:${st.mtimeNs}`;
+  } catch {
+    return "absent";
+  }
+};
+
+const snapshotOf = (paths) => {
+  const snap = {};
+  for (const p of paths) snap[p] = identityOf(p);
+  return snap;
+};
+
+let afterPaths;
 try {
-  after = gitStatus();
+  afterPaths = gitStatus();
 } catch (err) {
   // Not a git repo, git absent, or a timeout. Detection did not happen and the
   // receipt says so rather than leaving a silent gap.
@@ -148,16 +191,26 @@ try {
 
 let before = null;
 try {
-  if (existsSync(snapshotPath)) before = new Set(JSON.parse(readFileSync(snapshotPath, "utf8")));
+  if (existsSync(snapshotPath)) {
+    const raw = JSON.parse(readFileSync(snapshotPath, "utf8"));
+    // Compat: the snapshot used to be a JSON array of bare paths (no identity).
+    // An old-shaped snapshot is unusable for identity comparison -- treat it
+    // as missing, same as a corrupt file, rather than crash on it.
+    before = raw && !Array.isArray(raw) && typeof raw === "object" ? raw : null;
+  }
 } catch {
   before = null; // a corrupt snapshot is a missing snapshot
 }
 
+const afterSnap = snapshotOf(afterPaths);
+
 // Roll the snapshot forward before doing anything else with it, so a throw
-// below cannot wedge the next command into re-reporting the same paths.
+// below cannot wedge the next command into re-reporting the same paths. This
+// REPLACES the snapshot rather than merging it, so a path that stops showing
+// up in git status (committed, reverted) naturally drops out.
 try {
   mkdirSync(dir, { recursive: true });
-  writeFileSync(snapshotPath, JSON.stringify([...after]));
+  writeFileSync(snapshotPath, JSON.stringify(afterSnap));
 } catch {}
 
 // No snapshot yet means this is the first Bash command of the wave and there is
@@ -168,7 +221,7 @@ if (before === null) {
   done();
 }
 
-const changed = [...after].filter((f) => !before.has(f));
+const changed = Object.keys(afterSnap).filter((p) => !(p in before) || before[p] !== afterSnap[p]);
 const unowned = changed.filter((f) => !matchesOwns(f, config.owns));
 
 if (unowned.length === 0) {

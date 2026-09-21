@@ -161,6 +161,50 @@ const mutate = (dir, script, sub) =>
   rmSync(dir, { recursive: true, force: true });
 }
 
+// F2: under `-z` a rename is `R  <new>\0<old>\0` -- the old field has NO status
+// prefix, so slicing 3 chars off it (as if it were a normal record) fabricates
+// a path. Neither end of this rename is owned, so BOTH must show up detected,
+// and the old one must be the real path, not a mangled one.
+{
+  const dir = mkrepo("f2-rename-path", { owns: ["other/**"] });
+  seed(dir);
+  execFileSync("git", [...GIT, "mv", "docs/kept.md", "site/moved.md"], { cwd: dir });
+  fire(dir, "git mv docs/kept.md site/moved.md");
+  const det = receipts(dir).filter((e) => e.decision === "detected");
+  const paths = det.map((e) => e.path);
+  report("a rename's old path is reported whole, not mangled",
+    paths.includes("docs/kept.md") && !paths.some((p) => p === "s/kept.md"),
+    `paths=${JSON.stringify(paths)}`);
+  report("a rename's new path is also reported", paths.includes("site/moved.md"), `paths=${JSON.stringify(paths)}`);
+  rmSync(dir, { recursive: true, force: true });
+}
+
+// F3: a path-set diff only sees a path go from clean to dirty once. A SECOND
+// write to a path that was already dirty (outside owns) before the wave's
+// first Bash command must still be detected, not silently folded into
+// "observed" because the path was already in the "after" set last time.
+{
+  const dir = mkrepo("f3-redirty", { owns: ["docs/**"] });
+  seed(dir);
+  mutate(dir, "require('fs').writeFileSync('site/dirty.ts','A')");
+  fire(dir, "echo A >> site/dirty.ts"); // first dirtying: must be detected
+  const afterFirst = receipts(dir);
+  report("the first write to an unowned file is detected",
+    afterFirst.some((e) => e.decision === "detected" && e.path === "site/dirty.ts"),
+    `paths=${JSON.stringify(afterFirst.filter((e) => e.decision === "detected").map((e) => e.path))}`);
+  const countBeforeSecond = afterFirst.length;
+  mutate(dir, "require('fs').writeFileSync('site/dirty.ts','AB')");
+  fire(dir, "echo B >> site/dirty.ts"); // second dirtying of the SAME path
+  // Isolate what THIS command produced -- the cumulative log already contains
+  // a `detected` entry for this path from the first write, so checking the
+  // whole log again would pass even if the second write left no new receipt.
+  const newEntries = receipts(dir).slice(countBeforeSecond);
+  report("a repeat write to an already-dirty unowned file is detected too",
+    newEntries.some((e) => e.decision === "detected" && e.path === "site/dirty.ts"),
+    `new entries=${JSON.stringify(newEntries)}`);
+  rmSync(dir, { recursive: true, force: true });
+}
+
 // --- inertness and failure paths ------------------------------------------
 {
   const dir = mkrepo("unarmed", { armed: false });
