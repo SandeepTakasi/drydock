@@ -74,7 +74,7 @@
  * has to say how to unwedge it.
  */
 
-import { readFileSync, appendFileSync, mkdirSync, realpathSync } from "node:fs";
+import { readFileSync, appendFileSync, mkdirSync, realpathSync, lstatSync } from "node:fs";
 import path from "node:path";
 import { matchesOwns } from "../lib/owns-match.mjs";
 
@@ -211,6 +211,19 @@ const realOr = (p) => {
 // the climb at `p` itself (not `dirname(p)`) also resolves a final path
 // component that is itself a symlink, which the old code never did.
 //
+// A `realpath` throw is NOT always "this segment does not exist yet" -- that
+// conflation is what let a dangling link escape: `docs/dangle -> site/nope`
+// (target absent) has `realpath` throw ENOENT for the same reason a genuinely
+// absent path does, so the old code climbed past it and matched the link's own
+// lexical path (`docs/...`) instead of denying. `lstat` does not follow the
+// final link, so it distinguishes the two: if `lstat` SUCCEEDS on the segment
+// that just failed `realpath`, the segment exists and simply cannot be resolved
+// (a dangling symlink/junction, a symlink loop, or another unreadable entry) --
+// that denies rather than climbing past it. Only when `lstat` itself fails with
+// ENOENT or ENOTDIR is the segment genuinely absent, safe to climb past. Any
+// other `lstat` error (e.g. a permissions failure) also denies rather than
+// climbing, on the same fail-closed posture as everything else in this file.
+//
 // Termination is load-bearing: `path.dirname` reaches a fixed point at the
 // filesystem root (`path.dirname("C:\\") === "C:\\"`, `path.dirname("/") === "/"`),
 // so the climb stops on `parent === current`, never on "path exists" -- a chain
@@ -223,7 +236,18 @@ const resolveAncestry = (p) => {
       const real = realpathSync.native(current);
       return skipped.length ? path.join(real, ...skipped) : real;
     } catch {
-      // not created yet, or unreadable: climb one level and retry
+      let missing = false;
+      try {
+        lstatSync(current);
+      } catch (lerr) {
+        if (lerr.code === "ENOENT" || lerr.code === "ENOTDIR") missing = true;
+        else throw lerr; // some other lstat failure: deny, do not climb past it
+      }
+      if (!missing) {
+        // lstat succeeded where realpath just failed: this segment exists but
+        // does not resolve. Deny -- caught by the outer try/catch below.
+        throw new Error(`exists but does not resolve: ${current}`);
+      }
     }
     const parent = path.dirname(current);
     if (parent === current) return skipped.length ? path.join(current, ...skipped) : current; // nothing in the chain exists

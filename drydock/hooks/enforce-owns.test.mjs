@@ -68,6 +68,11 @@ const LINK_OK = tryDirLink(join(ROOT, "site"), join(ROOT, "docs", "link"));
 // A second link, dedicated to F1: a junction whose escape only shows up two
 // levels below it, where neither intermediate segment exists yet.
 const JUNCTION_OK = tryDirLink(join(ROOT, "site"), join(ROOT, "docs", "jn"));
+// A third link, dedicated to the dangling-link regression (Phase 1 MAJOR):
+// the target does not exist at all, so `realpath` throws for the SAME reason
+// it throws on a genuinely absent path -- the old code could not tell the two
+// apart and climbed past this one too.
+const DANGLE_OK = tryDirLink(join(ROOT, "site", "nope"), join(ROOT, "docs", "dangle"));
 
 const CONFIG_DIR = join(ROOT, ".drydock");
 const CONFIG = join(CONFIG_DIR, "wave-owns.json");
@@ -158,13 +163,53 @@ if (JUNCTION_OK) {
   // to the lexical path -- still lexically under `docs/`, so this was ALLOWED
   // while actually landing in `site/`.
   cases.push(["f1-junction-escape", { file_path: "docs/jn/sub/deep.ts" }, DENY]);
+} else {
+  report("f1-junction-escape", true, "SKIPPED: box permits neither junction nor symlink creation");
+}
+
+if (JUNCTION_OK) {
   // The junction ITSELF is the write target, no subpath at all. The old code
   // never resolved the final path component (only `dirname(absolute)`), so an
   // owned path that is itself a symlink/junction to an unowned file escaped by
   // the same route. Asserts the invariant the sketch calls out explicitly.
+  //
+  // This targets a junction to a DIRECTORY (cross-platform, no privilege on
+  // Windows). See `f1-leaf-file-symlink-escape` below for the leaf-is-a-FILE
+  // case F1 actually named, which needs a privilege Windows does not grant.
   cases.push(["f1-leaf-symlink-escape", { file_path: "docs/jn" }, DENY]);
 } else {
-  report("f1-junction-escape", true, "SKIPPED: box permits neither junction nor symlink creation");
+  report("f1-leaf-symlink-escape", true, "SKIPPED: box permits neither junction nor symlink creation");
+}
+
+if (DANGLE_OK) {
+  // Phase 1 MAJOR: a link that EXISTS (lstat succeeds) but whose target does
+  // not, so `realpath` throws ENOENT for the same reason a genuinely absent
+  // path throws it. The old code could not tell "not created yet" from
+  // "exists but unresolvable" and climbed past this link too, matching its
+  // own lexical path under `docs/` while it resolves nowhere at all.
+  cases.push(["f1-dangling-link", { file_path: "docs/dangle/x.ts" }, DENY]);
+} else {
+  report("f1-dangling-link", true, "SKIPPED: box permits neither junction nor symlink creation");
+}
+
+// MINOR (Phase 1): F1 named a leaf that is a symlink to an existing FILE, not
+// just a directory junction. File symlinks need elevated privilege on
+// Windows (unlike dir junctions, which do not), so this only runs elsewhere,
+// and is simply absent from the count on a box that cannot grant it.
+if (process.platform !== "win32") {
+  let fileLinkOk = false;
+  try {
+    writeFileSync(join(ROOT, "site", "secret.ts"), "// unowned\n");
+    symlinkSync(join(ROOT, "site", "secret.ts"), join(ROOT, "docs", "leaf-file-link"));
+    fileLinkOk = true;
+  } catch {
+    fileLinkOk = false;
+  }
+  if (fileLinkOk) {
+    cases.push(["f1-leaf-file-symlink-escape", { file_path: "docs/leaf-file-link" }, DENY]);
+  } else {
+    report("f1-leaf-file-symlink-escape", true, "SKIPPED: box permits neither junction nor symlink creation");
+  }
 }
 
 for (const [name, toolInput, want] of cases) expectExit(name, toolInput, want);
