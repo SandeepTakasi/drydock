@@ -57,7 +57,8 @@ Run in this order; stop early only on check 1 failure.
    not "was a config present", which a hook that never executed also satisfies.
    The hook records every decision it makes to `.drydock/enforcement.log`, so an
    empty log means the wave ran with the ownership boundary unenforced. On a plan
-   declaring `enforcement: required` that is a BLOCK on check-1 grounds. One
+   declaring `enforcement: required` that is a check-2 BLOCK, found here inside
+   the ownership audit rather than at check 1. One
    innocent cause exists and the report must consider it: a wave whose writes all
    went through Bash never reaches a file-tool hook. Say which you concluded.
 
@@ -75,7 +76,7 @@ Run in this order; stop early only on check 1 failure.
      absence, or a `task-close` entry in `.drydock/attribution.jsonl` under
      `manifest` (v0.7.2), where the subject follows the host repo's own policy.
      A task the mode cannot attribute (no commit, or no manifest entry) is a
-     BLOCK on check 1 grounds (audit is impossible), not a judgment call. The
+     check-2 BLOCK (audit is impossible), not a judgment call. The
      mode changes only the lookup; every check below is identical either way.
    Every task's changed set must ⊆ its `owns` patterns. Files changed that no
    task owns = violation. Two tasks changing the same file = violation and a

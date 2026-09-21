@@ -82,8 +82,12 @@ they answer different questions:
   on it. Detection is not prevention and the plan should not read as though it
   is.
 - `audit-wave` **detects** a violation after the fact, from each task's commit
-  and the working tree, and it never consults the hook. This layer sees
-  everything a commit or a dirty tree carries, Bash-mediated writes included.
+  and the working tree, and that ownership verdict is derived purely from
+  those two sources. The enforcement receipt is a separate signal: when the
+  plan declares `enforcement: required`, the same script also reads
+  `.drydock/enforcement.log`, the hook's own output, and judges it on its own
+  terms. This layer sees everything a commit or a dirty tree carries,
+  Bash-mediated writes included.
 
 So a wave with an empty enforcement log ran without *prevention*; it did not run
 without *auditing*. Reading the pair as "enforcement can only fail on its own

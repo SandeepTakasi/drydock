@@ -46,9 +46,21 @@ planwright ──► [human approves] ──► execute waves ──► wavechec
   **`enforcement: required` is a receipt check, not a coverage guarantee**: it
   asserts the hook ran, and the hook is one of two layers. The hook *prevents*
   at the tool boundary and cannot see Bash; `audit-wave` *detects* from each
-  task's commit and the working tree and never consults the hook, so it catches
-  what the hook is blind to, after the fact rather than before. A wave with an
-  empty log ran without prevention, not without auditing.
+  task's commit and the working tree, and that ownership verdict is derived
+  purely from those two sources, so it catches what the hook is blind to,
+  after the fact rather than before. The enforcement receipt is a separate
+  signal: when the plan declares `enforcement: required`, the same script also
+  reads `.drydock/enforcement.log`, the hook's own output, and judges it on
+  its own terms. A wave with an empty log ran without prevention, not without
+  auditing. **The Bash detection layer's own ceilings, stated plainly:** a
+  `.gitignore`d write leaves no receipt; a write-then-restore inside one
+  command shows nothing; a content-identical rewrite of an already-dirty path
+  (a `touch`, or a line-ending normalisation) now yields a detected receipt
+  with no real change, a false positive traded on purpose for the false
+  negative it replaces; a backgrounded command finishes after the hook fires,
+  so its writes land in a later command's diff or nowhere; and attribution is
+  "changed around this command", not "caused by it", so two executors running
+  Bash concurrently can be credited with each other's changes.
 - **Plan-conformance auditing, not code review.** Wavecheck answers one
   question: did the wave do exactly what the plan said and nothing else?
   Ownership boundaries, forbidden lists, acceptance criteria verified against
@@ -90,6 +102,14 @@ planwright ──► [human approves] ──► execute waves ──► wavechec
   auto-applied.
 - **Replan patches, never regenerates.** Decision Log append-only, completed
   waves immutable, task ids never reused.
+- **A plan document is executed, not merely read.** `drydock-audit.mjs
+  prove-failable` and wavecheck's acceptance audit both run each acceptance
+  criterion's backticked command through the platform shell: once to confirm
+  it can fail, once to confirm it passes. So running either of those gates
+  against a plan document runs commands from the plan, with whatever access
+  that shell has, and that is true whether or not you wrote the plan. Treat a
+  plan file the way you would treat a script from the same source: read it
+  before you gate on it, especially one you did not write yourself.
 
 ## The wave lifecycle, in three commands
 
