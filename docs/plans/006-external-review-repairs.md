@@ -693,6 +693,27 @@ Execution is `fleet`: each task ran as a spawned `drydock:executor`, and this au
 
 Deviations logged: 6 (2 discovered by wavecheck)
 
+### Wavecheck 1.2, PASS, 2026-09-21
+
+Execution is `fleet`; audited by the orchestrating session, which wrote none of this diff.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `status: EXECUTING`; wave 1.2 exists; prior wave 1.1 has a PASS report. Staleness: `git diff fdb862d..HEAD` over the three owned files was empty before arming. |
+| 2. Ownership | PASS | `audit-wave 1.2: PASS (1 task(s), 1 commit(s), attribution: manifest)`, table below. Working tree clean. |
+| 2b. Enforcement ran | PASS | `enforcement active: 6 hook decision(s) recorded for wave 1.2 (0 denied)`. Bash layer: 25 commands observed, 0 writes detected outside `owns`. As in 1.1, the enforcing hook is the installed 0.14.0 copy (D6). |
+| 3. Forbidden | PASS | No `.mjs` in the commit; no skill renamed; no line touching `### Wavecheck` or `enforcement active:` changed; 0 em dashes and 0 prose double hyphens added; the audit suite's vocabulary and plugin-root scans pass (138/138), so no undefined backticked token and no fenced placeholder was introduced. The hook's prevention is described no more weakly than before. The one new factual claim, that the receipt is read "when the plan declares `enforcement: required`", was checked against the code: `drydock-audit.mjs:1412` gates the read on exactly that. |
+| 4. Acceptance | PASS | Criterion re-run by the auditor: exit 0. |
+| 5. Deviations | PASS | Executor reported none; none discovered. |
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.2.1 | `53349e1` | `drydock/README.md`<br>`drydock/skills/planwright/reference/plan-format.md`<br>`drydock/skills/wavecheck/SKILL.md` | `drydock/README.md`<br>`drydock/skills/wavecheck/SKILL.md`<br>`drydock/skills/planwright/reference/plan-format.md` | none |
+
+**Unproven, stated so a PASS does not imply it:** `wavecheck/SKILL.md` was edited, and this very gate ran from the installed 0.14.0 copy of that skill, which cannot contain the edit. Per CLAUDE.md, the edit is shipped and mechanically gated but unexercised until a release is installed and a later session runs it.
+
+Deviations logged: 0 (0 discovered by wavecheck)
+
 ## Progress log
 
 | Date | Task | Result | Notes |
@@ -702,5 +723,7 @@ Deviations logged: 6 (2 discovered by wavecheck)
 | 2026-09-21 | T1.1.2 | done | `72a9d39`, rename parse and repeat-write detection (18 cases) |
 | 2026-09-21 | T1.1.3 | done | `3438442`, NUL-delimited paths, not-found heuristic, execPath quoting (138/138) |
 | 2026-09-21 | Wave 1.1 | PASS | wavecheck |
+| 2026-09-21 | T1.2.1 | done | `53349e1`, four false claims corrected, F6 paragraph, Bash ceilings listed |
+| 2026-09-21 | Wave 1.2 | PASS | wavecheck |
 
 ## Reconcile report
