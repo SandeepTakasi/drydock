@@ -1240,7 +1240,15 @@ function auditWave(path, wave) {
         rows.push({ id: task.id, sha: `${sha.slice(0, 7)} (gone)`, files: [], owns: task.owns, strays: [] });
         continue;
       }
-      const files = git(["show", "--name-only", "--format=", sha]).split("\n").map((s) => s.trim()).filter(Boolean);
+      // `-z` NUL-delimits the name list instead of newline-separating it. Without
+      // it, `git show --name-only` quotes AND octal-escapes any path holding a
+      // non-ASCII byte -- `docs/café.md` prints as `"docs/caf\303\251.md"`,
+      // quotes included -- and that mangled string never matches the glob that
+      // owns the real path, falsely BLOCKing a conforming task. `-z` never
+      // escapes. The trailing element after the last NUL is empty; `filter
+      // (Boolean)` below drops it, same as it already drops a merge commit's
+      // empty output.
+      const files = git(["show", "-z", "--name-only", "--format=", sha]).split("\0").map((s) => s.trim()).filter(Boolean);
       const strays = files.filter((f) => !task.owns.some((glob) => matchesGlob(f, glob) || f === glob));
       for (const f of files) {
         if (claimed.has(f) && claimed.get(f) !== task.id) {
@@ -1342,7 +1350,10 @@ function auditWave(path, wave) {
         const [sha, subject] = line.split("\x1f");
         if (fullShas.has(sha)) continue;
 
-        const files = git(["show", "--name-only", "--format=", sha]).split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+        // `-z`, see the F4 comment on the sibling call above: newline-separated
+        // output quotes and octal-escapes non-ASCII paths, which then matches no
+        // glob at all.
+        const files = git(["show", "-z", "--name-only", "--format=", sha]).split("\0").map((x) => x.trim()).filter(Boolean);
         if (files.length === 0) continue; // merge or empty commit
 
         // The plan document is owned by no task BY DESIGN -- the orchestrator
@@ -1586,7 +1597,11 @@ function auditWave(path, wave) {
   // boundary and is blind to Bash; this audit DETECTS one after it lands in a
   // commit or the working tree, and sees everything either of those carries.
   // Issue #3 read the pair as "enforcement can only BLOCK on its own absence" —
-  // it cannot, because this check never consults the hook at all.
+  // it cannot, because the ownership verdict above is derived purely from
+  // commits and the working tree. The enforcement receipt is a separate signal:
+  // when the plan declares `enforcement: required`, this same subcommand reads
+  // it earlier, from `.drydock/enforcement.log`, the hook's own output, and
+  // judges it on its own terms.
   const attributed = new Set(rows.filter((r) => r.sha !== ", ").map((r) => r.sha)).size;
   notes.push(
     `ownership verified by this audit from ${attributed} commit(s), independently of the hook. Detection, not prevention: a Bash-mediated write to an unowned file is caught when it lands, not when it happens`
@@ -1684,7 +1699,10 @@ function taskClose(planPath, taskId) {
   }
 
   const sha = git(["rev-parse", "HEAD"]);
-  const files = git(["show", "--name-only", "--format=", sha]).split("\n").map((s) => s.trim()).filter(Boolean);
+  // `-z`, same reason as the two call sites in `auditWave`: newline-separated
+  // `git show --name-only` quotes and octal-escapes a non-ASCII path, and the
+  // manifest would then record a string the plan's `owns` globs never match.
+  const files = git(["show", "-z", "--name-only", "--format=", sha]).split("\0").map((s) => s.trim()).filter(Boolean);
 
   // The audit re-derives this from the sha and will catch a mismatch anyway, so
   // this is a fast local signal at the moment it is still cheap to fix — not the
@@ -1868,7 +1886,19 @@ function proveFailable(planPath) {
     }
 
     const spawnFailed = run.error != null;
-    const saidNotFound = /not recognized|not found|No such file|cannot find/i.test(`${run.stderr ?? ""}`);
+    // SCOPED TO THE FIRST LINE of stderr, not all of it. A criterion that ran and
+    // legitimately failed can print "not found" anywhere in its own nested
+    // output -- a test runner reporting a missing fixture, a linter naming an
+    // unresolved import -- and scanning the whole stream misread two correct,
+    // failing criteria in plan 006 as unrunnable. Invariant: a criterion that ran
+    // and exited non-zero is `failable`, never `unrunnable`, however deep its
+    // output goes. The shell's own "not found" is always the first thing it
+    // prints, so the first line is where this heuristic belongs.
+    // Residual ceiling: a compound command (`a && b`) whose second half is the
+    // one missing can still put the diagnostic on line one, since the shell
+    // itself reports the failure before any of the command's own output.
+    const stderrFirstLine = `${run.stderr ?? ""}`.split(/\r?\n/, 1)[0];
+    const saidNotFound = /not recognized|not found|No such file|cannot find/i.test(stderrFirstLine);
     // 127 not found, 126 found but not executable (wrong architecture, missing
     // +x), 9009 cmd.exe's "is not recognized". All three mean the criterion did
     // not run, which is not the same as failing.

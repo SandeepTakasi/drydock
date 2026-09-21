@@ -456,6 +456,37 @@ cases.push(
     () => cli(closedWave("stray", ["a.txt", "stray.txt"]), ["audit-wave", "plan.md", "1.0"]),
     (out) => out.includes("changes `stray.txt`, which is outside its `owns`")],
 
+  // F4: without `-z`, `git show --name-only` quotes AND octal-escapes a
+  // non-ASCII path -- `docs/café.md` prints as `"docs/caf\303\251.md"` -- and
+  // that mangled string matches no glob that owns the real path, falsely
+  // BLOCKing a conforming task. Committing a real non-ASCII path and asserting
+  // a clean PASS is the only way to catch a regression here: a broken parse
+  // does not throw, it just fails to match.
+  ["f4-non-ascii: a committed non-ASCII path is parsed in a form its glob matches", () => {
+    const dir = join(DIR, "repo-f4-non-ascii");
+    mkdirSync(join(dir, "docs"), { recursive: true });
+    git(dir, ["init", "-q", "-b", "main"]);
+    writeFileSync(join(dir, ".gitignore"), ".drydock/\n");
+    writeFileSync(join(dir, "plan.md"), `---
+plan: 900-fixture
+format_version: 3
+status: EXECUTING
+attribution: manifest
+---
+
+#### T1.0.1 — first
+- **Files owned:** \`docs/**\`
+- **Acceptance criterion:** \`true\` exits 0.
+`);
+    git(dir, ["add", "-A"]);
+    git(dir, ["commit", "-q", "-m", "chore: baseline"]);
+    writeFileSync(join(dir, "docs", "café.md"), "hi\n");
+    git(dir, ["add", "-A"]);
+    git(dir, ["commit", "-q", "-m", "docs: add cafe"]);
+    cli(dir, ["task-close", "plan.md", "T1.0.1"]);
+    return cli(dir, ["audit-wave", "plan.md", "1.0"]);
+  }, (out) => out.includes("audit-wave 1.0: PASS") && out.includes("café.md") && !out.includes("outside its `owns`")],
+
   ["task-close warns about an unowned file while it is still cheap to fix", () => {
     const dir = mkrepo("warn");
     commitAs(dir, ["a.txt", "stray.txt"], "fix(parser): tighten the thing");
@@ -1596,12 +1627,19 @@ cases.push(
   // `node -e` rather than `test -f`: the fixture asserts exit-code
   // classification, and a POSIX-only command asserts the shell instead. That is
   // what broke every Windows runner while every POSIX one stayed green.
+  // NODE quoted, not bare: the criterion is run by the audited tool through the
+  // PLATFORM shell (`shell: true`), and on Windows that is cmd.exe, which splits
+  // an unquoted command line at the first space. `process.execPath` there is
+  // `C:\Program Files\nodejs\node.exe` -- a real space inside the executable's
+  // own path -- so the bare form ran "C:\Program" with "Files\nodejs\node.exe"
+  // as an argument, failed to spawn, and both cases below misreported as
+  // `unrunnable` regardless of what they were actually testing. F5.
   ["a criterion that already passes is reported as inert",
-    () => cli(pfRepo("pf-inert", pfTask("T1.0.1", `\`${NODE} -e "process.exit(0)"\``)), ["prove-failable", "plan.md"]),
+    () => cli(pfRepo("pf-inert", pfTask("T1.0.1", `\`"${NODE}" -e "process.exit(0)"\``)), ["prove-failable", "plan.md"]),
     (out) => out.includes("INERT") && out.includes("already exits 0") && out.includes("prove-failable: FAIL")],
 
   ["a criterion that fails at baseline passes the check",
-    () => cli(pfRepo("pf-good", pfTask("T1.0.1", `\`${NODE} -e "process.exit(1)"\``)), ["prove-failable", "plan.md"]),
+    () => cli(pfRepo("pf-good", pfTask("T1.0.1", `\`"${NODE}" -e "process.exit(1)"\``)), ["prove-failable", "plan.md"]),
     (out) => out.includes("failable") && out.includes("prove-failable: PASS")],
 
   // Exiting non-zero because the command does not exist is NOT a healthy gate:
@@ -1624,6 +1662,20 @@ cases.push(
   ["a task with no criterion at all fails",
     () => cli(pfRepo("pf-none", "#### T1.0.1 - t\n- **Files owned:** `src/a.ts`\n\n"), ["prove-failable", "plan.md"]),
     (out) => out.includes("nothing to prove failable") && out.includes("prove-failable: FAIL")],
+
+  // F9: the old heuristic regex-scanned ALL of stderr for "not found" and its
+  // siblings, so a criterion that ran, legitimately failed, and merely printed
+  // one of those words somewhere in its own nested output (a runner naming a
+  // missing fixture, a linter naming an unresolved import) was misreported
+  // `unrunnable` -- measured: two correct, failing criteria in plan 006 were
+  // refused this way. The invariant: a criterion that ran and exited non-zero
+  // is `failable`, however deep its output, and this prints "not found" on its
+  // SECOND stderr line specifically to prove the scan no longer reaches it.
+  ["f9-notfound-heuristic: a real failure printing \"not found\" past its first stderr line is failable, not unrunnable",
+    () => cli(pfRepo("pf-f9-notfound-heuristic", pfTask("T1.0.1",
+      `\`"${NODE}" -e "console.error('first line ok'); console.error('not found deeper'); process.exit(1)"\``)),
+      ["prove-failable", "plan.md"]),
+    (out) => out.includes("failable") && out.includes("prove-failable: PASS") && !out.includes("unrunnable")],
 );
 
 // --------------------------------------------------------------------------
