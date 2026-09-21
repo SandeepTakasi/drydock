@@ -282,6 +282,7 @@ check-1 grounds".
 | D14 | Fix F9, found while gating this plan rather than by the review? | Yes, folded into T1.1.3 | planner (assumed, flag if wrong) | It is a two-line change in a file that task already owns, and it is a **false FAIL in this plan's own approval gate**: two correct criteria were reported unrunnable. Leaving it means every future plan whose criteria produce that text is refused for a defect in the checker. It fails good plans rather than passing bad ones, so it is a correctness fix, not a loosening. Consumed by T1.1.3. |
 | D15 | How is the Wave 1.R rejection repaired? | A new **Wave 1.3** of fix tasks, then a re-review, following plan 004's precedent (its Wave 1.R was REJECTED, repaired in a Wave 1.3, then re-reviewed APPROVED). Not a second commit under T1.1.1. | planner, on the review's verdict | The escalation policy allows retries, but a second commit and `task-close` entry under T1.1.1 would make sealed wave 1.1's attribution ambiguous, which is exactly what per-task commits exist to prevent. A later wave may re-own a file (sequential handoff), so a new task id keeps both waves auditable. This is retry 1 of the policy's 2. Consumed by T1.3.1, T1.3.2, T1.R.1. |
 | D16 | Fold the review's finding 3 (`audit-wave` cannot see a rename out of an unowned path) into this plan? | Yes, as T1.3.2 | planner, on the review's finding | It is MAJOR, it is the audit-side twin of F2, and it makes a documentation sentence false: `plan-format.md` says the audit "sees everything a commit or a dirty tree carries". Stopping documentation from claiming what the code does not do is in this plan's Requirement. The fix is one flag on three lines T1.1.3 already edited, and `git log --diff-filter=R` over the whole history is empty, so no sealed audit of plans 001 to 005 can change. Consumed by T1.3.2. |
+| D17 | Fix the provenance error wavecheck 2.1 found in the 0.15.0 CHANGELOG entry, or ship it? | Fix it, in a Wave 2.2 task | planner, on wavecheck 2.1's finding | The entry twice credits "the re-review" with the dangling-link and `--no-renames` findings; they came from the first Wave 1.R review, which rejected, and the re-review approved. This repo's history is full of commits correcting prose that told a reader something untrue, and a release note misattributing its own evidence is that defect. The auditor may not edit what it audits, and the CHANGELOG cannot be owned twice in one wave, so the remedy is the contract's "targeted fix task" in a new wave. Consumed by T2.2.1. |
 
 ## Open questions
 
@@ -691,6 +692,21 @@ load the repaired hooks.
   page copy.
 - **Acceptance criterion:** `node -e "const fs=require('fs'),v='0.15.0';const p=JSON.parse(fs.readFileSync('drydock/.claude-plugin/plugin.json','utf8')).version,c=fs.readFileSync('site/content/copy.ts','utf8'),g=fs.readFileSync('drydock/CHANGELOG.md','utf8'),r=fs.readFileSync('README.md','utf8');process.exit(p===v&&c.includes(JSON.stringify(v))&&g.includes('## '+v)&&r.includes('v'+v)?0:1)"`
 
+### Wave 2.2 - Correct the release note's provenance
+
+> Added after wavecheck 2.1 (Deviation 8, D17). One task; the wave exists only
+> because the CHANGELOG cannot be owned twice in Wave 2.1.
+
+#### T2.2.1 - Credit each Phase 1 finding to the review that found it
+
+- **Description:** In the `## 0.15.0` CHANGELOG entry only, correct the two sentences that credit "the re-review" with the dangling-link and `--no-renames` findings: both came from the first Wave 1.R quality review, which rejected Phase 1; the re-review approved it and raised only the findings the entry already lists as "carried forward from the re-review". Replace "released as" the plan path with wording that says the repairs shipped as 0.15.0 via plan 006, and do not break an inline code span across a line.
+- **Files owned:** `drydock/CHANGELOG.md`
+- **Depends on:** T2.1.1
+- **Model / thinking:** Mechanical / off   **Executor:** drydock:executor
+- **Context brief:** D17 and Deviation 8 in this plan; both `## Wave 1.R verdict` sections of this plan, which are the record of which review found what; the `## 0.15.0` entry of `drydock/CHANGELOG.md`.
+- **Forbidden:** editing any other CHANGELOG entry; changing any claim in the entry other than the provenance wording and the "released as" phrase; adding an em dash or a spaced double hyphen.
+- **Acceptance criterion:** `node -e "const g=require('fs').readFileSync('drydock/CHANGELOG.md','utf8');const a=g.indexOf('## 0.15.0'),b=g.indexOf('## 0.14.0');const s=g.slice(a,b);process.exit(a>=0&&b>a&&!s.includes('re-review then found')&&!s.includes('re-review that found')&&!s.includes('released as')&&s.includes('first quality review')?0:1)"`
+
 ## Deviation Log
 
 | # | Task | What deviated | Why | Impact | Recorded |
@@ -702,6 +718,7 @@ load the repaired hooks.
 | 5 | T1.1.3 | T1.1.3 ran after T1.1.1 and T1.1.2 rather than concurrently. | The orchestrator's spawn message was cut off mid-stream and the third spawn was lost; it was issued separately. | None: the three tasks share no files, and the audit's per-commit attribution is order-independent. The wave is still "genuinely parallel" in structure, not in this run's timing. | wavecheck 1.1, 2026-09-21 |
 | 6 | Wave 1.1 | Found **F10**, pre-existing and out of this wave's scope: the ownership hook DENIES a write to a path on a different drive (`Z:/nope/x.ts`, `D:/x.ts`) rather than allowing it as "outside the repo", because `path.relative` across Windows drives returns the absolute target, which does not start with `../`. Measured identical in the pre-plan hook (`a439b08`) and the repaired one. | Discovered while re-running the F1 reproduction against the repaired hook. | Not a regression and not a security hole: it fails closed. It does contradict the documented "outside the repo is not enforced" ceiling. Added to *Out of scope*; T1.R.1 is told about it. `discovered-by-wavecheck`. | wavecheck 1.1, 2026-09-21 |
 | 7 | Phase 1 structure | Wave 1.3 (T1.3.1, T1.3.2) added after the plan was approved, and T1.R.1 now depends on it. | The Wave 1.R quality review REJECTED Phase 1 on a confirmed MAJOR finding (a dangling link still escapes the ownership hook) and raised a second MAJOR finding in the audit (D15, D16). | Scope grows by two tasks. No completed wave, task id or report changes. Recorded because it changes an approved plan without `/drydock:replan`: the contract offers "a targeted fix task appended" as a remediation that does not require replan, and plan 004 did the same. | orchestrator, 2026-09-21 |
+| 8 | Phase 2 structure | Wave 2.2 (T2.2.1) added after wavecheck 2.1: the 0.15.0 CHANGELOG entry attributes two Wave 1.R findings to "the re-review" instead of the first review, and says the repairs were "released as" the plan path. | Found by the auditor reading the entry for accuracy; no mechanical criterion covered provenance wording. | One more small task and gate. No completed task or report changes. `discovered-by-wavecheck`. | wavecheck 2.1, 2026-09-21 |
 
 ## Wavecheck reports
 
@@ -794,6 +811,25 @@ A second fresh-context reviewer (Opus, not the one that rejected) reviewed `a439
 5. **SUSPECTED, possibly MAJOR, not measurable here:** on a volume where `realpathSync.native` fails while `lstat` succeeds (some SMB shares, RAM disks, virtual filesystems), the new branch would deny every write in an armed wave, where before it climbed and allowed. Fails closed, so an availability risk rather than an escape; the documented unwedge (`rm .drydock/wave-owns.json`) applies.
 6. SUSPECTED, pre-existing, POSIX only: `..` after a symlink is collapsed textually by `path.resolve` but through the link by the kernel, so `docs/esc/../site/x.ts` could match as owned and land in `site/` if the host passes the path unnormalised. Cannot escape on Windows.
 
+### Wavecheck 2.1, PASS, 2026-09-21
+
+Execution is `fleet`; audited by the orchestrating session, which wrote none of this diff.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `status: EXECUTING`; wave 2.1 exists; every Phase 1 wave has a PASS report and the Phase 1 gate is CLOSED. Staleness: the four owned files were unchanged since `fdb862d`. |
+| 2. Ownership | PASS | `audit-wave 2.1: PASS (1 task(s), 1 commit(s), attribution: manifest)`, table below. Working tree clean. |
+| 2b. Enforcement ran | PASS | `enforcement active: 4 hook decision(s) recorded for wave 2.1 (0 denied)`. Bash layer: 10 commands, 0 writes detected outside `owns`. |
+| 3. Forbidden | PASS, one finding | No file under `drydock/hooks/`, `drydock/scripts/` or `drydock/skills/` in the commit; no older CHANGELOG entry touched; `copy.ts`, root `README.md` and `plugin.json` each changed one line, the version only; no em dash in the new entry, and its three `--` occurrences are CLI flag names in code spans, not spaced punctuation. No claim of live host verification: the entry states the opposite. **Finding, not a forbidden item:** the entry twice credits "the re-review" with findings the first Wave 1.R review made, and says the repairs were "released as" the plan path. Remediation (a), a targeted fix task: Wave 2.2, D17, Deviation 8. |
+| 4. Acceptance | PASS | Criterion re-run by the auditor: exit 0. Executor reports `npm run verify` green, ending `assert-copy: PASS ... version matches plugin.json` and `assert-matrix: PASS`; re-run independently at the Phase 2 gate. |
+| 5. Deviations | PASS | Executor reported none; one discovered (Deviation 8). |
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T2.1.1 | `b26dc1a` | `README.md`<br>`drydock/.claude-plugin/plugin.json`<br>`drydock/CHANGELOG.md`<br>`site/content/copy.ts` | `drydock/.claude-plugin/plugin.json`<br>`drydock/CHANGELOG.md`<br>`README.md`<br>`site/content/copy.ts` | none |
+
+Deviations logged: 1 (1 discovered by wavecheck)
+
 ## Progress log
 
 | Date | Task | Result | Notes |
@@ -810,5 +846,7 @@ A second fresh-context reviewer (Opus, not the one that rejected) reviewed `a439
 | 2026-09-21 | T1.3.2 | done | `097a24f`, `--no-renames` on the three audit call sites (139/139) |
 | 2026-09-21 | Wave 1.3 | PASS | wavecheck |
 | 2026-09-21 | T1.R.1 | APPROVED | re-review after Wave 1.3; Phase 1 gate closed |
+| 2026-09-21 | T2.1.1 | done | `b26dc1a`, 0.15.0 bumped in four files, CHANGELOG entry, `npm run verify` green |
+| 2026-09-21 | Wave 2.1 | PASS | wavecheck; provenance finding, Wave 2.2 added |
 
 ## Reconcile report
