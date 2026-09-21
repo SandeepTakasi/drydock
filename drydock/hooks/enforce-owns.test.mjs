@@ -43,8 +43,31 @@ const HOOK = fileURLToPath(new URL("./enforce-owns.mjs", import.meta.url));
 // repo-relative path compute as "../..." and read as outside the repo.
 const ROOT = realpathSync(mkdtempSync(join(tmpdir(), "drydock-hook-")));
 for (const d of ["docs", "e2e", "site", "src"]) mkdirSync(join(ROOT, d), { recursive: true });
-// An owned directory containing a symlink that escapes the owned subtree.
-symlinkSync(join(ROOT, "site"), join(ROOT, "docs", "link"), "dir");
+
+// F5: plain `symlinkSync` threw EPERM on a stock Windows box (no Developer Mode,
+// no elevation) at MODULE SCOPE, which took down all 30 declared cases before
+// any of them ran -- that is why F1 was never caught. A directory JUNCTION does
+// not need that privilege on Windows, so create dir links with `mklink /J`
+// there and `symlinkSync` elsewhere, and degrade to a recorded skip rather than
+// aborting the whole file when a box permits neither.
+const tryDirLink = (target, link) => {
+  try {
+    if (process.platform === "win32") {
+      execFileSync("cmd", ["/c", "mklink", "/J", link, target]);
+    } else {
+      symlinkSync(target, link, "dir");
+    }
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+// An owned directory containing a link that escapes the owned subtree.
+const LINK_OK = tryDirLink(join(ROOT, "site"), join(ROOT, "docs", "link"));
+// A second link, dedicated to F1: a junction whose escape only shows up two
+// levels below it, where neither intermediate segment exists yet.
+const JUNCTION_OK = tryDirLink(join(ROOT, "site"), join(ROOT, "docs", "jn"));
 
 const CONFIG_DIR = join(ROOT, ".drydock");
 const CONFIG = join(CONFIG_DIR, "wave-owns.json");
@@ -115,13 +138,34 @@ const cases = [
   ["owned dotfile", { file_path: "docs/.env" }, ALLOW],
   ["owned nested dotdir", { file_path: "docs/.cache/x.json" }, ALLOW],
   ["unowned dotfile", { file_path: "site/.env" }, DENY],
-  // Lexical normalisation kept this inside `docs/`; it lands in `site/`.
-  ["symlink escape denied", { file_path: "docs/link/x.ts" }, DENY],
   // A file_path of the wrong type threw a TypeError and exited 1, which the
   // host reads as a hook error, not a denial: the write went through.
   ["malformed file_path number", { file_path: 123 }, DENY],
   ["malformed file_path array", { file_path: ["site/a.ts"] }, DENY],
 ];
+
+if (LINK_OK) {
+  // Lexical normalisation kept this inside `docs/`; it lands in `site/`.
+  cases.push(["symlink escape denied", { file_path: "docs/link/x.ts" }, DENY]);
+} else {
+  report("symlink escape denied", true, "SKIPPED: box permits neither junction nor symlink creation");
+}
+
+if (JUNCTION_OK) {
+  // F1: two levels below the junction, and neither `sub` nor `deep.ts` exists.
+  // The old `realOr(dirname(absolute))` resolves only the immediate parent;
+  // since that parent (docs/jn/sub) does not exist either, `realOr` fell back
+  // to the lexical path -- still lexically under `docs/`, so this was ALLOWED
+  // while actually landing in `site/`.
+  cases.push(["f1-junction-escape", { file_path: "docs/jn/sub/deep.ts" }, DENY]);
+  // The junction ITSELF is the write target, no subpath at all. The old code
+  // never resolved the final path component (only `dirname(absolute)`), so an
+  // owned path that is itself a symlink/junction to an unowned file escaped by
+  // the same route. Asserts the invariant the sketch calls out explicitly.
+  cases.push(["f1-leaf-symlink-escape", { file_path: "docs/jn" }, DENY]);
+} else {
+  report("f1-junction-escape", true, "SKIPPED: box permits neither junction nor symlink creation");
+}
 
 for (const [name, toolInput, want] of cases) expectExit(name, toolInput, want);
 

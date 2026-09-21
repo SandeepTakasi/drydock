@@ -194,13 +194,41 @@ const record = (decision, rel) => {
 // Resolve symlinks before matching. Lexical normalisation alone let a symlinked
 // directory inside an owned subtree point anywhere: with `owns: ["docs/**"]` and
 // `docs/link -> ../site`, a write to `docs/link/x.ts` normalised to a path under
-// `docs/` and was allowed, while landing in `site/`. Only the parent is resolved
-// because the target itself usually does not exist yet.
+// `docs/` and was allowed, while landing in `site/`.
 const realOr = (p) => {
   try {
     return realpathSync.native(p);
   } catch {
     return p; // not created yet, or unreadable: fall back to the lexical path
+  }
+};
+
+// Resolve the DEEPEST EXISTING ancestor of `p`, then re-append whatever came
+// after it. Only resolving the immediate parent (the old `realOr(dirname(...))`)
+// missed a junction/symlink two or more levels up, because `realOr` falls back
+// to the lexical path the instant its argument does not exist -- and a
+// not-yet-created grandchild makes the immediate parent not-exist too. Starting
+// the climb at `p` itself (not `dirname(p)`) also resolves a final path
+// component that is itself a symlink, which the old code never did.
+//
+// Termination is load-bearing: `path.dirname` reaches a fixed point at the
+// filesystem root (`path.dirname("C:\\") === "C:\\"`, `path.dirname("/") === "/"`),
+// so the climb stops on `parent === current`, never on "path exists" -- a chain
+// that exists nowhere still has to terminate.
+const resolveAncestry = (p) => {
+  const skipped = [];
+  let current = p;
+  for (;;) {
+    try {
+      const real = realpathSync.native(current);
+      return skipped.length ? path.join(real, ...skipped) : real;
+    } catch {
+      // not created yet, or unreadable: climb one level and retry
+    }
+    const parent = path.dirname(current);
+    if (parent === current) return skipped.length ? path.join(current, ...skipped) : current; // nothing in the chain exists
+    skipped.unshift(path.basename(current));
+    current = parent;
   }
 };
 
@@ -210,7 +238,7 @@ try {
 
   const root = realOr(projectDir);
   const absolute = path.isAbsolute(target) ? target : path.resolve(root, target);
-  const resolved = path.join(realOr(path.dirname(absolute)), path.basename(absolute));
+  const resolved = resolveAncestry(absolute);
   const rel = path.relative(root, resolved).split("\\").join("/");
 
   // Outside the repo entirely — not what the ownership model describes.
