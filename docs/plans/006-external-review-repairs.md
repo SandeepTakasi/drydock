@@ -297,6 +297,7 @@ None. No task is BLOCKED.
   successor to this plan; cannot be done inside it (D6).
 - **F10, cross-drive writes are denied rather than allowed** (Deviation 6). On Windows `path.relative` between drives returns the absolute target, so the hook's `rel.startsWith("../")` outside-the-repo test misses it and the path is matched against `owns` and denied. Pre-existing, fails closed. Fix is `path.isAbsolute(rel)` alongside the `../` test, with a case.
 - **Review findings 4 to 6, and two suspicions, from the Wave 1.R review** (MINOR or NIT, pre-existing): deleting an untracked unowned file, or restoring a tracked one with `git checkout --`, records `observed`, because the detector compares only paths present after the command; a snapshot written by the pre-0.15.0 detector is read after a mid-wave upgrade as "first command of the wave", mislabelling one real write; `git()` in the audit trims leading and trailing spaces off paths; an exact-nanosecond mtime restore (`touch -r`) would evade the F3 identity, which adding `ctimeNs` would close; and `.drydock/bash-tree.json` is never reset between waves.
+- **The re-review's findings** (see the APPROVED Wave 1.R verdict): the working-tree rename (`" R"`) old-path slice in the detector; the overstated F9 comment; receipt-less throw denials; hard links; and two suspicions worth measuring before they are dismissed, **`realpathSync.native` failing on SMB or RAM-disk volumes, which would make the new lstat branch deny every write in an armed wave** (candidate fix: fall back to the JS `realpathSync` before denying, or deny only on `isSymbolicLink()` or `ELOOP`), and POSIX `..`-after-symlink.
 - **Per-task ownership enforcement.** The hook records which task's files a
   write landed in, never who wrote it. Unchanged here.
 - **Reducing `drydock-audit.mjs`** (2,077 lines) and the process surface a new
@@ -414,7 +415,7 @@ every suite passes on this machine, and no documentation statement contradicts
 the code.
 **Phase gate:** all three suites exit 0 + `node site/scripts/assert-matrix.mjs`
 exits 0 + Wave 1.R APPROVED.
-**Phase gate: OPEN.**
+**Phase gate: CLOSED, approved by the Wave 1.R re-review - 2026-09-21.** Conditions met: `enforce-owns` 33/33, `detect-bash-writes` 18/18, `drydock-audit` 139/139, `assert-matrix` PASS, Wave 1.R APPROVED on re-review (retry 1 of 2).
 
 ### Wave 1.1 - The three code repairs
 
@@ -779,6 +780,20 @@ Execution is `fleet`; audited by the orchestrating session, which wrote none of 
 
 Deviations logged: 0 (0 discovered by wavecheck)
 
+## Wave 1.R verdict, APPROVED, 2026-09-21 (re-review after Wave 1.3)
+
+A second fresh-context reviewer (Opus, not the one that rejected) reviewed `a439b08..097a24f`. No confirmed BLOCKER or MAJOR. Retry 1 of the escalation policy's 2 was sufficient.
+
+**Prior findings, verified fixed by measurement.** A dangling junction `docs/dj -> site/nope` is now denied for `docs/dj`, `docs/dj/x.ts` and deeper paths, and a junction loop is denied too (both allowed at `a439b08`). The current enforce-owns suite fails 3 of 33 against the `a439b08` hook and 1 of 33 against the pre-`adf1d27` hook, so the new cases are real guards. `--no-renames` surfaces `site/s.ts` for a committed `git mv site/s.ts docs/s.ts` even with `diff.renames=copies` configured. **No over-denial found:** new files in new owned directories, existing files, an exclusively-locked file, a parent that is a regular file, a ~600-character path, `..` segments, case variants, junctions resolving to owned locations, stream and reserved names all behave exactly as before `adf1d27`. Suites: enforce-owns 33, detector 18, audit 139/139.
+
+**Raised, none rejection-grade, all carried to *Out of scope / follow-ups*:**
+1. MINOR, confirmed, in Phase 1 code: the detector's rename parse keys on the FIRST status character, so a working-tree rename (`" R"`, after `mv` plus `git add -N`) still has its old path sliced: measured `e/abcdef.ts`. Still detected, and the audit's dirty-tree check still catches it, but the receipt names a nonexistent path.
+2. NIT: the F9 comment claims a criterion that ran and failed is "never" unrunnable; `grep -q X missing.md` still scores unrunnable because "No such file" is its first stderr line. Behaviour pre-dates Phase 1; only the comment overstates.
+3. NIT, pre-existing shape: a deny raised by a throw (including the new "exists but does not resolve") writes no receipt.
+4. Noted: a hard link (`mklink /H`, unprivileged) is followed; no document claims links of that kind are covered.
+5. **SUSPECTED, possibly MAJOR, not measurable here:** on a volume where `realpathSync.native` fails while `lstat` succeeds (some SMB shares, RAM disks, virtual filesystems), the new branch would deny every write in an armed wave, where before it climbed and allowed. Fails closed, so an availability risk rather than an escape; the documented unwedge (`rm .drydock/wave-owns.json`) applies.
+6. SUSPECTED, pre-existing, POSIX only: `..` after a symlink is collapsed textually by `path.resolve` but through the link by the kernel, so `docs/esc/../site/x.ts` could match as owned and land in `site/` if the host passes the path unnormalised. Cannot escape on Windows.
+
 ## Progress log
 
 | Date | Task | Result | Notes |
@@ -794,5 +809,6 @@ Deviations logged: 0 (0 discovered by wavecheck)
 | 2026-09-21 | T1.3.1 | done | `adf1d27`, dangling links denied, per-case skips (33 cases) |
 | 2026-09-21 | T1.3.2 | done | `097a24f`, `--no-renames` on the three audit call sites (139/139) |
 | 2026-09-21 | Wave 1.3 | PASS | wavecheck |
+| 2026-09-21 | T1.R.1 | APPROVED | re-review after Wave 1.3; Phase 1 gate closed |
 
 ## Reconcile report
