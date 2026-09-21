@@ -757,6 +757,28 @@ Fresh-context review, Opus, of `a439b08..53349e1`. Rejected on one confirmed MAJ
 3. **MAJOR, confirmed, pre-existing.** `audit-wave` and `task-close` cannot see a rename out of an unowned path, because `git show` without `--no-renames` lists only the destination; this falsifies `plan-format.md`'s "sees everything a commit carries". **T1.3.2** (D16).
 4. to 6. **MINOR or NIT, pre-existing:** moved to *Out of scope / follow-ups*.
 
+### Wavecheck 1.3, PASS, 2026-09-21
+
+Execution is `fleet`; audited by the orchestrating session, which wrote none of this diff.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `status: EXECUTING`; wave 1.3 exists (added under Deviation 7); prior waves 1.1 and 1.2 have PASS reports. |
+| 2. Ownership | PASS | `audit-wave 1.3: PASS (2 task(s), 2 commit(s), attribution: manifest)`, table below. Working tree clean. T1.3.1 and T1.3.2 re-own files first owned in Wave 1.1, which the contract permits as a sequential handoff. |
+| 2b. Enforcement ran | PASS | `enforcement active: 10 hook decision(s) recorded for wave 1.3 (0 denied)`. Bash layer: 34 commands observed, 0 writes detected outside `owns`. Enforcing hook is still the installed 0.14.0 copy (D6). |
+| 3. Forbidden | PASS | No `process.exit` or receipt-field line changed in `enforce-owns.mjs`; `lib/owns-match.mjs` untouched. In the audit script exactly three lines of code changed, each adding `--no-renames` to a `show -z --name-only` call, plus comments; no other git invocation touched, no verdict string or format constant changed, no `.md` edited. |
+| 4. Acceptance | PASS | Re-run by the auditor: T1.3.1 exit 0 (`enforce-owns: PASS, 33 cases`, with `ok   f1-dangling-link   exit=2 want=2`, so the case ran rather than skipped); T1.3.2 exit 0 (`139/139 passed`). Wave 1.1 and 1.2 criteria re-run as a regression check: all four still exit 0. Independently, the reviewer's reproduction against the repaired hook: a dangling junction `docs/dj -> site/nope` now denies `docs/dj`, `docs/dj/x.ts` and `docs/dj/a/b.ts` (all exit 0 before), while a write into a not-yet-created owned directory, `docs/fine/new.ts`, is still allowed, so the fix does not over-deny ordinary new files. The original F1 path `docs/jn/new/deep.ts` still exits 2. Both executors report watching their new case fail against the pre-change code. |
+| 5. Deviations | PASS | Executors reported none; none discovered. The wave's own existence is Deviation 7. |
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.3.1 | `adf1d27` | `drydock/hooks/enforce-owns.mjs`<br>`drydock/hooks/enforce-owns.test.mjs` | `drydock/hooks/enforce-owns.mjs`<br>`drydock/hooks/enforce-owns.test.mjs` | none |
+| T1.3.2 | `097a24f` | `drydock/scripts/drydock-audit.mjs`<br>`drydock/scripts/drydock-audit.test.mjs` | `drydock/scripts/drydock-audit.mjs`<br>`drydock/scripts/drydock-audit.test.mjs` | none |
+
+**Not exercised here, stated so a PASS does not imply it:** the non-Windows leaf-file-symlink case T1.3.1 added is guarded to POSIX and runs only on CI's ubuntu runners; the "box permits no links" skip branches were verified by reading, not by execution, since this box can create junctions.
+
+Deviations logged: 0 (0 discovered by wavecheck)
+
 ## Progress log
 
 | Date | Task | Result | Notes |
@@ -769,5 +791,8 @@ Fresh-context review, Opus, of `a439b08..53349e1`. Rejected on one confirmed MAJ
 | 2026-09-21 | T1.2.1 | done | `53349e1`, four false claims corrected, F6 paragraph, Bash ceilings listed |
 | 2026-09-21 | Wave 1.2 | PASS | wavecheck |
 | 2026-09-21 | T1.R.1 | REJECTED | one MAJOR in the diff, one MAJOR pre-existing; Wave 1.3 added |
+| 2026-09-21 | T1.3.1 | done | `adf1d27`, dangling links denied, per-case skips (33 cases) |
+| 2026-09-21 | T1.3.2 | done | `097a24f`, `--no-renames` on the three audit call sites (139/139) |
+| 2026-09-21 | Wave 1.3 | PASS | wavecheck |
 
 ## Reconcile report
