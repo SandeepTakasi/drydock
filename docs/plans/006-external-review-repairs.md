@@ -664,7 +664,7 @@ exits 0 + Wave 1.R APPROVED.
 and root README match `plugin.json`, and the installed plugin can be updated to
 load the repaired hooks.
 **Phase gate:** `npm run verify` in `site/` exits 0 + human approval.
-**Phase gate: OPEN.**
+**Phase gate: OPEN.** Mechanical conditions met on 2026-09-21: `npm run verify` in `site/` exits 0, ending `assert-copy: PASS ... version matches plugin.json` and `assert-matrix: PASS`; suites 33/33, 18/18 and 139/139; waves 2.1 and 2.2 PASS. **Awaiting the named human approval (D9).** Not inferred from the instruction to execute the plan: a release gate exists so that a person looks at the release.
 
 ### Wave 2.1 - Cut 0.15.0
 
@@ -830,6 +830,25 @@ Execution is `fleet`; audited by the orchestrating session, which wrote none of 
 
 Deviations logged: 1 (1 discovered by wavecheck)
 
+### Wavecheck 2.2, PASS, 2026-09-21
+
+Execution is `fleet`; audited by the orchestrating session, which wrote none of this diff.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `status: EXECUTING`; wave 2.2 exists (Deviation 8); wave 2.1 has a PASS report. |
+| 2. Ownership | PASS | `audit-wave 2.2: PASS (1 task(s), 1 commit(s), attribution: manifest)`, table below. Working tree clean. |
+| 2b. Enforcement ran | PASS | `enforcement active: 3 hook decision(s) recorded for wave 2.2 (0 denied)`. Bash layer: 6 commands, 0 writes detected outside `owns`. |
+| 3. Forbidden | PASS | Three hunks, at file lines 6, 18 and 41, all inside the `## 0.15.0` entry; no other entry touched; only the provenance wording and the "released as" phrase changed; 0 em dashes added; the plan path is now one unbroken code span. |
+| 4. Acceptance | PASS | Criterion re-run by the auditor: exit 0. |
+| 5. Deviations | PASS | Executor reported none; none discovered. |
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T2.2.1 | `b2230fa` | `drydock/CHANGELOG.md` | `drydock/CHANGELOG.md` | none |
+
+Deviations logged: 0 (0 discovered by wavecheck)
+
 ## Progress log
 
 | Date | Task | Result | Notes |
@@ -848,5 +867,7 @@ Deviations logged: 1 (1 discovered by wavecheck)
 | 2026-09-21 | T1.R.1 | APPROVED | re-review after Wave 1.3; Phase 1 gate closed |
 | 2026-09-21 | T2.1.1 | done | `b26dc1a`, 0.15.0 bumped in four files, CHANGELOG entry, `npm run verify` green |
 | 2026-09-21 | Wave 2.1 | PASS | wavecheck; provenance finding, Wave 2.2 added |
+| 2026-09-21 | T2.2.1 | done | `b2230fa`, release-note provenance corrected |
+| 2026-09-21 | Wave 2.2 | PASS | wavecheck; Phase 2 gate mechanically met, awaiting human sign-off |
 
 ## Reconcile report
