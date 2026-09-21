@@ -870,6 +870,7 @@ Deviations logged: 0 (0 discovered by wavecheck)
 | 2026-09-21 | Wave 2.2 | PASS | wavecheck; Phase 2 gate mechanically met, awaiting human sign-off |
 | 2026-09-21 | Phase 2 gate | CLOSED | release approved by Sandeep Takasi |
 | 2026-09-21 | reconcile | RECONCILED | 10 proposals (8 CLAUDE.md, 2 docs/architecture.md), none applied |
+| 2026-09-21 | R1 to R10 | applied | accepted by Sandeep Takasi |
 
 ## Reconcile report
 
@@ -1056,3 +1057,5 @@ Confidence: high
 **executor (cluster d):** no feedback. The inheritance protocol already in the contract ("verify with `git log`, report the situation as a deviation") worked as written when an executor inherited uncommitted work.
 
 **Tooling, noted for a later plan:** `wave-start` could refuse, or advance, a plan that is not `EXECUTING` (R5).
+
+**Applied 2026-09-21:** all ten proposals, R1 to R10, accepted by Sandeep Takasi and applied verbatim to `CLAUDE.md` and `docs/architecture.md` in the commit that follows this note.

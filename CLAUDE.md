@@ -153,6 +153,29 @@ cd /tmp/dd && python3 -m http.server 5173   # then open /drydock/
   real count is. Strip it (`tr -d ' '`) and compare with `[ "$n" = 1 ]`. This
   cost a whole acceptance criterion in plan 004: the check was unpassable
   regardless of repo state, and the idiom was written on Linux `wc` habits.
+- **Acceptance criteria run through the PLATFORM shell, which is `cmd.exe` on
+  Windows** (`prove-failable` and wavecheck use `spawnSync(cmd, {shell: true})`).
+  A backslash escape inside a `node -e "..."` criterion does not survive the
+  trip: `/PASS, (\d+) cases/` arrives as a regex that never matches, so the
+  criterion can fail but can never pass. Use character classes (`[0-9]`, `[/]`)
+  and no backslashes. Prove BOTH halves by running the criterion through
+  `spawnSync(..., {shell: true})`, not through Git Bash, which adds its own
+  quoting layer. A criterion that runs a test suite should pass
+  `stdio: ['ignore','pipe','ignore']` and wrap it in `try/catch`, so the
+  suite's failure text never reaches the criterion's own stderr. Measured
+  2026-09-20, plan 006.
+- **`$?` read after a `$(...)` in the same string reports the substitution,
+  not your command.** `node hook.mjs; echo "$(basename $H) -> $?"` prints the
+  exit status of `basename`, always 0. Capture first: `node hook.mjs; rc=$?;
+  echo "... -> $rc"`. It produced a false "no difference between old and new
+  hook" reading mid-gate in plan 006 before the capture was fixed.
+- **On Windows, directory junctions need no privilege; file symlinks do.**
+  `cmd /c mklink /J <link> <target>` works unelevated, even when `<target>`
+  does not exist (a dangling junction), while `fs.symlinkSync` throws `EPERM`
+  without Developer Mode. A test that creates links at module scope with
+  `symlinkSync` dies before its first case here: the enforce-owns suite ran 0
+  of 30 cases on this machine until plan 006. Create junctions on Windows,
+  symlinks elsewhere, and give every link-dependent case its own skip line.
 - **Playwright MCP resolves a relative screenshot `filename` against the MCP
   server's own working directory**, not the repo and not any path you declare —
   so `filename: "TG1/shot.png"` lands somewhere you did not ask for. Pass an
@@ -200,7 +223,9 @@ work — plan 001's has 49 entries and most are still live constraints.
   no task, so while `.drydock/wave-owns.json` is armed the hook **denies** edits
   to it — including the orchestrator's own bookkeeping. Order is: finish the
   tasks, `rm .drydock/wave-owns.json`, then write the Deviation Log and the
-  wavecheck report. Measured 2026-09-01, plan 005 deviation 2. Widening `owns`
+  wavecheck report, **then commit it**: `wave-start` refuses to arm the next
+  wave over a plan with uncommitted changes (measured 2026-09-21, plan 006).
+  Measured 2026-09-01, plan 005 deviation 2. Widening `owns`
   to include the plan file is the wrong fix and is what the denial message says
   not to do — it is the mixture behind plan 004's deviation 13.
 - **`.drydock/` is gitignored, so a wave's receipts do not survive a clean —
@@ -218,3 +243,28 @@ work — plan 001's has 49 entries and most are still live constraints.
   `attribution: manifest` the commit subject is free; the manifest carries
   attribution, and a task with no entry BLOCKs the wave exactly as a missing
   commit does.
+- **Set `status: EXECUTING` yourself, in the commit before the first
+  `wave-start`, and move the plan's row in `docs/plans/README.md` with it.**
+  `wave-start` arms a wave on an `APPROVED` plan without complaint, and
+  `plan-status --write` only corrects it after a wavecheck report exists.
+  `assert-matrix` fails CI whenever the index row and the frontmatter disagree.
+  Measured 2026-09-21, plan 006 deviation 2.
+- **Repair a quality-review rejection in a NEW wave with NEW task ids**, never a
+  second commit under a task whose wave is sealed. Two `task-close` entries for
+  one task are ambiguity, not last-wins, and would break the sealed wave's
+  re-audit. A later wave may re-own the same files (sequential handoff). The
+  contract's "targeted fix task appended" remedy needs no `/drydock:replan`;
+  log it as a deviation. Plans 004 and 006 both did this.
+- **An executor cut off mid-task leaves real work uncommitted in its owned
+  files, and parallel spawns share one fate.** A usage limit ended all three of
+  plan 006's Wave 1.1 executors together. Before respawning, run `git status`
+  and the task's criterion: either revert the owned files to a clean baseline,
+  or tell the next executor the work is inherited and must be audited against
+  the task block and re-proved before its one commit. Report the split
+  authorship as a deviation. When the budget is tight, spawn a wave's tasks one
+  at a time so each finished task is committed before the next starts.
+- **Write each phase gate as ONE `**Phase gate:` line and rewrite it in place
+  when it closes.** `plan-status` and `reconcile` treat every line beginning
+  `**Phase gate:` as a separate gate, so a declaration line plus an
+  `OPEN`/`CLOSED` status line reads as two gates, and the declaration, which
+  still says "human approval" with no signature, stays unsigned forever.
