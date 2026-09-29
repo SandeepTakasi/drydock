@@ -497,7 +497,13 @@ const UNC_OK =
 
 if (UNC_OK) {
   const uncRoot = "\\\\localhost\\c$" + ROOT.slice(2);
-  expectExit("unc-repo-denied", { file_path: join(uncRoot, "site", "x.ts") }, DENY);
+  // unc-deny-message: assert the exit code is 2 and message names ownership branch
+  const { code, message } = run({ file_path: join(uncRoot, "site", "x.ts") });
+  report(
+    "unc-repo-denied",
+    code === DENY && message.includes("does not own"),
+    `exit=${code} want=${DENY} :: ${message.split("\n")[0].slice(0, 60)}`
+  );
   expectExit("unc-repo-owned-allowed", { file_path: join(uncRoot, "docs", "x.md") }, ALLOW);
 } else if (process.platform === "win32" && /^[A-Za-z]:/.test(ROOT) && ROOT[0].toUpperCase() === "C") {
   report("unc-repo-denied", true, "SKIPPED: \\\\localhost\\c$ not reachable on this box");

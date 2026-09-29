@@ -152,6 +152,11 @@
  *     vote says outside -- never sees a disagreement to catch. The write still
  *     lands outside the repo, which is the bullet above's documented
  *     unenforced ceiling; this just names the UNC-addressed route into it.
+ *   - A project root on a filesystem without file ids (where `stat` reports
+ *     `ino === 0`, as some FAT and exFAT volumes and some network filesystems
+ *     do) disables identity corroboration, so a UNC form of the repo is
+ *     allowed silently there. The guard exists because the alternative
+ *     false-denies ordinary owned writes on such a volume.
  *   - Enforcement is WAVE-scoped, so within a wave one task may write another
  *     task's files. Per-task attribution stays with the commit audit.
  *
