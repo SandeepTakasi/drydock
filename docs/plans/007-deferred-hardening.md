@@ -308,7 +308,7 @@ criterion fails at baseline under `prove-failable` (6 of 6).
 
 ## Phase 1: Repair
 
-**Phase gate:** all four suites (`drydock-audit`, `enforce-owns`, `detect-bash-writes`, `resolve-target`) exit 0 + `node site/scripts/assert-matrix.mjs` exits 0 + Wave 1.R APPROVED. OPEN.
+**Phase gate: CLOSED, approved by the Wave 1.R second re-review - 2026-09-29.** Conditions met: `drydock-audit` 139/139, `enforce-owns` 42, `detect-bash-writes` 21, `resolve-target` 8, `assert-matrix` PASS, and Wave 1.R APPROVED after two rejections and three reviews (retries 1 and 2 of 2 were spent on Waves 1.3 and 1.4; Wave 1.5 followed an approval, not a rejection).
 
 ### Wave 1.1 - The resolver module, and the detector
 
@@ -712,6 +712,25 @@ Execution is `fleet`; audited by the orchestrating session, which wrote none of 
 
 Deviations logged: 0 (0 discovered by wavecheck)
 
+### Wavecheck 1.5, PASS, 2026-09-29
+
+Execution is `fleet`; audited by the orchestrating session, which wrote none of this diff.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `status: EXECUTING`; wave 1.5 exists (D15); waves 1.1 to 1.4 have PASS reports. |
+| 2. Ownership | PASS | `audit-wave 1.5: PASS (1 task(s), 1 commit(s), attribution: manifest)`, table below. Working tree clean. |
+| 2b. Enforcement ran | PASS | `enforcement active: 4 hook decision(s) recorded for wave 1.5 (0 denied)`. Bash layer: 8 commands, 0 writes outside `owns`. |
+| 3. Forbidden | PASS, and checked precisely because the task promised no behaviour change | The hook's diff is 5 added lines, every one a comment: filtering the diff for non-comment code lines returns nothing. The `ino === 0n` guard and the corroboration logic are untouched. The test file is +8/-1, the message assertion. Nothing under `drydock/lib/`; no exit code, receipt field, or case name changed; the UNC cases still RUN here. |
+| 4. Acceptance | PASS | Criterion re-run by the auditor **in a Node harness**: exit 0 (`enforce-owns: PASS, 42 cases`). Re-run deliberately because the executor reported verifying it through PowerShell, which produced a false exit code earlier in this plan's execution and is not trusted here. |
+| 5. Deviations | PASS | Executor reported none; none discovered. |
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.5.1 | `9a5db6a` | `drydock/hooks/enforce-owns.mjs`<br>`drydock/hooks/enforce-owns.test.mjs` | `drydock/hooks/enforce-owns.mjs`<br>`drydock/hooks/enforce-owns.test.mjs` | none |
+
+Deviations logged: 0 (0 discovered by wavecheck)
+
 ## Wave 1.R verdict, APPROVED, 2026-09-29 (second re-review, after Wave 1.4)
 
 A third fresh-context Opus reviewer, warned about both harness traps this plan has hit. It hit the second one itself: its first two fixture patches silently replaced the wrong occurrences while reporting success, so every later fixture edit was made from a script file and verified by re-reading the bytes. **No CONFIRMED BLOCKER or MAJOR in the Phase 1 diff.**
@@ -766,5 +785,8 @@ Fresh-context Opus review of `157e70a..c75f8d1`. One CONFIRMED MAJOR, introduced
 | 2026-09-29 | T1.4.1 | done | `a36b0a1`, UNC cases skip when the share is unreachable (42 cases) |
 | 2026-09-29 | Wave 1.4 | PASS | wavecheck |
 | 2026-09-29 | T1.R.1 | APPROVED | second re-review; one MINOR folded into Wave 1.5 |
+| 2026-09-29 | T1.5.1 | done | `9a5db6a`, file-id ceiling documented, UNC deny asserts the ownership branch |
+| 2026-09-29 | Wave 1.5 | PASS | wavecheck |
+| 2026-09-29 | Phase 1 gate | CLOSED | four suites green, assert-matrix PASS, review APPROVED |
 
 ## Reconcile report
