@@ -58,6 +58,7 @@ jobs:
       - run: node drydock/scripts/drydock-audit.test.mjs
       - run: node drydock/hooks/enforce-owns.test.mjs
       - run: node drydock/hooks/detect-bash-writes.test.mjs
+      - run: node drydock/lib/resolve-target.test.mjs
 
   docs:
     name: honesty matrix
