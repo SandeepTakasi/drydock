@@ -213,6 +213,7 @@ same day. Released entries are not rewritten; the 0.15.1 entry says so.
 | D12 | How far may the F7 walk-up climb? | To the first ancestor holding `.drydock/wave-owns.json`, but never past the first ancestor holding `.git` | planner, on the pressure pass's finding | An unbounded walk-up adopts a stale armed wave in a parent directory or the home directory and denies every write in an unrelated repository beneath it. `.drydock/` always sits at a repository root, so the root is the natural bound. Consumed by T1.1.2, T1.2.1. |
 | D13 | How is the Wave 1.R rejection repaired? | A new **Wave 1.3** with new task ids, then a re-review. The two-vote rule keeps its shape; an absolute `rel` is corroborated by filesystem identity (`dev`+`ino`) before it may allow. | planner, on the review's verdict | Retry 1 of the escalation policy's 2, in a new wave because waves 1.1 and 1.2 are sealed and a second `task-close` under a sealed id makes attribution ambiguous (CLAUDE.md). Identity is the discriminator the reviewer measured: the repo root has the same `dev`+`ino` through every namespace, and a genuinely different directory does not. Consumed by T1.3.1, T1.3.2. |
 | D14 | How is the second Wave 1.R rejection repaired? | A **Wave 1.4** with one task, following the same pattern. This is **retry 2 of the escalation policy's 2**: a third rejection escalates a tier or goes to the human, it does not open a Wave 1.5. | planner, on the re-review's verdict | The finding is in the fix wave's test file, not the product code, and its fix is the capability-probe convention the suite already uses for links (`tryDirLink`). Consumed by T1.4.1. |
+| D15 | The approving review still raised a MINOR that reopens the Wave 1.3 hole on a file-id-less filesystem. Fold it in, or leave it as a follow-up? | Fold it in, as a one-task **Wave 1.5**. Not a retry: the review APPROVED, and this is a documentation ceiling plus a test assertion, not a behaviour change. | planner (assumed, flag if wrong) | The guard is correct (removing it false-denies a legitimate owned UNC write, which the reviewer measured), so the defect is that the docblock does not say the vote stands silently when the root has no file id. A hook whose docblock omits a silent-allow route is exactly the F6/F8 class this plan exists to close, and leaving it to reconcile would ship 0.15.1 with the omission. Consumed by T1.5.1. |
 
 ## Open questions
 
@@ -526,6 +527,21 @@ criterion fails at baseline under `prove-failable` (6 of 6).
   > Still requires `unc-repo-denied` to RUN and deny on this box, so the skip
   > path cannot be used to dodge the case here.
 
+### Wave 1.5 - The ceiling the approving review asked for
+
+> Added after an APPROVED Wave 1.R verdict (D15), not as a retry. One task.
+
+#### T1.5.1 - State the file-id ceiling, and assert the UNC deny is the ownership branch
+
+- **Description:** Document, in the hook's CEILINGS, that identity corroboration is switched off wholesale when the project root reports no file id, so on such a filesystem a write addressed through a UNC form of the repo is allowed silently, exactly as before Wave 1.3. Then tighten `unc-repo-denied` to assert the deny came from the ownership branch rather than from any thrown deny.
+- **Files owned:** `drydock/hooks/enforce-owns.mjs`, `drydock/hooks/enforce-owns.test.mjs`
+- **Depends on:** T1.4.1
+- **Model / thinking:** Mechanical / off   **Executor:** drydock:executor
+- **Context brief:** D15 and the third `## Wave 1.R verdict` below (MINOR 1, NIT 2, NIT 3); the `identity` function and its `ino === 0n` guard in `drydock/hooks/enforce-owns.mjs`, the FILESYSTEM IDENTITY paragraph and the CEILINGS list in its docblock; the `unc-repo-denied` case in the test file. **Measured by the reviewer, by injecting a zero inode:** with the guard, an unowned UNC write returns exit 0 with no receipt; with the guard removed, the same filesystem false-DENIES a legitimate owned UNC write. The guard stays; only the documentation and the assertion change.
+- **Forbidden:** changing any behaviour, including removing or altering the `ino === 0n` guard; editing anything under `drydock/lib/`; changing exit codes or receipt field names; weakening or deleting any case; adding a dependency.
+- **Implementation sketch:** add one CEILINGS bullet, beside the existing UNC-addressed-junction one, saying that a project root whose `stat` reports no file id (`ino === 0`, e.g. some FAT or exFAT and some network filesystems) disables corroboration, so a UNC form of the repo is allowed silently there, and that the guard exists because the alternative false-denies ordinary owned writes on such a volume. The bullet must contain the literal `without file ids`. In the test, make `unc-repo-denied` also assert the deny message names the ownership branch (the `does not own` wording), so a thrown deny cannot satisfy it; mark that assertion with the literal token `unc-deny-message`.
+- **Acceptance criterion:** `node -e "const{execFileSync:e}=require('child_process');const fs=require('fs');let o='';try{o=e(process.execPath,['drydock/hooks/enforce-owns.test.mjs'],{encoding:'utf8',stdio:['ignore','pipe','ignore']})}catch(x){process.exit(1)}const m=o.match(/enforce-owns: PASS, ([0-9]+) cases/);const s=fs.readFileSync('drydock/hooks/enforce-owns.test.mjs','utf8');const h=fs.readFileSync('drydock/hooks/enforce-owns.mjs','utf8');process.exit(m&&+m[1]>=42&&/ok +unc-repo-denied +exit=2 want=2/.test(o)&&s.includes('unc-deny-message')&&h.includes('without file ids')?0:1)"`
+
 ### Wave 1.R - Quality review
 
 #### T1.R.1 - Fresh-context quality review of Phase 1
@@ -537,7 +553,7 @@ criterion fails at baseline under `prove-failable` (6 of 6).
   now denied, and whether the walk-up can pick the wrong `.drydock/`.
 - **Files owned:** none (review only; the verdict is appended by the
   orchestrator after the wave is disarmed)
-- **Depends on:** T1.1.2, T1.2.1, T1.3.1, T1.3.2, T1.4.1
+- **Depends on:** T1.1.2, T1.2.1, T1.3.1, T1.3.2, T1.4.1, T1.5.1
 - **Model / thinking:** Judgment / extended (Opus)   **Executor:** drydock:executor
 - **Context brief:** the Phase 1 diff; this plan's *Findings & constraints* and
   Decision Log; plan 006's two Wave 1.R verdicts as prior art. Docker
@@ -696,6 +712,20 @@ Execution is `fleet`; audited by the orchestrating session, which wrote none of 
 
 Deviations logged: 0 (0 discovered by wavecheck)
 
+## Wave 1.R verdict, APPROVED, 2026-09-29 (second re-review, after Wave 1.4)
+
+A third fresh-context Opus reviewer, warned about both harness traps this plan has hit. It hit the second one itself: its first two fixture patches silently replaced the wrong occurrences while reporting success, so every later fixture edit was made from a script file and verified by re-reading the bytes. **No CONFIRMED BLOCKER or MAJOR in the Phase 1 diff.**
+
+**Wave 1.4 verified as claimed.** The UNC cases RUN here (`exit=2 want=2` from the ownership branch, and `exit=0 want=0` owned); with the share repointed to an unreachable one they SKIP, one line each, suite green at 42. The probe cannot hang: it names only `localhost`, measured at 9ms, where a non-resolving host costs 1.3s and a blackhole IP 21s, neither reachable. The new cases gate their logic: mutating `if (path.isAbsolute(rel))` to `if (false)` fails `unc-repo-denied`; dropping `String()` fails `throw-deny-receipt-string-path`; the escape branch mutation still fails `link-out-of-repo-denied`.
+
+**The docblock now matches reality exactly**, across a twelve-row decision matrix: owned allow, unowned deny, escape deny, thrown deny, thrown deny on a non-string target, two unusable-config shapes, outside-the-repo allow, no config, no target, `notebook_path`, and target-is-the-repo-root all record, or leave nothing, precisely as the text says.
+
+**No regression.** Ten UNC and device forms deny unowned and allow owned with correct receipts; the symmetric UNC project directory, `subst` both ways, a repo root reached through a junction, and a real 8.3 alias taken from `dir /x` all behave; twelve ordinary-write shapes show no over-denial; `Z:` still allows with no receipt. Thirteen POSIX probes in `node:20-slim` are clean, D10's relative `..` escape denies, and `corroborateInside` is confirmed unreachable there.
+
+**MINOR 1, folded into Wave 1.5 (D15).** The `ino === 0n` guard short-circuits corroboration for the whole repo, so on a filesystem reporting no file ids a UNC-addressed write is allowed, unowned and unlogged, exactly as before Wave 1.3. Measured by injecting a zero inode. Latent here (NTFS only, no FAT or exFAT volume, no VHD without admin, and both Docker overlayfs and a Windows-to-Linux bind mount report nonzero inodes). The guard is nonetheless right: removing it false-denies a legitimate owned UNC write on such a volume. What is missing is the ceiling. **NIT 3, also folded in:** `unc-repo-denied` asserts only the exit code, so a box where the probe succeeds but `realpathSync.native` fails on the share would pass it via a thrown deny.
+
+**Left as follow-ups:** the guard has no test and would need an injectable `stat` to get one (NIT 2); `/^[A-Za-z]:/` is subsumed by the `C` check beside it (NIT 4); unreadable stdin is a fourth receipt-less allow that the docblock folds into a neighbouring condition (NIT 5); plus the earlier rounds' NIT 5, 6, 7 and the audit-divergence NIT 8, unchanged.
+
 ## Wave 1.R verdict, REJECTED, 2026-09-29 (re-review after Wave 1.3)
 
 A second fresh-context Opus reviewer, driving the hook from `spawnSync` with control probes after being warned that a PowerShell harness had produced false results. **The rejected regression is genuinely fixed**, and not merely in the spelling it was reported in: unowned denies and owned allows, each with a correct repo-relative receipt, through `\\localhost\c$`, `\\127.0.0.1\c$`, `\\?\UNC\`, `\\.\UNC\`, `\\?\C:\`, `\\.\C:\`, a case-variant UNC, volume-GUID and `GLOBALROOT` device forms, a `subst` drive, an 8.3 short name, and the symmetric case with the project directory itself given as UNC. Against the pre-fix hook the same probe exits 0. Thirteen source mutations each kill a specific case, including the one MINOR 2 fixed, so the new cases gate their logic. The identity walk costs nothing measurable, terminates on every root form tried, and produced no over-denial across roughly thirty ordinary-write shapes, on Windows and on Linux under the floor runtime.
@@ -735,5 +765,6 @@ Fresh-context Opus review of `157e70a..c75f8d1`. One CONFIRMED MAJOR, introduced
 | 2026-09-29 | T1.R.1 | REJECTED | re-review: UNC cases assume the admin share is reachable; Wave 1.4 added |
 | 2026-09-29 | T1.4.1 | done | `a36b0a1`, UNC cases skip when the share is unreachable (42 cases) |
 | 2026-09-29 | Wave 1.4 | PASS | wavecheck |
+| 2026-09-29 | T1.R.1 | APPROVED | second re-review; one MINOR folded into Wave 1.5 |
 
 ## Reconcile report
