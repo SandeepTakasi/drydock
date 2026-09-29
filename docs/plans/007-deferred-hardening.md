@@ -676,6 +676,26 @@ The end state is better than the pre-phase hook, which denied the OWNED UNC path
 
 Deviations logged: 0 (0 discovered by wavecheck)
 
+### Wavecheck 1.4, PASS, 2026-09-29
+
+Execution is `fleet`; audited by the orchestrating session, which wrote none of this diff.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `status: EXECUTING`; wave 1.4 exists (Deviation 3); waves 1.1, 1.2 and 1.3 have PASS reports. |
+| 2. Ownership | PASS | `audit-wave 1.4: PASS (1 task(s), 1 commit(s), attribution: manifest)`, table below. Working tree clean. |
+| 2b. Enforcement ran | PASS | `enforcement active: 8 hook decision(s) recorded for wave 1.4 (0 denied)`. Bash layer: 13 commands, 0 writes outside `owns`. |
+| 3. Forbidden | PASS | Nothing under `drydock/lib/` touched; no exit code or receipt field name changed; no case weakened or removed; no dependency added; the UNC cases still RUN on this box rather than skipping. |
+| 4. Acceptance | PASS | Criterion re-run by the auditor: exit 0 (`enforce-owns: PASS, 42 cases`). Both UNC cases and both receipt cases ran for real here: `ok unc-repo-denied exit=2 want=2`, `ok unc-repo-owned-allowed exit=0 want=0`, `ok throw-deny-receipt-string-path exit=2 path="42" typeof=string`. |
+| 4b. The skip path, verified by the auditor | PASS | The reviewer's scenario was reproduced independently: a scratch copy of the suite with the share repointed to an unreachable `\\localhost\zz$` (4 occurrences replaced) prints `ok unc-repo-denied SKIPPED: ... not reachable on this box` and the same for the owned case, with the suite still `PASS, 42 cases` rather than RED. Two earlier attempts at this simulation silently replaced nothing and were discarded rather than reported as a pass. |
+| 5. Deviations | PASS | Executor reported none, and disclosed unprompted that the `ino === 0n` guard is asserted by code reading only, since no filesystem here reports a zero inode. Recorded rather than counted as verified. |
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.4.1 | `a36b0a1` | `drydock/hooks/enforce-owns.mjs`<br>`drydock/hooks/enforce-owns.test.mjs` | `drydock/hooks/enforce-owns.mjs`<br>`drydock/hooks/enforce-owns.test.mjs` | none |
+
+Deviations logged: 0 (0 discovered by wavecheck)
+
 ## Wave 1.R verdict, REJECTED, 2026-09-29 (re-review after Wave 1.3)
 
 A second fresh-context Opus reviewer, driving the hook from `spawnSync` with control probes after being warned that a PowerShell harness had produced false results. **The rejected regression is genuinely fixed**, and not merely in the spelling it was reported in: unowned denies and owned allows, each with a correct repo-relative receipt, through `\\localhost\c$`, `\\127.0.0.1\c$`, `\\?\UNC\`, `\\.\UNC\`, `\\?\C:\`, `\\.\C:\`, a case-variant UNC, volume-GUID and `GLOBALROOT` device forms, a `subst` drive, an 8.3 short name, and the symmetric case with the project directory itself given as UNC. Against the pre-fix hook the same probe exits 0. Thirteen source mutations each kill a specific case, including the one MINOR 2 fixed, so the new cases gate their logic. The identity walk costs nothing measurable, terminates on every root form tried, and produced no over-denial across roughly thirty ordinary-write shapes, on Windows and on Linux under the floor runtime.
@@ -713,5 +733,7 @@ Fresh-context Opus review of `157e70a..c75f8d1`. One CONFIRMED MAJOR, introduced
 | 2026-09-29 | T1.3.2 | done | `918dd45`, resolver suite skips only on link failure |
 | 2026-09-29 | Wave 1.3 | PASS | wavecheck |
 | 2026-09-29 | T1.R.1 | REJECTED | re-review: UNC cases assume the admin share is reachable; Wave 1.4 added |
+| 2026-09-29 | T1.4.1 | done | `a36b0a1`, UNC cases skip when the share is unreachable (42 cases) |
+| 2026-09-29 | Wave 1.4 | PASS | wavecheck |
 
 ## Reconcile report
