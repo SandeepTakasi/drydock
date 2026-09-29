@@ -621,6 +621,41 @@ Execution is `fleet`; audited by the orchestrating session, which wrote none of 
 
 Deviations logged: 0 (0 discovered by wavecheck)
 
+### Wavecheck 1.3, PASS, 2026-09-29
+
+Execution is `fleet`; audited by the orchestrating session, which wrote neither diff.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `status: EXECUTING`; wave 1.3 exists (Deviation 1); waves 1.1 and 1.2 have PASS reports. Both tasks re-own files first owned in earlier waves, which the contract permits as a sequential handoff. |
+| 2. Ownership | PASS | `audit-wave 1.3: PASS (2 task(s), 2 commit(s), attribution: manifest)`, table below. Working tree clean. |
+| 2b. Enforcement ran | PASS | `enforcement active: 10 hook decision(s) recorded for wave 1.3 (0 denied)`. Bash layer: 21 commands, 0 writes outside `owns`. |
+| 3. Forbidden | PASS | T1.3.1 touched no `lib/` file and left exit codes and receipt field names alone; T1.3.2 touched only the resolver's test file, renamed and removed nothing, and still skips when a link cannot be created. No dependency added by either. |
+| 4. Acceptance | PASS | Both criteria re-run by the auditor: T1.3.1 exit 0 (`enforce-owns: PASS, 41 cases`, with `ok   unc-repo-denied   exit=2 want=2`, so the case ran rather than skipped), T1.3.2 exit 0 (`resolve-target: PASS, 8 cases`). All four suites green together: 139/139, 41, 21, 8. T1.3.1's executor watched `unc-repo-denied` fail against the pre-fix hook (`FAIL ... exit=0 want=2`, 1 of 41). |
+| 5. Deviations | PASS | Neither executor reported a deviation. T1.3.1 chose, as the task invited, to soften the docblock's receipt claim rather than invent a second receipt shape for the unusable-config deny, which happens before a parsed config exists; its reasoning is recorded in its report and the docblock now names the one deny path that records nothing. |
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.3.1 | `d01c33a` | `drydock/hooks/enforce-owns.mjs`<br>`drydock/hooks/enforce-owns.test.mjs` | `drydock/hooks/enforce-owns.mjs`<br>`drydock/hooks/enforce-owns.test.mjs` | none |
+| T1.3.2 | `918dd45` | `drydock/lib/resolve-target.test.mjs` | `drydock/lib/resolve-target.test.mjs` | none |
+
+**Auditor's own measurement of the rejected regression**, same fixture as the Wave 1.R finding:
+
+| Probe | Pre-phase `157e70a` | Rejected `c75f8d1` | Now |
+|---|---|---|---|
+| plain unowned `site/x.ts` | DENY | DENY | DENY |
+| UNC unowned `site/x.ts` | DENY | **ALLOW** | **DENY** |
+| UNC owned `docs/x.md` | DENY | ALLOW | ALLOW, correctly |
+| receipts | 3 | 1 | 3 |
+
+The end state is better than the pre-phase hook, which denied the OWNED UNC path too, because it could not resolve that form at all.
+
+**No over-denial found.** Re-running the auditor's probe set against the fixed hook: `Z:/nope/x.ts` allows; plan 006's junction and dangling-link cases deny; a junction out of the repo denies; owned writes, including into a three-level new directory, allow; an unowned write denies; a plain write to a directory outside the repo allows. 8.3 short names behave correctly (unowned denies, owned allows), checked after a first PowerShell harness produced a false "allow" for the control case and was discarded as broken.
+
+**Noted, not a defect:** T1.3.2's executor reports that a resolver regression now crashes the suite with an uncaught exception (exit 1, no summary line) rather than printing a per-case `FAIL` row. The suite still fails, which is what the fix required, but the output is less legible than the other cases.
+
+Deviations logged: 0 (0 discovered by wavecheck)
+
 ## Wave 1.R verdict, REJECTED, 2026-09-29
 
 Fresh-context Opus review of `157e70a..c75f8d1`. One CONFIRMED MAJOR, introduced by this phase. Everything else it probed measured clean, including the regression class the plan flagged as highest risk.
@@ -644,5 +679,8 @@ Fresh-context Opus review of `157e70a..c75f8d1`. One CONFIRMED MAJOR, introduced
 | 2026-09-29 | T1.2.1 | done | `45fac55`, hook on the new resolver, outside-both-ways, receipts on thrown denies (39 cases) |
 | 2026-09-29 | Wave 1.2 | PASS | wavecheck |
 | 2026-09-29 | T1.R.1 | REJECTED | MAJOR: a UNC form of the repo path is allowed unowned; Wave 1.3 added |
+| 2026-09-29 | T1.3.1 | done | `d01c33a`, identity corroboration closes the UNC regression (41 cases) |
+| 2026-09-29 | T1.3.2 | done | `918dd45`, resolver suite skips only on link failure |
+| 2026-09-29 | Wave 1.3 | PASS | wavecheck |
 
 ## Reconcile report
