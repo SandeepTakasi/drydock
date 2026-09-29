@@ -211,6 +211,7 @@ same day. Released entries are not rewritten; the 0.15.1 entry says so.
 | D10 | POSIX `..`: ban `..` segments, or resolve correctly? | Resolve correctly: a relative target is joined to the root WITHOUT textual normalization, so the OS resolves `..` itself | planner (assumed, flag if wrong) | The absolute branch already does exactly this and was measured correct on Linux. Windows normalizes `..` textually in the OS, so the raw join matches its semantics too. A ban would deny legitimate paths for no gain. Consumed by T1.1.1. |
 | D11 | Testing Gate? | `N/A` | planner (assumed, flag if wrong) | The only user-facing change is the version string, which `assert-copy.mjs` pins at build time. |
 | D12 | How far may the F7 walk-up climb? | To the first ancestor holding `.drydock/wave-owns.json`, but never past the first ancestor holding `.git` | planner, on the pressure pass's finding | An unbounded walk-up adopts a stale armed wave in a parent directory or the home directory and denies every write in an unrelated repository beneath it. `.drydock/` always sits at a repository root, so the root is the natural bound. Consumed by T1.1.2, T1.2.1. |
+| D13 | How is the Wave 1.R rejection repaired? | A new **Wave 1.3** with new task ids, then a re-review. The two-vote rule keeps its shape; an absolute `rel` is corroborated by filesystem identity (`dev`+`ino`) before it may allow. | planner, on the review's verdict | Retry 1 of the escalation policy's 2, in a new wave because waves 1.1 and 1.2 are sealed and a second `task-close` under a sealed id makes attribution ambiguous (CLAUDE.md). Identity is the discriminator the reviewer measured: the repo root has the same `dev`+`ino` through every namespace, and a genuinely different directory does not. Consumed by T1.3.1, T1.3.2. |
 
 ## Open questions
 
@@ -479,6 +480,33 @@ criterion fails at baseline under `prove-failable` (6 of 6).
   > and allowed (`exit=0 want=0`); the POSIX case runs in CI's ubuntu jobs and in
   > the executor's Docker check.
 
+### Wave 1.3 - Fixes for the Wave 1.R rejection
+
+> Added after approval (Deviation 1, D13). Retry 1 of the escalation policy's 2.
+> The two tasks own disjoint files.
+
+#### T1.3.1 - Corroborate an absolute relative path with filesystem identity
+
+- **Description:** Before the hook allows a write as outside the repository, require more than "the relative path came back absolute". Walk the resolved target's existing ancestors comparing `dev` and `ino` against the project root; if any ancestor IS the root, the target is inside the repository under a different namespace and must be matched against `owns` instead of allowed. Tighten two claims the same diff made: the docblock says every deny records a receipt, and the thrown-deny receipt can carry a non-string path.
+- **Files owned:** `drydock/hooks/enforce-owns.mjs`, `drydock/hooks/enforce-owns.test.mjs`
+- **Depends on:** T1.2.1
+- **Model / thinking:** Complex / extended (Sonnet)   **Executor:** drydock:executor
+- **Context brief:** D2, D13 and the Wave 1.R verdict below (finding 1, and MINOR 1, MINOR 2, NIT 4); the `outside`/`lexRel`/`rel` block in `drydock/hooks/enforce-owns.mjs`; `drydock/hooks/enforce-owns.test.mjs`. `drydock/lib/resolve-target.mjs` is READ-ONLY. **Measured by the reviewer and re-measured by the orchestrator:** with `CLAUDE_PROJECT_DIR` set to a plain `C:\...` repo, a target addressed as `\\localhost\c$\...\repo\site\x.ts` (unowned) exits 0 under the current hook and exits 2 under the pre-phase hook, the write lands in the repo, and no receipt is written. `\\?\C:\`, `\\.\C:\` and `subst` drives are NOT affected, because `realpathSync.native` collapses them onto `C:`; a UNC path it returns unchanged. The reviewer measured `dev`+`ino` identical for the repo root across plain, UNC, extended-length and subst forms, and different for any other directory.
+- **Forbidden:** editing `lib/resolve-target.mjs` or `lib/owns-match.mjs`; changing exit codes or receipt field names; failing closed on a MISSING config; any dependency; weakening or deleting any existing case; making an ordinary outside-the-repo write (a genuinely different directory, or a nonexistent drive) deny.
+- **Implementation sketch:** keep `outside(lexRel) && outside(rel)` as the gate, but when `path.isAbsolute(rel)`, corroborate before allowing: take `identity(p)` as `statSync(p, { bigint: true })` rendered `dev + ":" + ino`, or `null` when it throws. With `rootId = identity(root)`, walk from `resolved` upward, collecting skipped basenames; if an ancestor's identity equals `rootId` (both non-null), the target is INSIDE: set `rel` to the skipped segments joined with `/` and continue to the `owns` match. Stop at the filesystem root. If no ancestor matches, the path is genuinely outside and allows as today, so `Z:/nope/x.ts` (whose `stat` throws) still allows. Then: record a `{decision:"deny", path:null}` receipt for the unusable-config deny, or soften the docblock sentence to say which deny paths record (state which you chose and why); and coerce the thrown-deny receipt's path with `String(target)`. New cases named exactly `unc-repo-denied` (a UNC form of the repo's own path, unowned, exits 2, and a receipt is written) and `unc-repo-owned-allowed` (the same form, owned path, exits 0). Also make the existing `link-out-of-repo-denied` case assert the DENY MESSAGE, not only the exit code: the reviewer mutated its branch to `if (false)` and the suite still passed, because the fall-through denies for a different reason.
+- **Acceptance criterion:** `node -e "const{execFileSync:e}=require('child_process');const fs=require('fs');let o='';try{o=e(process.execPath,['drydock/hooks/enforce-owns.test.mjs'],{encoding:'utf8',stdio:['ignore','pipe','ignore']})}catch(x){process.exit(1)}const m=o.match(/enforce-owns: PASS, ([0-9]+) cases/);const s=fs.readFileSync('drydock/hooks/enforce-owns.test.mjs','utf8');process.exit(m&&+m[1]>=41&&/ok +unc-repo-denied +exit=2 want=2/.test(o)&&s.includes('unc-repo-owned-allowed')&&s.includes('resolves outside it')?0:1)"`
+
+#### T1.3.2 - Stop the resolver suite passing a case it never ran
+
+- **Description:** In `resolve-target.test.mjs`, the real-filesystem symlink case wraps both fixture creation and the assertion in one `try`, so a resolver regression is reported as a skip. Narrow the `try` to link creation only, so a broken resolver fails rather than skips.
+- **Files owned:** `drydock/lib/resolve-target.test.mjs`
+- **Depends on:** T1.1.1
+- **Model / thinking:** Standard / default   **Executor:** drydock:executor
+- **Context brief:** the Wave 1.R verdict below (MINOR 3) and its evidence: with a mutant making `resolveTarget` throw on the real filesystem, the case printed `ok ... skipped: MUTANT: real-fs path broken` instead of failing. `drydock/lib/resolve-target.mjs` is READ-ONLY.
+- **Forbidden:** editing `drydock/lib/resolve-target.mjs` or any hook; removing any case; making the suite fail on a box that cannot create symlinks (it must still SKIP for that reason alone).
+- **Implementation sketch:** create the symlink inside its own `try/catch`; on failure report the skip and return. Outside that `try`, call `resolveTarget` and assert, so any throw from the resolver is a FAIL. Prove it by temporarily making the resolver throw and watching the case FAIL rather than skip, then revert. Add a comment naming the token `skip-only-on-link-failure` so the criterion can see the intent.
+- **Acceptance criterion:** `node -e "const{execFileSync:e}=require('child_process');const fs=require('fs');let o='';try{o=e(process.execPath,['drydock/lib/resolve-target.test.mjs'],{encoding:'utf8',stdio:['ignore','pipe','ignore']})}catch(x){process.exit(1)}const m=o.match(/resolve-target: PASS, ([0-9]+) cases/);const s=fs.readFileSync('drydock/lib/resolve-target.test.mjs','utf8');process.exit(m&&+m[1]>=8&&s.includes('skip-only-on-link-failure')?0:1)"`
+
 ### Wave 1.R - Quality review
 
 #### T1.R.1 - Fresh-context quality review of Phase 1
@@ -490,7 +518,7 @@ criterion fails at baseline under `prove-failable` (6 of 6).
   now denied, and whether the walk-up can pick the wrong `.drydock/`.
 - **Files owned:** none (review only; the verdict is appended by the
   orchestrator after the wave is disarmed)
-- **Depends on:** T1.1.2, T1.2.1
+- **Depends on:** T1.1.2, T1.2.1, T1.3.1, T1.3.2
 - **Model / thinking:** Judgment / extended (Opus)   **Executor:** drydock:executor
 - **Context brief:** the Phase 1 diff; this plan's *Findings & constraints* and
   Decision Log; plan 006's two Wave 1.R verdicts as prior art. Docker
@@ -534,6 +562,8 @@ criterion fails at baseline under `prove-failable` (6 of 6).
 
 | # | Task | What deviated | Why | Impact | Recorded |
 |---|---|---|---|---|---|
+| 1 | Phase 1 structure | Wave 1.3 (T1.3.1, T1.3.2) added after approval, and T1.R.1 now also depends on it. | The Wave 1.R quality review REJECTED Phase 1 on a confirmed MAJOR regression: a write addressed through a UNC form of the repo's own path is allowed and unlogged, where the pre-phase hook denied it. | Scope grows by two tasks; no sealed wave, task id or report changes. The contract's "targeted fix task appended" remedy needs no `/drydock:replan`; plans 004 and 006 did the same. | orchestrator, 2026-09-29 |
+| 2 | T1.2.1 | The executor reported the six new cases as failing pre-fix "by construction" rather than by running them. | Its own summary said so plainly. | None on the verdict: the auditor ran the new suite against the pre-change hook and measured `FAIL, 4 of 39`, with the other two explained (a regression guard, and a POSIX-only case). Recorded because a claim of evidence is not evidence. | wavecheck 1.2, 2026-09-29 |
 
 ## Wavecheck reports
 
@@ -591,6 +621,18 @@ Execution is `fleet`; audited by the orchestrating session, which wrote none of 
 
 Deviations logged: 0 (0 discovered by wavecheck)
 
+## Wave 1.R verdict, REJECTED, 2026-09-29
+
+Fresh-context Opus review of `157e70a..c75f8d1`. One CONFIRMED MAJOR, introduced by this phase. Everything else it probed measured clean, including the regression class the plan flagged as highest risk.
+
+**MAJOR, confirmed, and re-measured by the orchestrator.** `outside()` treats "the relative path came back absolute" as proof the target is elsewhere. `realpathSync.native` collapses `\\?\C:\`, `\\.\C:\` and `subst` drives back onto `C:`, but returns a UNC path unchanged, so a target addressed as `\\localhost\c$\...\repo\site\x.ts` votes "outside" twice and is allowed, unowned and unlogged. Orchestrator's reproduction: pre-phase hook `157e70a` DENY / DENY / DENY with 3 receipts; current hook `c75f8d1` DENY (plain) / **ALLOW** (UNC unowned) / **ALLOW** (UNC owned) with 1 receipt, and the UNC write lands in the repo. Windows-only: on POSIX `path.isAbsolute(rel)` is unreachable there. **T1.3.1.**
+
+**Also raised, folded into Wave 1.3:** the docblock's new claim that every deny records a receipt is false for the unusable-config deny (MINOR 1, **T1.3.1**); `link-out-of-repo-denied` passes even with its branch mutated to `if (false)`, because the fall-through denies for another reason, so it must assert the message (MINOR 2, **T1.3.1**); the resolver suite's real-filesystem case turns a resolver regression into a skip (MINOR 3, **T1.3.2**); the thrown-deny receipt can carry a non-string path (NIT 4, **T1.3.1**).
+
+**Left as follow-ups:** an escape or thrown deny attributes `task` from the lexical path (NIT 5); D12's bound only helps when a `.git` intervenes (NIT 6); a nonexistent UNC server costs a 2.7s timeout, pre-existing (NIT 7); `drydock-audit.mjs` still resolves ownership its own weaker way, one level and no two-vote rule, so hook and audit can disagree (NIT 8, pre-existing).
+
+**Measured clean:** no over-denial across new files in new directories, existing files, absolute/relative/mixed-separator forms, `notebook_path`, a repo reached through a junction, a subst drive or UNC, and case or trailing-slash variants of `projectDir`. No other escape: junctions and symlinks out of the repo at depth, dangling links, leaf symlinks, ADS, trailing dots and spaces, case variants, parent-is-a-file all deny; hard links are followed, as *Out of scope* says. Termination holds on a symlink loop (26ms) and a 2000-segment path (3.8s), with no stack growth. The injected-fake tests are not tautological: four separate mutations each fail a specific case. The detector's widened rename condition mis-parses no porcelain status tried (` R`, `R `, `RM`, `A `, `AM`, ` M`, ` D`, `??`, `UU`). The walk-up stops at a `.git` directory and at a `.git` FILE (worktree shape), finds the config from a deep subdirectory, and cannot pick a wrong nested repo. D10 verified on Linux: the relative `..` escape now denies.
+
 ## Progress log
 
 | Date | Task | Result | Notes |
@@ -601,5 +643,6 @@ Deviations logged: 0 (0 discovered by wavecheck)
 | 2026-09-29 | Wave 1.1 | PASS | wavecheck |
 | 2026-09-29 | T1.2.1 | done | `45fac55`, hook on the new resolver, outside-both-ways, receipts on thrown denies (39 cases) |
 | 2026-09-29 | Wave 1.2 | PASS | wavecheck |
+| 2026-09-29 | T1.R.1 | REJECTED | MAJOR: a UNC form of the repo path is allowed unowned; Wave 1.3 added |
 
 ## Reconcile report
