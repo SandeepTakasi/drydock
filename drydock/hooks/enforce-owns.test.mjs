@@ -210,7 +210,18 @@ if (OUTSIDE_LINK_OK) {
   // directory OUTSIDE the repo entirely. Outside after resolution but NOT
   // outside lexically -- the one case where the two "is this outside the
   // repo?" votes disagree, and disagreement must deny, not allow.
-  cases.push(["link-out-of-repo-denied", { file_path: "docs/out/x.ts" }, DENY]);
+  //
+  // Wave 1.R MINOR 2: this used to assert only the exit code, so it did not
+  // gate the branch it was written for -- mutating
+  // `if (outside(rel) && !outside(lexRel))` to `if (false)` still passed,
+  // because the fall-through `owns` mismatch denies for a DIFFERENT reason
+  // with the same exit code. Assert the deny message names the actual branch.
+  const { code, message } = run({ file_path: "docs/out/x.ts" });
+  report(
+    "link-out-of-repo-denied",
+    code === DENY && message.includes("resolves outside it"),
+    `exit=${code} want=${DENY} :: ${message.split("\n")[0].slice(0, 60)}`
+  );
 } else {
   report("link-out-of-repo-denied", true, "SKIPPED: box permits neither junction nor symlink creation");
 }
@@ -437,6 +448,27 @@ if (process.platform === "win32") {
   }
 } else {
   report("f10-cross-drive", true, "SKIPPED: non-Windows -- cross-drive relative() behaviour is Windows-specific");
+}
+
+// Wave 1.R regression (MAJOR): `realpathSync.native` collapses `\\?\C:\...`,
+// `\\.\C:\...` and a `subst` drive back onto `C:\...`, but returns a UNC path
+// unchanged. So the repo's own directory, addressed as
+// `\\localhost\c$\...\repo\...`, voted "outside" on BOTH the lexical and the
+// resolved-real path (different root STRINGS either way) and was ALLOWED
+// straight through -- an unowned file inside the repo, no receipt written.
+// Only runs when the fixture root is actually on C: (true on a standard
+// Windows box, since `os.tmpdir()` resolves there) -- the admin-share form
+// only lines up for the drive it names.
+if (process.platform === "win32" && /^[A-Za-z]:/.test(ROOT) && ROOT[0].toUpperCase() === "C") {
+  const uncRoot = "\\\\localhost\\c$" + ROOT.slice(2);
+  expectExit("unc-repo-denied", { file_path: join(uncRoot, "site", "x.ts") }, DENY);
+  expectExit("unc-repo-owned-allowed", { file_path: join(uncRoot, "docs", "x.md") }, ALLOW);
+} else if (process.platform === "win32") {
+  report("unc-repo-denied", true, "SKIPPED: fixture root is not on C:, admin-share form would not line up");
+  report("unc-repo-owned-allowed", true, "SKIPPED: fixture root is not on C:, admin-share form would not line up");
+} else {
+  report("unc-repo-denied", true, "SKIPPED: Windows-only UNC admin-share form");
+  report("unc-repo-owned-allowed", true, "SKIPPED: Windows-only UNC admin-share form");
 }
 
 rmSync(OUTSIDE_DIR, { recursive: true, force: true });

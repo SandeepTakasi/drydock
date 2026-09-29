@@ -39,8 +39,20 @@
  * config file present?", which a hook that never executed also satisfies. A
  * deny raised by a thrown check used to skip this — the outer `catch` called
  * `deny()` without `record()` — so a dangling-link denial (or any other
- * exception path) left no trace at all (measured, plan 007). Every deny path,
- * including the outer catch, now records before it denies.
+ * exception path) left no trace at all (measured, plan 007). The outer catch,
+ * and every deny once `config` has parsed, now record before they deny. The
+ * one exception is the "config is present but unusable" deny: it fires before
+ * `config` exists in any usable form, so there is no `plan`/`wave`/`owns` yet
+ * to attribute a receipt to. That path denies with no receipt at all --
+ * `audit-wave` should read an unusable-config wave by the total ABSENCE of a
+ * receipt for that write, not by a receipt recorded for the failure.
+ *
+ * FILESYSTEM IDENTITY corroborates the resolved-real vote when it comes back
+ * absolute (see OUTSIDE THE REPO below): `dev`+`ino` from `statSync(p, {
+ * bigint: true })`, stable across namespaces on the same volume even when the
+ * path strings are not. Bounded the same way as everything else here -- a
+ * path that cannot be stat'd (does not exist, denied, dangling) corroborates
+ * nothing and the vote stands.
  *
  * WAVE-LEVEL, NOT PER-TASK. This catches "wrote a file no task in this wave
  * owns" — deviation 13's exact shape. Task-vs-task attribution stays with
@@ -90,6 +102,27 @@
  * symlink/junction escape, and that denies with its own message rather than
  * being silently allowed or silently matched against `owns`.
  *
+ * "OUTSIDE" ITSELF HAD A SECOND HOLE, measured after the F10 fix shipped:
+ * `path.isAbsolute(rel)` was trusted as proof the resolved-real vote means
+ * "somewhere else", but it only proves "a different root STRING". Those are
+ * the same thing for a genuinely different drive, but not for the same
+ * directory addressed through a different namespace --
+ * `realpathSync.native` collapses `\\?\C:\...`, `\\.\C:\...`, and a `subst`
+ * drive back onto `C:\...`, but returns a UNC path (`\\localhost\c$\...`,
+ * `\\127.0.0.1\c$\...`) unchanged. With `CLAUDE_PROJECT_DIR` set to a plain
+ * `C:\...` path, a target addressed via that UNC form voted "outside" on
+ * BOTH the lexical and resolved-real path (different root strings either
+ * way) and was allowed straight through -- an unowned file inside the repo,
+ * written with no receipt. So an absolute `rel` is no longer taken at face
+ * value: before it is trusted, `corroborateInside` walks from the resolved
+ * target up toward the filesystem root, comparing each ancestor's `dev`+`ino`
+ * against the repo root's. A match means the target IS inside the repo, just
+ * spelled through another namespace, and `rel` is rewritten to the
+ * repo-relative path found along that walk before falling through to the
+ * normal `owns` match. No match — the walk reaches the filesystem root
+ * empty-handed, or the repo root itself cannot be stat'd — means the vote
+ * stands and the target is genuinely elsewhere.
+ *
  * CEILINGS, stated because a guarantee with a hidden hole is worse than none:
  *   - Bash writes (`sed -i`, `>` redirect, `git checkout`) do not pass through
  *     file-tool hooks and are NOT prevented here, and never will be: the set of
@@ -119,7 +152,7 @@
  * has to say how to unwedge it.
  */
 
-import { readFileSync, appendFileSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, appendFileSync, mkdirSync, existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { matchesOwns } from "../lib/owns-match.mjs";
 import { realpathWithFallback, resolveTarget } from "../lib/resolve-target.mjs";
@@ -134,6 +167,40 @@ const deny = (message) => {
     })
   );
   process.exit(2);
+};
+
+// Filesystem identity of `p` -- `{ dev, ino }` as bigints, or null when `p`
+// cannot be stat'd (absent, permission-denied, or the far side of a dangling
+// link). See docblock FILESYSTEM IDENTITY.
+const identity = (p) => {
+  try {
+    const st = statSync(p, { bigint: true });
+    return { dev: st.dev, ino: st.ino };
+  } catch {
+    return null;
+  }
+};
+
+const sameIdentity = (a, b) => a !== null && b !== null && a.dev === b.dev && a.ino === b.ino;
+
+// Is `resolved` actually inside `root`, reached through a namespace
+// `path.relative` cannot see through (a UNC form of the repo's own path)?
+// Walk upward from `resolved`, collecting basenames as we go, until an
+// ancestor's identity matches `root`'s. Returns the repo-relative path
+// (forward-slash joined) on a match, or null when the climb reaches the
+// filesystem root without one -- a genuinely different location.
+const corroborateInside = (root, resolved) => {
+  const rootId = identity(root);
+  if (rootId === null) return null;
+  let current = resolved;
+  const skipped = [];
+  for (;;) {
+    if (sameIdentity(identity(current), rootId)) return skipped.join("/");
+    const parent = path.dirname(current);
+    if (parent === current) return null; // filesystem root, no match found
+    skipped.unshift(path.basename(current));
+    current = parent;
+  }
 };
 
 let input;
@@ -278,7 +345,17 @@ try {
   // RESOLVED relative path: root (realpath of projectDir) to the
   // symlink/junction-resolved target. The other vote.
   const resolved = resolveTarget(root, target);
-  const rel = path.relative(root, resolved).split(path.sep).join("/");
+  let rel = path.relative(root, resolved).split(path.sep).join("/");
+
+  // An absolute `rel` normally means "different root string, so a different
+  // volume" -- but it also happens when `resolved` is the SAME directory as
+  // `root`, reached through a namespace `path.relative` cannot reconcile (a
+  // UNC form of the repo's own path). Corroborate with filesystem identity
+  // before trusting it; see docblock "OUTSIDE" ITSELF HAD A SECOND HOLE.
+  if (path.isAbsolute(rel)) {
+    const corroborated = corroborateInside(root, resolved);
+    if (corroborated !== null) rel = corroborated;
+  }
 
   const outside = (r) => r === ".." || r.startsWith("../") || path.isAbsolute(r);
 
@@ -320,7 +397,10 @@ try {
   // that does is a real fault, and a faulty enforcement control denies -- and
   // records, so a thrown deny leaves the same trace any other deny does
   // (measured missing, plan 007: the dangling-link case left no receipt).
-  record("deny", lexRel !== undefined ? lexRel : target);
+  // `String(...)` because `target` can be whatever hostile shape the tool
+  // input carried (a number, an array) -- the receipt's `path` field must
+  // stay a string (measured `path: 42` otherwise).
+  record("deny", String(lexRel !== undefined ? lexRel : target));
   deny(
     `Drydock: ownership check failed on this write (${err.message}). ` +
       `Enforcement fails closed rather than letting an unchecked write through. ` +
