@@ -560,6 +560,37 @@ Execution is `fleet`: both tasks ran as spawned `drydock:executor` subagents, on
 Deviations logged: 0 (0 discovered by wavecheck)
 
 
+### Wavecheck 1.2, PASS, 2026-09-29
+
+Execution is `fleet`; audited by the orchestrating session, which wrote none of this diff.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `status: EXECUTING`; wave 1.2 exists; wave 1.1 has a PASS report. Staleness: the two owned files were unchanged between the baseline `157e70a` and this wave. |
+| 2. Ownership | PASS | `audit-wave 1.2: PASS (1 task(s), 1 commit(s), attribution: manifest)`, table below. Working tree clean. |
+| 2b. Enforcement ran | PASS | `enforcement active: 5 hook decision(s) recorded for wave 1.2 (0 denied)`. Bash layer: 15 commands, 0 writes outside `owns`. The enforcing hook is the installed 0.15.0 copy, not the file this task edited, so the task could not affect its own boundary. |
+| 3. Forbidden | PASS | The inline `realOr` and `resolveAncestry` are removed rather than duplicated, and the hook imports `resolve-target.mjs`; no `process.exit` line and no receipt field name changed; `lib/resolve-target.mjs` and `lib/owns-match.mjs` are untouched by this commit; no dependency added; no existing case deleted. |
+| 4. Acceptance | PASS | Criterion re-run by the auditor: exit 0 (`enforce-owns: PASS, 39 cases`, with `ok   f10-cross-drive   exit=0 want=0`, so that case ran rather than skipped). The executor additionally ran the suite under `docker run node:20-slim`: 40 cases there, with `posix-relative-dotdot` and `f1-leaf-file-symlink-escape` executing rather than skipping. |
+| 4b. Watched failing first | PASS, with one stated exception | The auditor ran the NEW suite against the PRE-CHANGE hook (`git show 2c37b36:...`) in a copy: `FAIL, 4 of 39`, namely `f10-cross-drive` (exit 2, want 0), `link-out-of-repo-denied` (exit 0, want 2), `throw-deny-receipt` (entries `[]`) and `f7-cwd-subdir` (exit 0, want 2). `walkup-stops-at-git` passes before and after, because the pre-change code had no walk-up to misdirect; it is a regression guard. `posix-relative-dotdot` skips on Windows and was verified in Docker. |
+| 5. Deviations | PASS | Executor reported none; none discovered. |
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.2.1 | `45fac55` | `drydock/hooks/enforce-owns.mjs`<br>`drydock/hooks/enforce-owns.test.mjs` | `drydock/hooks/enforce-owns.mjs`<br>`drydock/hooks/enforce-owns.test.mjs` | none |
+
+**Auditor's own probes against the new hook**, in a scratch repo with `owns: ["docs/**"]`, three junctions (to `site`, to a non-existent target, and to a directory outside the repo):
+
+| Probe | Result |
+|---|---|
+| `Z:/nope/x.ts`, `Q:/gone/y.ts` (other drives) | exit 0, F10 fixed, and no receipt, which is correct for a path outside the repo |
+| `docs/jn/new/deep.ts`, `docs/dj/x.ts` (plan 006's F1 and dangling cases) | exit 2 each, no regression |
+| `docs/out/x.ts` (junction to outside the repo) | exit 2, the D2 rule working |
+| `docs/ok.ts`, `docs/newdir/ok.ts` (owned, one in a new directory) | exit 0 each, no over-deny |
+| `site/a.ts` (unowned) | exit 2 |
+| Receipts | 4 denies and 2 allows logged, **including the thrown dangling-link deny** that left no entry before this wave |
+
+Deviations logged: 0 (0 discovered by wavecheck)
+
 ## Progress log
 
 | Date | Task | Result | Notes |
@@ -568,5 +599,7 @@ Deviations logged: 0 (0 discovered by wavecheck)
 | 2026-09-29 | T1.1.1 | done | `a79c285`, resolver module with injectable fs, 8 cases, CI line added |
 | 2026-09-29 | T1.1.2 | done | `2c37b36`, worktree rename + walk-up bounded at .git (21 cases) |
 | 2026-09-29 | Wave 1.1 | PASS | wavecheck |
+| 2026-09-29 | T1.2.1 | done | `45fac55`, hook on the new resolver, outside-both-ways, receipts on thrown denies (39 cases) |
+| 2026-09-29 | Wave 1.2 | PASS | wavecheck |
 
 ## Reconcile report
