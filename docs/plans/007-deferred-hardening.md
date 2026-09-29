@@ -212,6 +212,7 @@ same day. Released entries are not rewritten; the 0.15.1 entry says so.
 | D11 | Testing Gate? | `N/A` | planner (assumed, flag if wrong) | The only user-facing change is the version string, which `assert-copy.mjs` pins at build time. |
 | D12 | How far may the F7 walk-up climb? | To the first ancestor holding `.drydock/wave-owns.json`, but never past the first ancestor holding `.git` | planner, on the pressure pass's finding | An unbounded walk-up adopts a stale armed wave in a parent directory or the home directory and denies every write in an unrelated repository beneath it. `.drydock/` always sits at a repository root, so the root is the natural bound. Consumed by T1.1.2, T1.2.1. |
 | D13 | How is the Wave 1.R rejection repaired? | A new **Wave 1.3** with new task ids, then a re-review. The two-vote rule keeps its shape; an absolute `rel` is corroborated by filesystem identity (`dev`+`ino`) before it may allow. | planner, on the review's verdict | Retry 1 of the escalation policy's 2, in a new wave because waves 1.1 and 1.2 are sealed and a second `task-close` under a sealed id makes attribution ambiguous (CLAUDE.md). Identity is the discriminator the reviewer measured: the repo root has the same `dev`+`ino` through every namespace, and a genuinely different directory does not. Consumed by T1.3.1, T1.3.2. |
+| D14 | How is the second Wave 1.R rejection repaired? | A **Wave 1.4** with one task, following the same pattern. This is **retry 2 of the escalation policy's 2**: a third rejection escalates a tier or goes to the human, it does not open a Wave 1.5. | planner, on the re-review's verdict | The finding is in the fix wave's test file, not the product code, and its fix is the capability-probe convention the suite already uses for links (`tryDirLink`). Consumed by T1.4.1. |
 
 ## Open questions
 
@@ -507,6 +508,24 @@ criterion fails at baseline under `prove-failable` (6 of 6).
 - **Implementation sketch:** create the symlink inside its own `try/catch`; on failure report the skip and return. Outside that `try`, call `resolveTarget` and assert, so any throw from the resolver is a FAIL. Prove it by temporarily making the resolver throw and watching the case FAIL rather than skip, then revert. Add a comment naming the token `skip-only-on-link-failure` so the criterion can see the intent.
 - **Acceptance criterion:** `node -e "const{execFileSync:e}=require('child_process');const fs=require('fs');let o='';try{o=e(process.execPath,['drydock/lib/resolve-target.test.mjs'],{encoding:'utf8',stdio:['ignore','pipe','ignore']})}catch(x){process.exit(1)}const m=o.match(/resolve-target: PASS, ([0-9]+) cases/);const s=fs.readFileSync('drydock/lib/resolve-target.test.mjs','utf8');process.exit(m&&+m[1]>=8&&s.includes('skip-only-on-link-failure')?0:1)"`
 
+### Wave 1.4 - Fixes for the second Wave 1.R rejection
+
+> Added after approval (Deviation 3, D14). Retry 2 of the escalation policy's 2.
+
+#### T1.4.1 - Skip the UNC cases when the admin share is unreachable, and finish two claims
+
+- **Description:** Probe once whether `\\localhost\c$` is actually reachable, and route the UNC cases to a recorded skip when it is not, exactly as `tryDirLink` already does for links. Then close the two loose claims the re-review measured: the docblock still says every ALLOW records a receipt, which is false for the outside-the-repo allow, and the `String(target)` coercion on the thrown-deny receipt is untested.
+- **Files owned:** `drydock/hooks/enforce-owns.mjs`, `drydock/hooks/enforce-owns.test.mjs`
+- **Depends on:** T1.3.1
+- **Model / thinking:** Standard / default   **Executor:** drydock:executor
+- **Context brief:** D14 and the second `## Wave 1.R verdict` below (finding 1, MINOR 2, MINOR 3, NIT 4); the UNC guard in `drydock/hooks/enforce-owns.test.mjs` (around the `unc-repo-denied` and `unc-repo-owned-allowed` cases), which today tests only `process.platform` and the drive letter; `tryDirLink` in the same file, which is the convention to copy; the docblock at the top of `drydock/hooks/enforce-owns.mjs`. `drydock/lib/` is READ-ONLY.
+- **Forbidden:** editing anything under `drydock/lib/`; changing exit codes or receipt field names; weakening or deleting any existing case; making the UNC cases skip on a box where the share IS reachable (they must still run here, and the wave gate greps for them running); any dependency.
+- **Implementation sketch:** add a one-time capability probe beside the platform test, e.g. `const UNC_OK = process.platform === "win32" && /^[Cc]:/.test(ROOT) && (() => { try { statSync("\\\\localhost\\c$" + ROOT.slice(2)); return true; } catch { return false; } })();` and send the `else` branch to `report(..., true, "SKIPPED: \\\\localhost\\c$ not reachable on this box")`, one skip line per case so a skip never stands in for two. Verify BOTH directions: the cases still run here, and pointing the probe at an unreachable share (e.g. `\\localhost\zz$`) in a scratch copy yields skips rather than `FAIL`. Then: correct the docblock's ALLOW clause to name the allows that record nothing (the outside-the-repo allow, and the pre-config allows), so the sentence matches the measured matrix; add to CEILINGS that a junction escape addressed through a UNC form of the repo is allowed silently, because both votes come back absolute and the escape branch cannot fire (measured: plain `docs/out/x.ts` denies, `\\localhost\c$\...\docs\out\x.ts` allows with no receipt); and add a case named exactly `throw-deny-receipt-string-path` that feeds a non-string `file_path` (e.g. `42`) and asserts the resulting receipt's `path` is a string. Also guard `identity` against a filesystem with no file ids: treat `ino === 0n` as `null`, so a `{0,0}` root cannot match an unrelated `{0,0}` ancestor.
+- **Acceptance criterion:** `node -e "const{execFileSync:e}=require('child_process');const fs=require('fs');let o='';try{o=e(process.execPath,['drydock/hooks/enforce-owns.test.mjs'],{encoding:'utf8',stdio:['ignore','pipe','ignore']})}catch(x){process.exit(1)}const m=o.match(/enforce-owns: PASS, ([0-9]+) cases/);const s=fs.readFileSync('drydock/hooks/enforce-owns.test.mjs','utf8');const h=fs.readFileSync('drydock/hooks/enforce-owns.mjs','utf8');process.exit(m&&+m[1]>=42&&/ok +unc-repo-denied +exit=2 want=2/.test(o)&&s.includes('throw-deny-receipt-string-path')&&s.includes('not reachable on this box')&&h.includes('leave nothing')?0:1)"`
+
+  > Still requires `unc-repo-denied` to RUN and deny on this box, so the skip
+  > path cannot be used to dodge the case here.
+
 ### Wave 1.R - Quality review
 
 #### T1.R.1 - Fresh-context quality review of Phase 1
@@ -518,7 +537,7 @@ criterion fails at baseline under `prove-failable` (6 of 6).
   now denied, and whether the walk-up can pick the wrong `.drydock/`.
 - **Files owned:** none (review only; the verdict is appended by the
   orchestrator after the wave is disarmed)
-- **Depends on:** T1.1.2, T1.2.1, T1.3.1, T1.3.2
+- **Depends on:** T1.1.2, T1.2.1, T1.3.1, T1.3.2, T1.4.1
 - **Model / thinking:** Judgment / extended (Opus)   **Executor:** drydock:executor
 - **Context brief:** the Phase 1 diff; this plan's *Findings & constraints* and
   Decision Log; plan 006's two Wave 1.R verdicts as prior art. Docker
@@ -564,6 +583,7 @@ criterion fails at baseline under `prove-failable` (6 of 6).
 |---|---|---|---|---|---|
 | 1 | Phase 1 structure | Wave 1.3 (T1.3.1, T1.3.2) added after approval, and T1.R.1 now also depends on it. | The Wave 1.R quality review REJECTED Phase 1 on a confirmed MAJOR regression: a write addressed through a UNC form of the repo's own path is allowed and unlogged, where the pre-phase hook denied it. | Scope grows by two tasks; no sealed wave, task id or report changes. The contract's "targeted fix task appended" remedy needs no `/drydock:replan`; plans 004 and 006 did the same. | orchestrator, 2026-09-29 |
 | 2 | T1.2.1 | The executor reported the six new cases as failing pre-fix "by construction" rather than by running them. | Its own summary said so plainly. | None on the verdict: the auditor ran the new suite against the pre-change hook and measured `FAIL, 4 of 39`, with the other two explained (a regression guard, and a POSIX-only case). Recorded because a claim of evidence is not evidence. | wavecheck 1.2, 2026-09-29 |
+| 3 | Phase 1 structure | Wave 1.4 (T1.4.1) added, and T1.R.1 now also depends on it. | The Wave 1.R re-review REJECTED again, on a MAJOR in Wave 1.3's own test file: the UNC cases assume `\\localhost\c$` is reachable, so on a box where it is not the suite hard-FAILS, and `unc-repo-denied` passes for the wrong reason while the fix it gates is unexercised. | Retry 2 of 2. A third rejection escalates rather than adding a wave (D14). | orchestrator, 2026-09-29 |
 
 ## Wavecheck reports
 
@@ -656,6 +676,16 @@ The end state is better than the pre-phase hook, which denied the OWNED UNC path
 
 Deviations logged: 0 (0 discovered by wavecheck)
 
+## Wave 1.R verdict, REJECTED, 2026-09-29 (re-review after Wave 1.3)
+
+A second fresh-context Opus reviewer, driving the hook from `spawnSync` with control probes after being warned that a PowerShell harness had produced false results. **The rejected regression is genuinely fixed**, and not merely in the spelling it was reported in: unowned denies and owned allows, each with a correct repo-relative receipt, through `\\localhost\c$`, `\\127.0.0.1\c$`, `\\?\UNC\`, `\\.\UNC\`, `\\?\C:\`, `\\.\C:\`, a case-variant UNC, volume-GUID and `GLOBALROOT` device forms, a `subst` drive, an 8.3 short name, and the symmetric case with the project directory itself given as UNC. Against the pre-fix hook the same probe exits 0. Thirteen source mutations each kill a specific case, including the one MINOR 2 fixed, so the new cases gate their logic. The identity walk costs nothing measurable, terminates on every root form tried, and produced no over-denial across roughly thirty ordinary-write shapes, on Windows and on Linux under the floor runtime.
+
+**MAJOR, confirmed, in Wave 1.3's test file rather than the product.** The UNC cases guard on platform and drive letter but never on whether the admin share is REACHABLE. On a standard-user, `AutoShareWks=0` or hardened box, `lstat` throws, the hook fails closed, and the reviewer measured `FAIL unc-repo-owned-allowed exit=2 want=0` with the suite RED, while `unc-repo-denied` passes for the wrong reason (a thrown deny, not corroboration), satisfying the wave's own criterion with the fix unexercised. `drydock/README.md` tells a new user to run this suite, and CI runs it on `windows-latest`. This repo already paid for exactly this class once: plan 006 records the suite going red because `symlinkSync` threw EPERM, which is why `tryDirLink` degrades a missing capability into a recorded skip. **T1.4.1.**
+
+**Also folded into Wave 1.4:** the docblock still claims every ALLOW records a receipt, which the measured matrix contradicts for the outside-the-repo allow (MINOR 3); a junction escape addressed through a UNC form is allowed silently, because both votes are absolute, so the two-votes story is not symmetric and CEILINGS should say so (MINOR 2); the `String(target)` coercion survives mutation, untested (NIT 4); and `identity` should treat `ino === 0n` as unknown so a file-id-less filesystem cannot match unrelated directories (SUSPECTED).
+
+**Left as follow-ups:** the outer-catch receipt's path is not repo-relative (NIT 5); a target that IS the repo root renders `does not own .` with an empty receipt path (NIT 6); a resolver regression crashes the suite instead of printing a `FAIL` row and leaks a temp fixture (NIT 7); no case exercises the `dev` half of the identity comparison, which needs a second volume (SUSPECTED, not fixable on this runner).
+
 ## Wave 1.R verdict, REJECTED, 2026-09-29
 
 Fresh-context Opus review of `157e70a..c75f8d1`. One CONFIRMED MAJOR, introduced by this phase. Everything else it probed measured clean, including the regression class the plan flagged as highest risk.
@@ -682,5 +712,6 @@ Fresh-context Opus review of `157e70a..c75f8d1`. One CONFIRMED MAJOR, introduced
 | 2026-09-29 | T1.3.1 | done | `d01c33a`, identity corroboration closes the UNC regression (41 cases) |
 | 2026-09-29 | T1.3.2 | done | `918dd45`, resolver suite skips only on link failure |
 | 2026-09-29 | Wave 1.3 | PASS | wavecheck |
+| 2026-09-29 | T1.R.1 | REJECTED | re-review: UNC cases assume the admin share is reachable; Wave 1.4 added |
 
 ## Reconcile report
