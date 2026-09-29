@@ -33,19 +33,25 @@
  * `CLAUDE_PROJECT_DIR` found no config and went inert on an unowned write
  * (measured, plan 007 F7).
  *
- * RECEIPT — every decision, allow and deny alike, is appended to
- * `.drydock/enforcement.log`. That is what lets `audit-wave` answer "did
+ * RECEIPT — every decision the ownership check itself makes is appended to
+ * `.drydock/enforcement.log`, but three paths exit before that check runs and
+ * leave nothing there: a pre-config allow (no armed wave, or no
+ * `file_path`/`notebook_path` on the payload at all), an outside-the-repo
+ * allow (both votes agree the target is outside the repo -- see OUTSIDE THE
+ * REPO below), and the "config is present but unusable" deny, which fires
+ * before `config` exists in any usable form, so there is no `plan`/`wave`/
+ * `owns` yet to attribute a receipt to. Everything past that point records:
+ * every allow that matches an `owns` entry, every deny once `config` has
+ * parsed, and the outer-catch deny. That is what lets `audit-wave` answer "did
  * enforcement actually run for this wave?" rather than the far weaker "was a
  * config file present?", which a hook that never executed also satisfies. A
  * deny raised by a thrown check used to skip this — the outer `catch` called
  * `deny()` without `record()` — so a dangling-link denial (or any other
  * exception path) left no trace at all (measured, plan 007). The outer catch,
- * and every deny once `config` has parsed, now record before they deny. The
- * one exception is the "config is present but unusable" deny: it fires before
- * `config` exists in any usable form, so there is no `plan`/`wave`/`owns` yet
- * to attribute a receipt to. That path denies with no receipt at all --
- * `audit-wave` should read an unusable-config wave by the total ABSENCE of a
- * receipt for that write, not by a receipt recorded for the failure.
+ * and every deny once `config` has parsed, now record before they deny.
+ * `audit-wave` should read an unusable-config wave, an outside-the-repo write,
+ * or a pre-config write by the total ABSENCE of a receipt for it -- those
+ * three paths leave nothing, by design, not by omission.
  *
  * FILESYSTEM IDENTITY corroborates the resolved-real vote when it comes back
  * absolute (see OUTSIDE THE REPO below): `dev`+`ino` from `statSync(p, {
@@ -136,6 +142,16 @@
  *     inside the repo lexically but escapes it only after resolving a symlink
  *     or junction IS enforced: it denies, because the whole point of
  *     resolving symlinks is to catch exactly that escape.
+ *   - That escape-denial has its own hole: a junction escape addressed through
+ *     a UNC form of the repo's own path is allowed SILENTLY, not denied.
+ *     Measured: plain `docs/out/x.ts` (a junction out of the repo) denies with
+ *     "resolves outside it", while `\\localhost\c$\...\repo\docs\out\x.ts`
+ *     exits 0 with no receipt, because both "outside" votes come back
+ *     absolute (different root STRINGS either way) and the escape branch --
+ *     which only fires when the lexical vote says inside and the resolved
+ *     vote says outside -- never sees a disagreement to catch. The write still
+ *     lands outside the repo, which is the bullet above's documented
+ *     unenforced ceiling; this just names the UNC-addressed route into it.
  *   - Enforcement is WAVE-scoped, so within a wave one task may write another
  *     task's files. Per-task attribution stays with the commit audit.
  *
@@ -175,6 +191,11 @@ const deny = (message) => {
 const identity = (p) => {
   try {
     const st = statSync(p, { bigint: true });
+    // A filesystem that does not report file ids hands back ino 0 for every
+    // path, which would make an unrelated ancestor's {0,0} "match" the repo
+    // root's {0,0} and rewrite `rel` to somewhere it does not belong. Treat
+    // that as unknown, same as a path that cannot be stat'd at all.
+    if (st.ino === 0n) return null;
     return { dev: st.dev, ino: st.ino };
   } catch {
     return null;

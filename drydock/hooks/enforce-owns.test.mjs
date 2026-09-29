@@ -22,7 +22,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, writeFileSync, rmSync, existsSync, readFileSync, symlinkSync, realpathSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync, rmSync, existsSync, readFileSync, symlinkSync, realpathSync, statSync } from "node:fs";
 import { dirname, join, sep } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -373,6 +373,21 @@ if (DANGLE_OK) {
   report("throw-deny-receipt", true, "SKIPPED: box permits neither junction nor symlink creation");
 }
 
+// NIT 4 (Wave 1.R): the outer catch's `String(target)` coercion, which keeps
+// the receipt's `path` field a string even when `file_path` is not, was never
+// asserted -- a mutation reverting it to the raw non-string value would pass
+// every other case silently. Feed a non-string `file_path` and read back what
+// actually landed in the log.
+{
+  const { code } = run({ file_path: 42 });
+  const got = lastReceipt();
+  report(
+    "throw-deny-receipt-string-path",
+    code === DENY && typeof got?.path === "string" && got.path === "42",
+    `exit=${code} path=${JSON.stringify(got?.path)} typeof=${typeof got?.path}`
+  );
+}
+
 // plan 007 T1.2.1, defect 4 (F7): with `CLAUDE_PROJECT_DIR` unset and `cwd` a
 // subdirectory, the hook used to treat that subdirectory itself as the project
 // directory, find no `.drydock/wave-owns.json` there, and go inert -- an
@@ -459,10 +474,34 @@ if (process.platform === "win32") {
 // Only runs when the fixture root is actually on C: (true on a standard
 // Windows box, since `os.tmpdir()` resolves there) -- the admin-share form
 // only lines up for the drive it names.
-if (process.platform === "win32" && /^[A-Za-z]:/.test(ROOT) && ROOT[0].toUpperCase() === "C") {
+// Wave 1.R rejection (MAJOR): the cases below used to guard only on platform
+// and drive letter, never on whether `\\localhost\c$` is actually REACHABLE.
+// On a standard-user box, with `AutoShareWks=0`, with LanmanServer stopped, or
+// on a hardened corporate image, `statSync` on that share throws, the hook
+// fails closed with exit 2 for a reason that has nothing to do with the code
+// under test, and `unc-repo-owned-allowed` reads as a real FAIL. Same
+// capability-probe-then-skip convention as `tryDirLink` above (plan 006:
+// `symlinkSync` throwing `EPERM` on a stock Windows box took down the whole
+// file before this pattern existed).
+const UNC_OK =
+  process.platform === "win32" &&
+  /^[Cc]:/.test(ROOT) &&
+  (() => {
+    try {
+      statSync("\\\\localhost\\c$" + ROOT.slice(2));
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+
+if (UNC_OK) {
   const uncRoot = "\\\\localhost\\c$" + ROOT.slice(2);
   expectExit("unc-repo-denied", { file_path: join(uncRoot, "site", "x.ts") }, DENY);
   expectExit("unc-repo-owned-allowed", { file_path: join(uncRoot, "docs", "x.md") }, ALLOW);
+} else if (process.platform === "win32" && /^[A-Za-z]:/.test(ROOT) && ROOT[0].toUpperCase() === "C") {
+  report("unc-repo-denied", true, "SKIPPED: \\\\localhost\\c$ not reachable on this box");
+  report("unc-repo-owned-allowed", true, "SKIPPED: \\\\localhost\\c$ not reachable on this box");
 } else if (process.platform === "win32") {
   report("unc-repo-denied", true, "SKIPPED: fixture root is not on C:, admin-share form would not line up");
   report("unc-repo-owned-allowed", true, "SKIPPED: fixture root is not on C:, admin-share form would not line up");
