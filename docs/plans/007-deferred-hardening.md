@@ -1,14 +1,14 @@
 ---
 plan: 007-deferred-hardening
 format_version: 3
-status: DRAFT
+status: EXECUTING
 isolation: none
 enforcement: required
 attribution: manifest
 lane: full
 execution: fleet
 created: 2026-09-21
-approved_by: unapproved
+approved_by: Sandeep Takasi
 ---
 
 # 007 - Deferred hardening from plan 006
@@ -90,15 +90,19 @@ changes.
 
 ## Baseline
 
-Filled by T0 before any wave is armed.
+Recorded by T0 on 2026-09-29, before any wave was armed.
 
 | | |
 |---|---|
-| Commit SHA | *(T0)* |
-| `node drydock/scripts/drydock-audit.test.mjs` | *(T0)* |
-| `node drydock/hooks/enforce-owns.test.mjs` | *(T0)* |
-| `node drydock/hooks/detect-bash-writes.test.mjs` | *(T0)* |
-| `node site/scripts/assert-matrix.mjs` | *(T0)* |
+| Commit SHA | `157e70a7b86fb671bf646e6707c9ebb1f31d187a` |
+| `node drydock/scripts/drydock-audit.test.mjs` | **GREEN.** `139/139 passed` |
+| `node drydock/hooks/enforce-owns.test.mjs` | **GREEN.** `enforce-owns: PASS, 33 cases` |
+| `node drydock/hooks/detect-bash-writes.test.mjs` | **GREEN.** `detect-bash-writes: PASS, 18 cases` |
+| `node site/scripts/assert-matrix.mjs` | **RED until T0's own row landed:** no index row for this plan. Green after T0. |
+
+No pre-existing failure is excluded from any acceptance criterion: the three
+suites are green at baseline, so every criterion below gates only this plan's
+work.
 
 ## Practices in effect
 
@@ -537,5 +541,6 @@ criterion fails at baseline under `prove-failable` (6 of 6).
 
 | Date | Task | Result | Notes |
 |---|---|---|---|
+| 2026-09-29 | T0 | done | baseline at `157e70a`, all three suites green, index row added |
 
 ## Reconcile report
