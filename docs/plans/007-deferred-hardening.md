@@ -537,10 +537,36 @@ criterion fails at baseline under `prove-failable` (6 of 6).
 
 ## Wavecheck reports
 
+### Wavecheck 1.1, PASS, 2026-09-29
+
+Execution is `fleet`: both tasks ran as spawned `drydock:executor` subagents, one at a time (D7), and this audit was performed by the orchestrating session, which wrote neither diff.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `format_version: 3`, `status: EXECUTING` before the wave was armed, wave 1.1 exists, no prior wave (T0 is Phase 0, unwaved). |
+| 2. Ownership | PASS | `audit-wave 1.1: PASS (2 task(s), 2 commit(s), attribution: manifest)`, table below. Working tree clean. |
+| 2b. Enforcement ran | PASS | `enforcement active: 9 hook decision(s) recorded for wave 1.1 (0 denied)`. Bash layer: 23 commands, 0 writes outside `owns`. The enforcing hook is the installed 0.15.0 copy, which is the code this plan is changing; the repaired copies are exercised by their suites and by the auditor's own reproductions below. |
+| 3. Forbidden | PASS | T1.1.1 added exactly one line to `verify.yml` and touched no hook: `git diff` over `enforce-owns.mjs` and `lib/owns-match.mjs` for this range is empty. The module imports only `node:fs` and `node:path`, exports only the two contracted functions, and contains no `process.exit`. T1.1.2 added no non-zero exit, no `tool_input.command` read, no ignored-file scan and no snapshot-format change. |
+| 4. Acceptance | PASS | Both criteria re-run by the auditor: T1.1.1 exit 0 (`resolve-target: PASS, 8 cases`, and the executor also ran it under `docker run node:20-slim`), T1.1.2 exit 0 (`detect-bash-writes: PASS, 21 cases`). Independently, the auditor re-ran its own exploration reproductions against the new detector: a ` R` worktree rename now records `"path":"site/a.ts"` where it recorded `"path":"e/a.ts"` at baseline, and with `CLAUDE_PROJECT_DIR` removed from the environment and `cwd` set to `docs/sub`, the walk-up found the armed config and wrote a receipt. |
+| 5. Deviations | PASS | Executors reported none; none discovered. |
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.1.1 | `a79c285` | `.github/workflows/verify.yml`<br>`drydock/lib/resolve-target.mjs`<br>`drydock/lib/resolve-target.test.mjs` | `drydock/lib/resolve-target.mjs`<br>`drydock/lib/resolve-target.test.mjs`<br>`.github/workflows/verify.yml` | none |
+| T1.1.2 | `2c37b36` | `drydock/hooks/detect-bash-writes.mjs`<br>`drydock/hooks/detect-bash-writes.test.mjs` | `drydock/hooks/detect-bash-writes.mjs`<br>`drydock/hooks/detect-bash-writes.test.mjs` | none |
+
+**Stated rather than implied:** T1.1.2's `walkup-stops-at-git` case passes both before and after its fix, because the pre-fix code had no walk-up at all and so could not adopt a parent's config either. Its executor said so unprompted. It is a guard against regression, not a reproduction of a defect, and the wave's other two new cases were watched failing first.
+
+Deviations logged: 0 (0 discovered by wavecheck)
+
+
 ## Progress log
 
 | Date | Task | Result | Notes |
 |---|---|---|---|
 | 2026-09-29 | T0 | done | baseline at `157e70a`, all three suites green, index row added |
+| 2026-09-29 | T1.1.1 | done | `a79c285`, resolver module with injectable fs, 8 cases, CI line added |
+| 2026-09-29 | T1.1.2 | done | `2c37b36`, worktree rename + walk-up bounded at .git (21 cases) |
+| 2026-09-29 | Wave 1.1 | PASS | wavecheck |
 
 ## Reconcile report
