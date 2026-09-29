@@ -78,7 +78,28 @@ try {
   done(); // unreadable hook input is not our business to complain about
 }
 
-const projectDir = process.env.CLAUDE_PROJECT_DIR ?? input?.cwd ?? process.cwd();
+// Walk up from `startDir` looking for the armed wave config. Stops the moment
+// it finds `.drydock/wave-owns.json` (that directory is the project root), or
+// the moment it finds a `.git` (directory OR file -- a worktree's `.git` is a
+// file pointing at the real gitdir) without having found the config, which
+// means this repo has no armed wave and nothing above it should be adopted.
+// Without that bound, a repo with no armed wave would pick up a stale config
+// sitting in a parent or home directory and judge writes against a boundary
+// from an unrelated plan. Reaching the filesystem root with nothing found, or
+// finding a `.git` first, both fall back to `startDir` unchanged -- so a repo
+// with no armed wave behaves exactly as before this walk existed.
+function findProjectDir(startDir) {
+  let current = startDir;
+  for (;;) {
+    if (existsSync(path.join(current, ".drydock", "wave-owns.json"))) return current;
+    if (existsSync(path.join(current, ".git"))) return startDir;
+    const parent = path.dirname(current);
+    if (parent === current) return startDir;
+    current = parent;
+  }
+}
+
+const projectDir = process.env.CLAUDE_PROJECT_DIR ?? findProjectDir(input?.cwd ?? process.cwd());
 const dir = path.join(projectDir, ".drydock");
 const configPath = path.join(dir, "wave-owns.json");
 
@@ -140,18 +161,20 @@ const gitStatus = () => {
     timeout: 10000,
   });
   // NUL-delimited so paths with spaces or newlines survive. A rename/copy
-  // record (status starts R or C) is TWO NUL-terminated fields: `XY <new>`
-  // followed by a BARE `<old>` with no "XY " prefix at all. Walking by index
-  // and consuming the following record whole for those two statuses is the
-  // only way to get the old path right -- slice(3) on it eats three real
-  // characters off a field that never had a prefix to slice.
+  // record (R or C in EITHER status column -- index column XY[0] for a staged
+  // rename, worktree column XY[1] for one only `git add -N`'d, e.g. ` R`) is
+  // TWO NUL-terminated fields: `XY <new>` followed by a BARE `<old>` with no
+  // "XY " prefix at all. Walking by index and consuming the following record
+  // whole for either column being R or C is the only way to get the old path
+  // right -- slice(3) on it eats three real characters off a field that never
+  // had a prefix to slice.
   const records = out.split("\0").filter(Boolean);
   const paths = new Set();
   for (let i = 0; i < records.length; i++) {
     const rec = records[i];
     const status = rec.slice(0, 2);
     paths.add(rec.slice(3));
-    if (status[0] === "R" || status[0] === "C") {
+    if (status[0] === "R" || status[0] === "C" || status[1] === "R" || status[1] === "C") {
       i += 1;
       if (i < records.length) paths.add(records[i]);
     }

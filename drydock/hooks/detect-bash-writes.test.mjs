@@ -179,6 +179,29 @@ const mutate = (dir, script, sub) =>
   rmSync(dir, { recursive: true, force: true });
 }
 
+// worktree-rename: a rename that is only `git add -N`'d (never `git mv`'d)
+// shows up with R in the WORKTREE column (` R`), not the index column (`R `).
+// Measured with git 2.47: `mv site/a.ts docs/a.ts && git add -N docs/a.ts`
+// printed ` R docs/a.ts\0site/a.ts\0`, and slicing the old field's first three
+// characters off (as if it were a normal `XY ` record) turned "site/a.ts" into
+// "e/a.ts" -- a file that does not exist. Both ends are unowned here, so both
+// must show up detected, and the old one must be the real path.
+{
+  const dir = mkrepo("worktree-rename", { owns: ["other/**"] });
+  writeFileSync(join(dir, "site", "a.ts"), "x\n");
+  execFileSync("git", [...GIT, "add", "-A"], { cwd: dir });
+  execFileSync("git", [...GIT, "commit", "-q", "-m", "add site/a.ts"], { cwd: dir });
+  seed(dir);
+  execFileSync(NODE, ["-e", "require('fs').renameSync('site/a.ts','docs/a.ts')"], { cwd: dir });
+  execFileSync("git", [...GIT, "add", "-N", "docs/a.ts"], { cwd: dir });
+  fire(dir, "mv site/a.ts docs/a.ts && git add -N docs/a.ts");
+  const det = receipts(dir).filter((e) => e.decision === "detected");
+  const paths = det.map((e) => e.path);
+  report("worktree-rename", paths.includes("site/a.ts") && !paths.some((p) => p === "e/a.ts"),
+    `paths=${JSON.stringify(paths)}`);
+  rmSync(dir, { recursive: true, force: true });
+}
+
 // F3: a path-set diff only sees a path go from clean to dirty once. A SECOND
 // write to a path that was already dirty (outside owns) before the wave's
 // first Bash command must still be detected, not silently folded into
@@ -248,6 +271,67 @@ const mutate = (dir, script, sub) =>
   report("not a git repo records unavailable, does not throw",
     r.length === 1 && r[0].decision === "unavailable", `decisions=${JSON.stringify(r.map((e) => e.decision))}`);
   rmSync(dir, { recursive: true, force: true });
+}
+
+// f7-cwd-subdir: `CLAUDE_PROJECT_DIR` unset, hook `cwd` a subdirectory of the
+// armed repo. The hook must walk up and find `.drydock/wave-owns.json` at the
+// repo root rather than going inert.
+{
+  const dir = mkrepo("f7-cwd-subdir", { owns: ["docs/**"] });
+  seed(dir);
+  const env = { ...process.env };
+  delete env.CLAUDE_PROJECT_DIR;
+  execFileSync(NODE, ["-e", "require('fs').writeFileSync('probe.txt','x')"], { cwd: join(dir, "site") });
+  execFileSync(NODE, [HOOK], {
+    input: JSON.stringify({
+      hook_event_name: "PostToolUse",
+      tool_name: "Bash",
+      cwd: join(dir, "site"),
+      tool_input: { command: "printf x > probe.txt" },
+    }),
+    env,
+    encoding: "utf8",
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  const det = receipts(dir).filter((e) => e.decision === "detected");
+  report("f7-cwd-subdir", det.some((e) => e.path === "site/probe.txt"),
+    `paths=${JSON.stringify(det.map((e) => e.path))}`);
+  rmSync(dir, { recursive: true, force: true });
+}
+
+// walkup-stops-at-git: a PARENT directory holds an armed config, and a git
+// repo living inside it has none of its own. A Bash write inside the child
+// repo must not be judged against the parent's config -- the walk stops the
+// moment it finds the child's `.git`, so the hook sees no armed wave here and
+// goes inert, writing NO enforcement.log anywhere.
+{
+  const parent = realpathSync(mkdtempSync(join(tmpdir(), "drydock-bash-walkup-parent-")));
+  mkdirSync(join(parent, ".drydock"), { recursive: true });
+  writeFileSync(join(parent, ".drydock", "wave-owns.json"), JSON.stringify({ plan: "p", wave: "1.0", owns: ["docs/**"] }));
+  const child = join(parent, "child");
+  mkdirSync(join(child, "site"), { recursive: true });
+  execFileSync("git", [...GIT, "init", "-q", "-b", "main"], { cwd: child });
+  writeFileSync(join(child, "site", "kept.md"), "x\n");
+  execFileSync("git", [...GIT, "add", "-A"], { cwd: child });
+  execFileSync("git", [...GIT, "commit", "-q", "-m", "baseline"], { cwd: child });
+  const env = { ...process.env };
+  delete env.CLAUDE_PROJECT_DIR;
+  execFileSync(NODE, ["-e", "require('fs').writeFileSync('site/probe.txt','x')"], { cwd: child });
+  execFileSync(NODE, [HOOK], {
+    input: JSON.stringify({
+      hook_event_name: "PostToolUse",
+      tool_name: "Bash",
+      cwd: child,
+      tool_input: { command: "printf x > site/probe.txt" },
+    }),
+    env,
+    encoding: "utf8",
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  report("walkup-stops-at-git",
+    !existsSync(join(child, ".drydock", "enforcement.log")) && !existsSync(join(parent, ".drydock", "enforcement.log")),
+    `child log=${existsSync(join(child, ".drydock", "enforcement.log"))} parent log=${existsSync(join(parent, ".drydock", "enforcement.log"))}`);
+  rmSync(parent, { recursive: true, force: true });
 }
 
 {
