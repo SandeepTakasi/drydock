@@ -73,6 +73,13 @@ const JUNCTION_OK = tryDirLink(join(ROOT, "site"), join(ROOT, "docs", "jn"));
 // it throws on a genuinely absent path -- the old code could not tell the two
 // apart and climbed past this one too.
 const DANGLE_OK = tryDirLink(join(ROOT, "site", "nope"), join(ROOT, "docs", "dangle"));
+// A fourth link, dedicated to the "outside the repo, one way but not the
+// other" case (plan 007 T1.2.1): the target is a sibling directory OUTSIDE
+// this whole fixture tree, so a write beneath the link is inside the repo
+// LEXICALLY but resolves outside it after following the link -- the case the
+// hook must now deny rather than silently allow or silently match `owns`.
+const OUTSIDE_DIR = mkdtempSync(join(tmpdir(), "drydock-outside-"));
+const OUTSIDE_LINK_OK = tryDirLink(OUTSIDE_DIR, join(ROOT, "docs", "out"));
 
 const CONFIG_DIR = join(ROOT, ".drydock");
 const CONFIG = join(CONFIG_DIR, "wave-owns.json");
@@ -81,14 +88,20 @@ const DEFAULT_CONFIG = '{"plan":"005-x","wave":"2.1","owns":["docs/**","e2e/**"]
 const ALLOW = 0;
 const DENY = 2;
 
-const run = (toolInput, { config = DEFAULT_CONFIG, tool = "Write" } = {}) => {
+const run = (toolInput, { config = DEFAULT_CONFIG, tool = "Write", cwd = ROOT, deleteProjectDirEnv = false } = {}) => {
   mkdirSync(CONFIG_DIR, { recursive: true });
   if (config !== null) writeFileSync(CONFIG, config);
   else rmSync(CONFIG, { force: true });
+  // F7 / walk-up cases need to invoke the hook with a `cwd` other than ROOT and
+  // with `CLAUDE_PROJECT_DIR` absent entirely (not just empty) -- `delete` on a
+  // copy of `process.env`, never the real one, so the rest of this suite (and
+  // the surrounding session) keeps its own environment untouched.
+  const env = { ...process.env, CLAUDE_PROJECT_DIR: ROOT };
+  if (deleteProjectDirEnv) delete env.CLAUDE_PROJECT_DIR;
   try {
     execFileSync(NODE, [HOOK], {
-      input: JSON.stringify({ tool_name: tool, cwd: ROOT, tool_input: toolInput }),
-      env: { ...process.env, CLAUDE_PROJECT_DIR: ROOT },
+      input: JSON.stringify({ tool_name: tool, cwd, tool_input: toolInput }),
+      env,
       stdio: ["pipe", "pipe", "pipe"],
     });
     return { code: 0, message: "" };
@@ -190,6 +203,16 @@ if (DANGLE_OK) {
   cases.push(["f1-dangling-link", { file_path: "docs/dangle/x.ts" }, DENY]);
 } else {
   report("f1-dangling-link", true, "SKIPPED: box permits neither junction nor symlink creation");
+}
+
+if (OUTSIDE_LINK_OK) {
+  // plan 007 T1.2.1: lexically inside `docs/`, but the link resolves to a
+  // directory OUTSIDE the repo entirely. Outside after resolution but NOT
+  // outside lexically -- the one case where the two "is this outside the
+  // repo?" votes disagree, and disagreement must deny, not allow.
+  cases.push(["link-out-of-repo-denied", { file_path: "docs/out/x.ts" }, DENY]);
+} else {
+  report("link-out-of-repo-denied", true, "SKIPPED: box permits neither junction nor symlink creation");
 }
 
 // MINOR (Phase 1): F1 named a leaf that is a symlink to an existing FILE, not
@@ -319,6 +342,104 @@ for (const [name, tasks] of [
   );
 }
 
+// plan 007 T1.2.1, defect 3: the outer catch used to call `deny()` without
+// `record()`, so a thrown deny (a dangling link, or any other unexpected
+// failure) left NO trace in the enforcement log at all -- `audit-wave` could
+// not tell that enforcement ran for that write.
+if (DANGLE_OK) {
+  const LOG = join(CONFIG_DIR, "enforcement.log");
+  rmSync(LOG, { force: true });
+  const { code } = run({ file_path: "docs/dangle/y.ts" });
+  const entries = existsSync(LOG)
+    ? readFileSync(LOG, "utf8").split(/\r?\n/).filter(Boolean).map((l) => JSON.parse(l))
+    : [];
+  report(
+    "throw-deny-receipt",
+    code === DENY && entries.length === 1 && entries[0].decision === "deny",
+    `exit=${code} entries=${JSON.stringify(entries.map((e) => e.decision))}`
+  );
+} else {
+  report("throw-deny-receipt", true, "SKIPPED: box permits neither junction nor symlink creation");
+}
+
+// plan 007 T1.2.1, defect 4 (F7): with `CLAUDE_PROJECT_DIR` unset and `cwd` a
+// subdirectory, the hook used to treat that subdirectory itself as the project
+// directory, find no `.drydock/wave-owns.json` there, and go inert -- an
+// unowned write returned exit 0 instead of 2. The walk-up now climbs from
+// `cwd` to find the armed config at ROOT.
+{
+  const { code } = run(
+    { file_path: "site/x.ts" },
+    { cwd: join(ROOT, "docs"), deleteProjectDirEnv: true }
+  );
+  report("f7-cwd-subdir", code === DENY, `exit=${code} want=${DENY}`);
+}
+
+// The walk-up must stop at the FIRST `.git` it meets, even if an armed config
+// sits further up. Otherwise a nested repo (or a worktree) beneath a repo that
+// happens to have a stale `.drydock/wave-owns.json` would be judged against a
+// boundary that has nothing to do with it.
+{
+  const nested = join(ROOT, "site", "nested");
+  mkdirSync(join(nested, ".git"), { recursive: true });
+  // ROOT's config (armed by `run`'s default config write) would deny this --
+  // "z.ts" is not under docs/** or e2e/**. Finding `nested/.git` first must
+  // stop the climb before ROOT's config is ever considered, so this allows.
+  const { code } = run(
+    { file_path: "z.ts" },
+    { cwd: nested, deleteProjectDirEnv: true }
+  );
+  report("walkup-stops-at-git", code === ALLOW, `exit=${code} want=${ALLOW}`);
+}
+
+// resolve-target.mjs's own suite proved this on node:20-slim (Linux): with
+// `docs/esc -> ../site` (a RELATIVE symlink target), the relative write target
+// `docs/esc/../site/x.ts` was wrongly ALLOWED, because `path.resolve` collapses
+// the `..` textually before the kernel ever gets to follow the symlink --
+// landing the write in `site/` (unowned) while reading as staying in `docs/`
+// (owned). This exercises the same escape through the actual hook, not just
+// the extracted resolver, to prove the integration carries the fix over.
+if (process.platform !== "win32") {
+  let escLinkOk = false;
+  try {
+    symlinkSync("../site", join(ROOT, "docs", "esc"), "dir");
+    escLinkOk = true;
+  } catch {
+    escLinkOk = false;
+  }
+  if (escLinkOk) {
+    expectExit("posix-relative-dotdot", { file_path: "docs/esc/../site/x.ts" }, DENY);
+  } else {
+    report("posix-relative-dotdot", true, "SKIPPED: box could not create the relative symlink");
+  }
+} else {
+  report("posix-relative-dotdot", true, "SKIPPED: Windows -- POSIX-only relative-symlink escape");
+}
+
+// plan 007 T1.2.1, defect 1 (F10): on Windows, `path.relative` across drives
+// returns the absolute target rather than a `../`-prefixed one, so a write to
+// a nonexistent drive was matched against `owns` (and denied) instead of being
+// recognised as outside the repository both ways. Needs an actually-unused
+// drive letter, or the write would land on a real (if unrelated) volume.
+if (process.platform === "win32") {
+  let unusedDrive = null;
+  for (let c = "Z".charCodeAt(0); c >= "D".charCodeAt(0); c--) {
+    const letter = String.fromCharCode(c);
+    if (!existsSync(`${letter}:\\`)) {
+      unusedDrive = letter;
+      break;
+    }
+  }
+  if (unusedDrive) {
+    expectExit("f10-cross-drive", { file_path: `${unusedDrive}:/nope/x.ts` }, ALLOW);
+  } else {
+    report("f10-cross-drive", true, "SKIPPED: no unused drive letter found on this box");
+  }
+} else {
+  report("f10-cross-drive", true, "SKIPPED: non-Windows -- cross-drive relative() behaviour is Windows-specific");
+}
+
+rmSync(OUTSIDE_DIR, { recursive: true, force: true });
 rmSync(ROOT, { recursive: true, force: true });
 
 // Derived, never a literal. This line read `"PASS, 12 cases"` with the 12 typed

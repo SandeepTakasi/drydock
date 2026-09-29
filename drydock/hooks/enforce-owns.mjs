@@ -21,10 +21,26 @@
  *
  *   { "plan": "005-x", "wave": "2.1", "owns": ["docs/verification-log.md", "e2e/**"] }
  *
+ * PROJECT DIRECTORY. `CLAUDE_PROJECT_DIR` when set. Otherwise this walks up
+ * from `cwd` looking for the armed config, identical to the walk
+ * `detect-bash-writes.mjs` already does (plan 007 D12): it stops the moment it
+ * finds `.drydock/wave-owns.json` (that directory is the project root), or the
+ * moment it finds a `.git` (directory OR file) without having found the
+ * config, which means this repo has no armed wave and nothing above it should
+ * be adopted. Reaching the filesystem root with nothing found, or finding
+ * `.git` first, both fall back to the starting directory unchanged. Without
+ * this walk, a hook invoked with `cwd` set to a subdirectory and no
+ * `CLAUDE_PROJECT_DIR` found no config and went inert on an unowned write
+ * (measured, plan 007 F7).
+ *
  * RECEIPT — every decision, allow and deny alike, is appended to
  * `.drydock/enforcement.log`. That is what lets `audit-wave` answer "did
  * enforcement actually run for this wave?" rather than the far weaker "was a
- * config file present?", which a hook that never executed also satisfies.
+ * config file present?", which a hook that never executed also satisfies. A
+ * deny raised by a thrown check used to skip this — the outer `catch` called
+ * `deny()` without `record()` — so a dangling-link denial (or any other
+ * exception path) left no trace at all (measured, plan 007). Every deny path,
+ * including the outer catch, now records before it denies.
  *
  * WAVE-LEVEL, NOT PER-TASK. This catches "wrote a file no task in this wave
  * owns" — deviation 13's exact shape. Task-vs-task attribution stays with
@@ -49,6 +65,31 @@
  * identity" is not a statement this file is entitled to make, so it no longer
  * makes it. See docs/compatibility.md row A8.
  *
+ * PATH RESOLUTION goes through `../lib/resolve-target.mjs`
+ * (`resolveTarget`/`realpathWithFallback`), landed by wave 1.1, rather than an
+ * inline copy of the same climb. That module resolves the deepest existing,
+ * symlink/junction-resolved ancestor of a path and re-appends whatever does
+ * not exist yet, and it is the single place that logic lives now — see that
+ * file for the full contract and the cross-platform gotchas it was written to
+ * survive.
+ *
+ * OUTSIDE THE REPO is decided TWO WAYS, not one, and both must agree. The old
+ * test was "does the repo-relative path start with `../`?", computed once,
+ * after resolution. On Windows, `path.relative` across drives returns the
+ * absolute target rather than a `../`-prefixed one, so a write to a
+ * nonexistent drive (`Z:/nope/x.ts`) was matched against `owns` — and denied —
+ * instead of being recognised as outside the repository (measured, plan 007
+ * F10). Fixing that by trusting the LEXICAL relative path alone would open a
+ * worse hole: a path lexically inside the repo can still resolve outside it
+ * through a symlink or junction, and that escape is exactly what resolving
+ * symlinks exists to catch. So a target is treated as outside the repository
+ * — and left unenforced — only when it is outside BOTH the lexical relative
+ * path (`projectDir` to the target, no realpath involved) AND the
+ * resolved-real relative path (`root`, the realpath of `projectDir`, to the
+ * resolved target). Outside after resolution but not lexically means a
+ * symlink/junction escape, and that denies with its own message rather than
+ * being silently allowed or silently matched against `owns`.
+ *
  * CEILINGS, stated because a guarantee with a hidden hole is worse than none:
  *   - Bash writes (`sed -i`, `>` redirect, `git checkout`) do not pass through
  *     file-tool hooks and are NOT prevented here, and never will be: the set of
@@ -56,8 +97,12 @@
  *     DETECTED instead, by `detect-bash-writes.mjs`, which diffs the working
  *     tree after every Bash command and records anything that landed outside
  *     `owns`. The write still happens; the audit fails the wave on it.
- *   - Paths outside the project directory are not enforced — the ownership model
- *     describes repo files, and denying scratchpad writes would break unrelated work.
+ *   - A path outside the project directory, BOTH lexically and after resolving
+ *     symlinks, is not enforced — the ownership model describes repo files,
+ *     and denying scratchpad writes would break unrelated work. A path that is
+ *     inside the repo lexically but escapes it only after resolving a symlink
+ *     or junction IS enforced: it denies, because the whole point of
+ *     resolving symlinks is to catch exactly that escape.
  *   - Enforcement is WAVE-scoped, so within a wave one task may write another
  *     task's files. Per-task attribution stays with the commit audit.
  *
@@ -74,9 +119,10 @@
  * has to say how to unwedge it.
  */
 
-import { readFileSync, appendFileSync, mkdirSync, realpathSync, lstatSync } from "node:fs";
+import { readFileSync, appendFileSync, mkdirSync, existsSync } from "node:fs";
 import path from "node:path";
 import { matchesOwns } from "../lib/owns-match.mjs";
+import { realpathWithFallback, resolveTarget } from "../lib/resolve-target.mjs";
 
 const allow = () => process.exit(0);
 
@@ -100,7 +146,22 @@ try {
 const target = input?.tool_input?.file_path ?? input?.tool_input?.notebook_path;
 if (!target) allow();
 
-const projectDir = process.env.CLAUDE_PROJECT_DIR ?? input.cwd ?? process.cwd();
+// Walk up from `startDir` looking for the armed wave config. See the docblock
+// PROJECT DIRECTORY section above. Identical to `detect-bash-writes.mjs`'s
+// `findProjectDir` on purpose — the two hooks must agree on which directory is
+// "the project" or one could enforce a wave the other cannot see.
+function findProjectDir(startDir) {
+  let current = startDir;
+  for (;;) {
+    if (existsSync(path.join(current, ".drydock", "wave-owns.json"))) return current;
+    if (existsSync(path.join(current, ".git"))) return startDir;
+    const parent = path.dirname(current);
+    if (parent === current) return startDir;
+    current = parent;
+  }
+}
+
+const projectDir = process.env.CLAUDE_PROJECT_DIR ?? findProjectDir(input?.cwd ?? process.cwd());
 const configPath = path.join(projectDir, ".drydock", "wave-owns.json");
 
 let raw;
@@ -191,82 +252,55 @@ const record = (decision, rel) => {
   }
 };
 
-// Resolve symlinks before matching. Lexical normalisation alone let a symlinked
-// directory inside an owned subtree point anywhere: with `owns: ["docs/**"]` and
-// `docs/link -> ../site`, a write to `docs/link/x.ts` normalised to a path under
-// `docs/` and was allowed, while landing in `site/`.
-const realOr = (p) => {
-  try {
-    return realpathSync.native(p);
-  } catch {
-    return p; // not created yet, or unreadable: fall back to the lexical path
-  }
-};
+// The realpath of the project directory, used as the reference frame for the
+// resolved (symlink-safe) comparison. Falls back to the lexical `projectDir`
+// when it cannot be resolved (e.g. it does not exist, which should not happen
+// for a real repo, but a hook that throws here would deny every write in the
+// session rather than just this one).
+let root;
+try {
+  root = realpathWithFallback(projectDir);
+} catch {
+  root = projectDir;
+}
 
-// Resolve the DEEPEST EXISTING ancestor of `p`, then re-append whatever came
-// after it. Only resolving the immediate parent (the old `realOr(dirname(...))`)
-// missed a junction/symlink two or more levels up, because `realOr` falls back
-// to the lexical path the instant its argument does not exist -- and a
-// not-yet-created grandchild makes the immediate parent not-exist too. Starting
-// the climb at `p` itself (not `dirname(p)`) also resolves a final path
-// component that is itself a symlink, which the old code never did.
-//
-// A `realpath` throw is NOT always "this segment does not exist yet" -- that
-// conflation is what let a dangling link escape: `docs/dangle -> site/nope`
-// (target absent) has `realpath` throw ENOENT for the same reason a genuinely
-// absent path does, so the old code climbed past it and matched the link's own
-// lexical path (`docs/...`) instead of denying. `lstat` does not follow the
-// final link, so it distinguishes the two: if `lstat` SUCCEEDS on the segment
-// that just failed `realpath`, the segment exists and simply cannot be resolved
-// (a dangling symlink/junction, a symlink loop, or another unreadable entry) --
-// that denies rather than climbing past it. Only when `lstat` itself fails with
-// ENOENT or ENOTDIR is the segment genuinely absent, safe to climb past. Any
-// other `lstat` error (e.g. a permissions failure) also denies rather than
-// climbing, on the same fail-closed posture as everything else in this file.
-//
-// Termination is load-bearing: `path.dirname` reaches a fixed point at the
-// filesystem root (`path.dirname("C:\\") === "C:\\"`, `path.dirname("/") === "/"`),
-// so the climb stops on `parent === current`, never on "path exists" -- a chain
-// that exists nowhere still has to terminate.
-const resolveAncestry = (p) => {
-  const skipped = [];
-  let current = p;
-  for (;;) {
-    try {
-      const real = realpathSync.native(current);
-      return skipped.length ? path.join(real, ...skipped) : real;
-    } catch {
-      let missing = false;
-      try {
-        lstatSync(current);
-      } catch (lerr) {
-        if (lerr.code === "ENOENT" || lerr.code === "ENOTDIR") missing = true;
-        else throw lerr; // some other lstat failure: deny, do not climb past it
-      }
-      if (!missing) {
-        // lstat succeeded where realpath just failed: this segment exists but
-        // does not resolve. Deny -- caught by the outer try/catch below.
-        throw new Error(`exists but does not resolve: ${current}`);
-      }
-    }
-    const parent = path.dirname(current);
-    if (parent === current) return skipped.length ? path.join(current, ...skipped) : current; // nothing in the chain exists
-    skipped.unshift(path.basename(current));
-    current = parent;
-  }
-};
-
-// Everything from here can throw on hostile input, and a throw must deny.
+// Everything from here can throw on hostile input, and a throw must deny --
+// and must record before it denies (see docblock RECEIPT).
+let lexRel;
 try {
   if (typeof target !== "string") throw new Error(`file_path is ${typeof target}, expected a string`);
 
-  const root = realOr(projectDir);
-  const absolute = path.isAbsolute(target) ? target : path.resolve(root, target);
-  const resolved = resolveAncestry(absolute);
-  const rel = path.relative(root, resolved).split("\\").join("/");
+  // LEXICAL relative path: projectDir to target, normalised, no filesystem
+  // access. This is one of the two independent "is this outside the repo?"
+  // votes -- see docblock OUTSIDE THE REPO.
+  lexRel = path.relative(projectDir, path.resolve(projectDir, target)).split(path.sep).join("/");
 
-  // Outside the repo entirely — not what the ownership model describes.
-  if (rel.startsWith("../")) allow();
+  // RESOLVED relative path: root (realpath of projectDir) to the
+  // symlink/junction-resolved target. The other vote.
+  const resolved = resolveTarget(root, target);
+  const rel = path.relative(root, resolved).split(path.sep).join("/");
+
+  const outside = (r) => r === ".." || r.startsWith("../") || path.isAbsolute(r);
+
+  if (outside(lexRel) && outside(rel)) {
+    // Outside the repo entirely, agreeing both ways -- not what the ownership
+    // model describes. No receipt: this is today's unenforced case, unchanged.
+    allow();
+  }
+
+  if (outside(rel) && !outside(lexRel)) {
+    // Inside the repo lexically, but a symlink or junction resolves it
+    // somewhere else entirely. That is exactly the escape resolving symlinks
+    // exists to catch, so it denies rather than being read as "outside" and
+    // waved through.
+    record("deny", lexRel);
+    deny(
+      `Drydock ownership violation: ${lexRel} is inside the repository but resolves ` +
+        `outside it (through a symlink or junction).\n` +
+        `If correct implementation needs this file, that is a deviation, report it ` +
+        `rather than widening your own boundary. Stale? delete .drydock/wave-owns.json`
+    );
+  }
 
   if (matchesOwns(rel, config.owns)) {
     record("allow", rel);
@@ -283,7 +317,10 @@ try {
   );
 } catch (err) {
   // `allow()` and `deny()` exit the process, so they never land here. Anything
-  // that does is a real fault, and a faulty enforcement control denies.
+  // that does is a real fault, and a faulty enforcement control denies -- and
+  // records, so a thrown deny leaves the same trace any other deny does
+  // (measured missing, plan 007: the dangling-link case left no receipt).
+  record("deny", lexRel !== undefined ? lexRel : target);
   deny(
     `Drydock: ownership check failed on this write (${err.message}). ` +
       `Enforcement fails closed rather than letting an unchecked write through. ` +
