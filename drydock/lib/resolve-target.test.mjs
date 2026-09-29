@@ -227,17 +227,26 @@ const enoent = (p) => Object.assign(new Error(`ENOENT: ${p}`), { code: "ENOENT" 
 // suite).
 {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), "resolve-target-real-link-")));
+  mkdirSync(join(dir, "site"), { recursive: true });
+  let linked = true;
+  // skip-only-on-link-failure: this try covers ONLY link creation. A box
+  // without symlink privilege (e.g. Windows without Developer Mode) throws
+  // EPERM here, which is a legitimate skip. resolveTarget and the assertion
+  // below run OUTSIDE this try, so once the link exists, any throw from the
+  // resolver itself is an uncaught FAIL, never swallowed into a skip.
   try {
-    mkdirSync(join(dir, "site"), { recursive: true });
     symlinkSync(join(dir, "site"), join(dir, "docs-link"), "junction");
+  } catch (e) {
+    report("real-fs-resolves-through-symlink", true, `skipped: ${e.message}`);
+    linked = false;
+  }
+  if (linked) {
     const result = resolveTarget(dir, join("docs-link", "x.ts"));
     report(
       "real-fs-resolves-through-symlink",
       result === join(dir, "site", "x.ts"),
       `result=${JSON.stringify(result)}`
     );
-  } catch (e) {
-    report("real-fs-resolves-through-symlink", true, `skipped: ${e.message}`);
   }
   rmSync(dir, { recursive: true, force: true });
 }
