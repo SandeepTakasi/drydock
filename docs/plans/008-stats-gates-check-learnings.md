@@ -594,6 +594,8 @@ confirmed to exist. Verdict APPROVED-WITH-FIXES; all twelve findings applied:
 |---|---|---|---|---|---|
 | 1 | T0 | T0's criterion tested `/_pending_/` against the whole plan; narrowed to `/[\|] _pending_ [\|]/`, a table cell | The plan contains the literal `_pending_` twice outside the Baseline table, in pressure-test item 11 and in the criterion's own text, so the criterion could fail but never pass (exit 1 with every cell filled). Item 11 states the intent: "no `_pending_` cell". Both halves re-proved through `spawnSync(..., {shell: true})`: exit 1 with one cell set back to `_pending_`, exit 0 filled | Criterion text changed after approval, in the orchestrator's T0 commit; intent unchanged. Same class as CLAUDE.md's "can fail but can never pass" note: a criterion that greps a file must not be able to match itself | 2026-10-07 |
 | 2 | T1.1.3 | Finding "Sealed waves re-audit from a clean checkout" says 14 sealed waves in plans 005-007; `audit-corpus` selects 12. **discovered-by-wavecheck** | Plans 005-007 carry exactly 12 `### Wavecheck` headings, all PASS (005: 1.0; 006: 1.1, 1.2, 1.3, 2.1, 2.2; 007: 1.1-1.5, 2.1). The 14 included the two `1.R` review waves, which own no files and get no wavecheck. The script follows D9 exactly | None on the code: no sealed wave is skipped. The finding's count was wrong, not the gate | 2026-10-07 |
+| 3 | T1.2.1 | A changed file matching a forbidden glob prints only `FLAG forbidden:`, never also `FLAG outside scope:` | The contract gave both rules and did not say which wins when one file meets both; one line per file keeps the FLAG count equal to the number of problems | One FLAG per file. Reported by the executor | 2026-10-07 |
+| 4 | T1.2.1 | Adding the `check` usage line removed the space in the existing `validate-config` usage line, which now prints `validate-config<drydock.config.yaml>`. **discovered-by-wavecheck** | Collateral damage in the shared usage block. The `validate-config` dispatch and behaviour are untouched, so the task's "changing any existing subcommand" was not crossed. The executor's report counted `-1` without naming it | Cosmetic, user-visible in usage output. Carried to Wave 1.R. A repair needs a new wave with new task ids, and must not be made under T1.2.1's sealed id | 2026-10-07 |
 
 ## Wavecheck reports
 
@@ -633,6 +635,28 @@ about them.
 
 Deviations logged: 2 (1 discovered by wavecheck)
 
+### Wavecheck 1.2, PASS, 2026-10-07
+
+Executed `fleet` by one spawned `drydock:executor` (Sonnet 5.5); audited by the
+orchestrating session, which wrote none of the diff.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | Status `EXECUTING`; wave 1.1 has a PASS report, committed at `a556e8c`. **Staleness: non-empty.** `git diff a72deeb..HEAD` over the two owned files shows exactly one commit, `8918038` (T1.1.1, this task's declared dependency): a sequential handoff, not drift. Re-validated before arming: every anchor the brief names exists, shifted +21 to +28 lines, and the executor was given current line numbers. Baseline SHA deliberately kept at `a72deeb`, because Wave 1.R's review diff is defined against it. **T1.1.1's lock exercised live:** `wave-start ... 1.3` before this wave refused with `wave-start: wave 1.2 has no PASS wavecheck report (none), so wave 1.3 cannot be armed.`, exit 1, no `wave-owns.json` written; `wave-start ... 1.2` then armed |
+| 2. Ownership | PASS | Table below. Repo copy and installed 0.15.1 copy both `audit-wave 1.2: PASS (1 task(s), 1 commit(s))`. Enforcement ran: 6 hook decisions, 0 denied; bash layer 8 commands, 0 writes outside `owns`. Working tree clean |
+| 3. Forbidden | PASS, one finding | No import added; the diff never names `wave-owns`; no existing subcommand's code changed: the only removed line is in the shared usage block, see deviation 4. Live run against this repo (base `a72deeb`, owned `drydock/**`, one passing and one `exit 4` criterion): flagged `.github/workflows/verify.yml` and both plan files outside scope, `FLAG criterion exited 4`, `check: FLAG (4)`, exit 1 |
+| 4. Acceptance | PASS | Criterion re-run by the auditor through cmd.exe: exit 0; suite 148/148. The executor showed the moved-file case is failable: it dropped `--no-renames`, saw that case alone fail (147/148), and restored the flag |
+| 5. Deviations | PASS | Executor-reported deviation logged as 3; one discovered here, logged as 4 |
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.2.1 | `9d351fb` | `drydock/scripts/drydock-audit.mjs`<br>`drydock/scripts/drydock-audit.test.mjs` | `drydock/scripts/drydock-audit.mjs`<br>`drydock/scripts/drydock-audit.test.mjs` | none |
+
+**Unexercised (D14):** Wave 2.1's three skill edits are unexercised by this
+session and by any session until 0.16.0 is installed.
+
+Deviations logged: 4 (2 discovered by wavecheck)
+
 ## Progress log
 
 | Date | Task | Result | Notes |
@@ -642,5 +666,7 @@ Deviations logged: 2 (1 discovered by wavecheck)
 | 2026-10-07 | T1.1.2 | DONE | `94b2a28`; stats suite 8/8 |
 | 2026-10-07 | T1.1.3 | DONE | `58b0fee`; `audit-corpus: PASS, 12 wave(s) in 3 plan(s)` |
 | 2026-10-07 | Wave 1.1 | PASS | wavecheck 1.1 |
+| 2026-10-07 | T1.2.1 | DONE | `9d351fb`; suite 148/148 |
+| 2026-10-07 | Wave 1.2 | PASS | wavecheck 1.2; deviation 4 carried to 1.R |
 
 ## Reconcile report
