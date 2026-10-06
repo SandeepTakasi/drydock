@@ -562,7 +562,7 @@ criterion fails at baseline under `prove-failable` (6 of 6).
 
 ## Phase 2: Release
 
-**Phase gate:** `npm run verify` in `site/` exits 0 + human approval (D9). OPEN.
+**Phase gate:** `npm run verify` in `site/` exits 0 + human approval (D9). **Mechanical half met 2026-10-06**, re-run by the auditor: `assert-copy: PASS ... version matches plugin.json` and `assert-matrix: PASS`. **AWAITING the named human approval**, which is not inferred from the instruction to execute the plan.
 
 ### Wave 2.1 - Cut 0.15.1
 
@@ -600,6 +600,7 @@ criterion fails at baseline under `prove-failable` (6 of 6).
 | 1 | Phase 1 structure | Wave 1.3 (T1.3.1, T1.3.2) added after approval, and T1.R.1 now also depends on it. | The Wave 1.R quality review REJECTED Phase 1 on a confirmed MAJOR regression: a write addressed through a UNC form of the repo's own path is allowed and unlogged, where the pre-phase hook denied it. | Scope grows by two tasks; no sealed wave, task id or report changes. The contract's "targeted fix task appended" remedy needs no `/drydock:replan`; plans 004 and 006 did the same. | orchestrator, 2026-09-29 |
 | 2 | T1.2.1 | The executor reported the six new cases as failing pre-fix "by construction" rather than by running them. | Its own summary said so plainly. | None on the verdict: the auditor ran the new suite against the pre-change hook and measured `FAIL, 4 of 39`, with the other two explained (a regression guard, and a POSIX-only case). Recorded because a claim of evidence is not evidence. | wavecheck 1.2, 2026-09-29 |
 | 3 | Phase 1 structure | Wave 1.4 (T1.4.1) added, and T1.R.1 now also depends on it. | The Wave 1.R re-review REJECTED again, on a MAJOR in Wave 1.3's own test file: the UNC cases assume `\\localhost\c$` is reachable, so on a box where it is not the suite hard-FAILS, and `unc-repo-denied` passes for the wrong reason while the fix it gates is unexercised. | Retry 2 of 2. A third rejection escalates rather than adding a wave (D14). | orchestrator, 2026-09-29 |
+| 4 | T2.1.1 | The executor ran `task-close` twice, leaving two byte-identical manifest entries for T2.1.1 at `16d662e`. | It re-ran the command to read output its first `tail` had cut off. | Caught by `audit-wave`, which FAILED: "2 manifest entries claim it (16d662e, 16d662e), ambiguous attribution is what per-task attribution exists to prevent". The orchestrator closed the wave, dropped the exact duplicate (same plan, task and sha, so a byte-identical record rather than a conflicting claim; 18 lines to 17), and re-audited to PASS. The executor disclosed it unprompted. | wavecheck 2.1, 2026-10-06 |
 
 ## Wavecheck reports
 
@@ -731,6 +732,26 @@ Execution is `fleet`; audited by the orchestrating session, which wrote none of 
 
 Deviations logged: 0 (0 discovered by wavecheck)
 
+### Wavecheck 2.1, PASS, 2026-10-06
+
+Execution is `fleet`; audited by the orchestrating session, which wrote none of this diff.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `status: EXECUTING`; wave 2.1 exists; every Phase 1 wave has a PASS report and the Phase 1 gate is CLOSED. Staleness: the five owned files were unchanged between the baseline `157e70a` and this wave. |
+| 2. Ownership | PASS, after a logged repair | First run: `audit-wave 2.1: FAIL (1)` on duplicate attribution (Deviation 4). After dropping the byte-identical duplicate: `audit-wave 2.1: PASS (1 task(s), 1 commit(s), attribution: manifest)`, table below. Working tree clean. Worth recording that the manifest holds a THIRD `T2.1.1` entry, from plan 006 at `b26dc1a`, and the audit correctly ignored it: identity is the pair (plan, task), not the task id. |
+| 2b. Enforcement ran | PASS | `enforcement active: 5 hook decision(s) recorded for wave 2.1 (0 denied)`; all five writes landed in T2.1.1's files. Bash layer: 5 commands, 0 writes outside `owns`. |
+| 3. Forbidden | PASS | The commit touches exactly the five owned files (+28/-4); nothing under `drydock/hooks/`, `drydock/lib/`, `drydock/scripts/` or `drydock/skills/`. No line was REMOVED from `CHANGELOG.md`, so no older entry was rewritten. The new entry contains 0 em dashes and 0 spaced double hyphens across 25 lines. Only the `enforce-owns.mjs` row of the architecture gate table changed. No live-host claim: the entry says the opposite. |
+| 4. Acceptance | PASS | Criterion re-run by the auditor in a Node harness: exit 0. The Phase 2 gate command was also re-run by the auditor rather than taken on report: `npm run verify` in `site/` ends `assert-copy: PASS ... version matches plugin.json` and `assert-matrix: PASS`. |
+| 4b. Prose read, not just grepped | PASS | The release note's provenance is correct, which is the defect plan 006's equivalent task shipped: the UNC regression and the reachability finding are credited to the first review and the re-review respectively, with the third review recorded as the approval. Counts in the entry match the suites as run here (139, 42, 21, 8). Wave 1.5's file-id ceiling is present. |
+| 5. Deviations | PASS | One, self-disclosed and logged as Deviation 4. |
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T2.1.1 | `16d662e` | `README.md`<br>`docs/architecture.md`<br>`drydock/.claude-plugin/plugin.json`<br>`drydock/CHANGELOG.md`<br>`site/content/copy.ts` | `drydock/.claude-plugin/plugin.json`<br>`drydock/CHANGELOG.md`<br>`README.md`<br>`site/content/copy.ts`<br>`docs/architecture.md` | none |
+
+Deviations logged: 1 (1 discovered by wavecheck)
+
 ## Wave 1.R verdict, APPROVED, 2026-09-29 (second re-review, after Wave 1.4)
 
 A third fresh-context Opus reviewer, warned about both harness traps this plan has hit. It hit the second one itself: its first two fixture patches silently replaced the wrong occurrences while reporting success, so every later fixture edit was made from a script file and verified by re-reading the bytes. **No CONFIRMED BLOCKER or MAJOR in the Phase 1 diff.**
@@ -788,5 +809,7 @@ Fresh-context Opus review of `157e70a..c75f8d1`. One CONFIRMED MAJOR, introduced
 | 2026-09-29 | T1.5.1 | done | `9a5db6a`, file-id ceiling documented, UNC deny asserts the ownership branch |
 | 2026-09-29 | Wave 1.5 | PASS | wavecheck |
 | 2026-09-29 | Phase 1 gate | CLOSED | four suites green, assert-matrix PASS, review APPROVED |
+| 2026-10-06 | T2.1.1 | done | `16d662e`, 0.15.1 in four files, release note, architecture row |
+| 2026-10-06 | Wave 2.1 | PASS | wavecheck; duplicate attribution caught and repaired (Deviation 4) |
 
 ## Reconcile report
