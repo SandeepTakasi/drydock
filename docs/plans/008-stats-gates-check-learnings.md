@@ -657,6 +657,33 @@ session and by any session until 0.16.0 is installed.
 
 Deviations logged: 4 (2 discovered by wavecheck)
 
+### Wavecheck 1.3, PASS, 2026-10-07
+
+Executed `fleet` by one spawned `drydock:executor` (Sonnet 5.5); audited by the
+orchestrating session, which wrote none of the diff.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | Status `EXECUTING`; waves 1.1 and 1.2 have PASS reports (`4af95ed`), so the repo-copy `wave-start` (T1.1.1's lock) armed 1.3 without refusal. Staleness non-empty for the same reason as 1.2: `git diff a72deeb..HEAD` over the owned files is exactly `8918038` and `9d351fb`, this task's dependency chain; anchors re-located and current line numbers given to the executor |
+| 2. Ownership | PASS | Table below. Repo copy and installed 0.15.1 copy both `audit-wave 1.3: PASS (1 task(s), 1 commit(s))`. Enforcement ran: 9 hook decisions, 0 denied; bash layer 5 commands, 0 writes outside `owns`. Working tree clean |
+| 3. Forbidden | PASS | The only removed line is the `node:fs` import, re-added with `readdirSync`: no dependency. No existing subcommand changed; the `validate-config` usage line (deviation 4) was left untouched as instructed. Reads only `git ls-files` and the plans dir. Live runs: `learnings` with no path prints usage and exits 2; `learnings drydock/skills/planwright/SKILL.md index` groups by path and lists basename-only hits under `basename only:`. The executor's run for `drydock/scripts/drydock-audit.mjs` reported 3 hits, and the auditor's own awk/grep count of Deviation Log rows plus `CLAUDE.md` lines agrees: 1 + 2 |
+| 4. Acceptance | PASS | Criterion re-run by the auditor through cmd.exe: exit 0; suite 153/153. The executor mutated the basename floor (6 → 1) and the list order; each turned its case red; both were reverted |
+| 5. Deviations | PASS | None reported; none discovered |
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.3.1 | `7440fc0` | `drydock/scripts/drydock-audit.mjs`<br>`drydock/scripts/drydock-audit.test.mjs` | `drydock/scripts/drydock-audit.mjs`<br>`drydock/scripts/drydock-audit.test.mjs` | none |
+
+For Wave 1.R: full-path matching is a plain substring test, per the contract,
+so a short path such as `index` matches every `index.html` line as a full-path
+hit. The 6-character floor applies only to the basename rule. This is conformant,
+and left to the review to judge.
+
+**Unexercised (D14):** Wave 2.1's three skill edits are unexercised by this
+session and by any session until 0.16.0 is installed.
+
+Deviations logged: 4 (2 discovered by wavecheck)
+
 ## Progress log
 
 | Date | Task | Result | Notes |
@@ -668,5 +695,7 @@ Deviations logged: 4 (2 discovered by wavecheck)
 | 2026-10-07 | Wave 1.1 | PASS | wavecheck 1.1 |
 | 2026-10-07 | T1.2.1 | DONE | `9d351fb`; suite 148/148 |
 | 2026-10-07 | Wave 1.2 | PASS | wavecheck 1.2; deviation 4 carried to 1.R |
+| 2026-10-07 | T1.3.1 | DONE | `7440fc0`; suite 153/153 |
+| 2026-10-07 | Wave 1.3 | PASS | wavecheck 1.3 |
 
 ## Reconcile report
