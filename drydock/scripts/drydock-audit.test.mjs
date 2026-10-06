@@ -1867,7 +1867,7 @@ cases.push(
   ["check flags a failing criterion", () => {
     const [dir, base] = checkRepo("ck-crit");
     commitAs(dir, ["a.txt"], "x");
-    return cli(dir, ["check", intent(dir, base, ["a.txt"], { criteria: ["node -e process.exit(7)"] })]);
+    return cli(dir, ["check", intent(dir, base, ["a.txt"], { criteria: ["exit 7"] })]);
   }, (out) => out.includes("FLAG criterion exited 7:") && out.includes("check: FLAG (1)")],
 
   // Without --no-renames git reports only `new/a.txt` and the deletion of
@@ -1891,7 +1891,7 @@ cases.push(
   ["check passes an in-scope diff whose criteria exit 0", () => {
     const [dir, base] = checkRepo("ck-pass");
     commitAs(dir, ["a.txt"], "x");
-    return cli(dir, ["check", intent(dir, base, ["a.txt"], { criteria: ["node -e process.exit(0)"] })]);
+    return cli(dir, ["check", intent(dir, base, ["a.txt"], { criteria: ["exit 0"] })]);
   }, (out) => out.includes("check: PASS (1 file(s), 1 criteria)")],
 
   ["check with an unresolvable base is exit 3, not a verdict", () => {
