@@ -59,16 +59,25 @@ jobs:
       - run: node drydock/hooks/enforce-owns.test.mjs
       - run: node drydock/hooks/detect-bash-writes.test.mjs
       - run: node drydock/lib/resolve-target.test.mjs
+      - run: node drydock/scripts/drydock-stats.test.mjs
 
   docs:
     name: honesty matrix
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          # `audit-wave` runs `git show` on historical commits; the default
+          # shallow checkout (depth 1) would make every sealed wave unauditable.
+          fetch-depth: 0
       - uses: actions/setup-node@v5
         with:
           node-version: 22
       - run: node site/scripts/assert-matrix.mjs
+
+      # Re-audits every sealed wave of every v3 plan from this checkout. v2 plans
+      # are excluded for a stated reason; see the script's header.
+      - run: node drydock/scripts/audit-corpus.mjs
 
       # A REAL GATE, with one named exception. `drydock/README.md` says the plan
       # is "checked by a program"; behind `|| true` it was not, and a check whose
