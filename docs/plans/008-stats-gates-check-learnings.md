@@ -713,6 +713,29 @@ session and by any session until 0.16.0 is installed.
 
 Deviations logged: 4 (2 discovered by wavecheck)
 
+### Wavecheck 1.4, PASS, 2026-10-07
+
+Executed `fleet` by one spawned `drydock:executor` (Sonnet 5.5); audited by the
+orchestrating session, which wrote none of the diff.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | Status `EXECUTING`; wave 1.4 added after approval (deviation 6), committed at `16c3f1a` before arming; waves 1.1-1.3 have PASS reports, so the repo-copy `wave-start` armed it. Staleness: the owned files changed since `a72deeb` only by this plan's own task commits |
+| 2. Ownership | PASS | Table below. Repo copy and installed 0.15.1 copy both `audit-wave 1.4: PASS, docs/plans/008-stats-gates-check-learnings.md (1 task(s), 1 commit(s), attribution: manifest)`. Working tree clean |
+| 2b. Enforcement ran | PASS | `enforcement active: 2 hook decision(s) recorded for wave 1.4 (0 denied)`. Bash layer: 5 commands, 0 writes outside `owns` |
+| 3. Forbidden | PASS | `--numstat` 1/1 and 3/0. The single changed source line is the `validate-config` usage line, now `validate-config <drydock.config.yaml>`; no other usage line, subcommand or existing case touched; no review nice-to-have acted on |
+| 4. Acceptance | PASS | Criterion re-run by the auditor through cmd.exe: exit 0. It exited 1 before the task (proved when the wave was added). The executor showed the new case FAIL with the space missing |
+| 5. Deviations | PASS | None reported; none discovered |
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.4.1 | `e2cff77` | `drydock/scripts/drydock-audit.mjs`<br>`drydock/scripts/drydock-audit.test.mjs` | `drydock/scripts/drydock-audit.mjs`<br>`drydock/scripts/drydock-audit.test.mjs` | none |
+
+**Unexercised (D14):** Wave 2.1's three skill edits are unexercised by this
+session and by any session until 0.16.0 is installed.
+
+Deviations logged: 6 (2 discovered by wavecheck, 1 by review)
+
 ## Wave 1.R verdict, REJECTED, 2026-10-07
 
 Fresh-context Opus 5.5 reviewer, read-only, given only T1.R.1's context brief
@@ -762,5 +785,7 @@ intents, deleted files and continuation-line criteria; `learnings` on nested
 | 2026-10-07 | T1.3.1 | DONE | `7440fc0`; suite 153/153 |
 | 2026-10-07 | Wave 1.3 | PASS | wavecheck 1.3 |
 | 2026-10-07 | T1.R.1 | REJECTED | F1 (CI from a clean checkout) repaired in the plan; F2 to Wave 1.4 |
+| 2026-10-07 | T1.4.1 | DONE | `e2cff77` |
+| 2026-10-07 | Wave 1.4 | PASS | wavecheck 1.4 |
 
 ## Reconcile report
