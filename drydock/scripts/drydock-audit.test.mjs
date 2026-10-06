@@ -1837,6 +1837,70 @@ cases.push(
   }, (out) => out.includes("EXIT:3") && out.includes("no such file") && !out.includes("at ModuleJob")],
 );
 
+// --------------------------------------------------------------------------
+// `check <intent.md>`: the diff since a base against a declared scope. The
+// intent file lives in DIR, outside the repo, so it is not itself a change.
+
+const intent = (dir, base, owned, { forbidden, criteria = [] } = {}) => {
+  const f = join(dir, "..", `intent-${Math.random().toString(36).slice(2)}.md`);
+  writeFileSync(f, [
+    "---", `base: ${base}`, "---",
+    "- **Goal:** fixture",
+    `- **Files owned:** ${owned.map((g) => `\`${g}\``).join(", ")}`,
+    ...(forbidden ? [`- **Forbidden:** \`${forbidden}\``] : []),
+    ...criteria.map((c) => `- **Acceptance criterion:** \`${c}\``),
+  ].join("\r\n"));
+  return f;
+};
+const checkRepo = (name) => {
+  const dir = mkrepo(name);
+  return [dir, git(dir, ["rev-parse", "HEAD"])];
+};
+
+cases.push(
+  ["check flags a file outside the declared scope", () => {
+    const [dir, base] = checkRepo("ck-scope");
+    commitAs(dir, ["a.txt", "stray.txt"], "x");
+    return cli(dir, ["check", intent(dir, base, ["a.txt"])]);
+  }, (out) => out.includes("FLAG outside scope: stray.txt") && !out.includes("scope: a.txt") && out.includes("check: FLAG (1)")],
+
+  ["check flags a failing criterion", () => {
+    const [dir, base] = checkRepo("ck-crit");
+    commitAs(dir, ["a.txt"], "x");
+    return cli(dir, ["check", intent(dir, base, ["a.txt"], { criteria: ["node -e process.exit(7)"] })]);
+  }, (out) => out.includes("FLAG criterion exited 7:") && out.includes("check: FLAG (1)")],
+
+  // Without --no-renames git reports only `new/a.txt` and the deletion of
+  // `old/a.txt` (outside scope) vanishes.
+  ["check flags the old path of a file moved into scope", () => {
+    const [dir, base0] = checkRepo("ck-move");
+    mkdirSync(join(dir, "old")); mkdirSync(join(dir, "new"));
+    commitAs(dir, ["old/a.txt"], "add");
+    const base = git(dir, ["rev-parse", "HEAD"]);
+    git(dir, ["mv", "old/a.txt", "new/a.txt"]); git(dir, ["commit", "-q", "-m", "mv"]);
+    return cli(dir, ["check", intent(dir, base, ["new/**"])]);
+  }, (out) => out.includes("FLAG outside scope: old/a.txt") && !out.includes("scope: new/")],
+
+  ["check flags a forbidden file and an untracked non-ASCII stray", () => {
+    const [dir, base] = checkRepo("ck-forbid");
+    commitAs(dir, ["a.txt", "secret.txt"], "x");
+    writeFileSync(join(dir, "café.txt"), "x");
+    return cli(dir, ["check", intent(dir, base, ["a.txt", "secret.txt"], { forbidden: "secret.txt" })]);
+  }, (out) => out.includes("FLAG forbidden: secret.txt") && out.includes("FLAG outside scope: café.txt")],
+
+  ["check passes an in-scope diff whose criteria exit 0", () => {
+    const [dir, base] = checkRepo("ck-pass");
+    commitAs(dir, ["a.txt"], "x");
+    return cli(dir, ["check", intent(dir, base, ["a.txt"], { criteria: ["node -e process.exit(0)"] })]);
+  }, (out) => out.includes("check: PASS (1 file(s), 1 criteria)")],
+
+  ["check with an unresolvable base is exit 3, not a verdict", () => {
+    const [dir] = checkRepo("ck-base");
+    const r = spawnSync(NODE, [CLI, "check", intent(dir, "deadbeef", ["a.txt"])], { cwd: dir, encoding: "utf8" });
+    return `EXIT:${r.status}\n${r.stdout}${r.stderr}`;
+  }, (out) => out.includes("EXIT:3") && out.includes("does not resolve")],
+);
+
 let failed = 0;
 for (const [name, run, ok] of cases) {
   const out = run();

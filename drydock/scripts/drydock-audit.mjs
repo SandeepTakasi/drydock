@@ -2089,6 +2089,59 @@ function validateConfig(path) {
   report("validate-config", path, errors, notes, () => `config_version ${ver}, execution: ${execution?.mode ?? "?"}`);
 }
 
+// ----------------------------------------------------------------- check ----
+//
+// `check <intent.md>`: the diff since `base` against a declared scope. Writes
+// nothing, arms nothing (plan 008 D3: audit afterwards only).
+//
+// --no-renames: default rename detection reports a move as only its NEW path,
+// hiding the deletion of the old one. -z: non-ASCII names are otherwise
+// octal-escaped and match no glob. Output is read raw, not through `git()`,
+// which trims.
+function check(intentPath) {
+  const lines = readFileSync(intentPath, "utf8").split(/\r?\n/);
+  const base = /^base:\s*(\S+)\s*$/m.exec(lines.slice(0, lines.indexOf("---", 1) + 1).join("\n"))?.[1];
+  const field = (name) => {
+    const out = [];
+    let on = false;
+    for (const line of lines) {
+      if (line.startsWith("- **")) on = line.startsWith(`- **${name}:**`);
+      if (on) out.push(...backticked(line));
+    }
+    return out;
+  };
+  const owned = field("Files owned");
+  const forbidden = field("Forbidden");
+  const criteria = field("Acceptance criterion");
+  if (!base) throw new Error(`${intentPath}: no base: in the frontmatter`);
+  if (!owned.length) throw new Error(`${intentPath}: no backticked globs under **Files owned:**`);
+
+  const root = repoRoot();
+  const gitz = (args) =>
+    execFileSync("git", args, { cwd: root, encoding: "utf8", maxBuffer: 64 << 20, stdio: ["ignore", "pipe", "pipe"] })
+      .split("\0").filter(Boolean);
+  try { gitz(["rev-parse", "--verify", "--quiet", `${base}^{commit}`]); }
+  catch { throw new Error(`${intentPath}: base ${base} does not resolve to a commit`); }
+
+  const changed = [...new Set([
+    ...gitz(["diff", "--no-renames", "--name-only", "-z", base]),
+    ...gitz(["ls-files", "--others", "--exclude-standard", "-z"]),
+  ])].filter((f) => !f.startsWith(".drydock/")).sort();
+
+  const flags = [];
+  for (const f of changed) {
+    if (matchesOwns(f, forbidden)) flags.push(`FLAG forbidden: ${f}`);
+    else if (!matchesOwns(f, owned)) flags.push(`FLAG outside scope: ${f}`);
+  }
+  for (const cmd of criteria) {
+    const r = spawnSync(cmd, { shell: true, cwd: root, stdio: ["ignore", "pipe", "pipe"] });
+    if (r.status !== 0) flags.push(`FLAG criterion exited ${r.status ?? r.error?.code}: ${cmd}`);
+  }
+  flags.forEach((l) => console.log(l));
+  if (flags.length) { console.log(`check: FLAG (${flags.length})`); process.exit(1); }
+  console.log(`check: PASS (${changed.length} file(s), ${criteria.length} criteria)`);
+}
+
 // ------------------------------------------------------------------ main ----
 
 const argv = process.argv.slice(2);
@@ -2120,6 +2173,7 @@ else if (command === "plan-status" && rest[0]) planStatus(rest[0], argv.includes
 else if (command === "prove-failable" && rest[0]) proveFailable(rest[0]);
 else if (command === "validate-config" && rest[0]) validateConfig(rest[0]);
 else if (command === "resolve-plans-dir") resolvePlansDir(rest[0]);
+else if (command === "check" && rest[0]) check(rest[0]);
 else {
   console.error("usage: drydock-audit.mjs wave-start   <plan.md> <wave>      # arm the ownership hook");
   console.error("       drydock-audit.mjs task-close   <plan.md> <task-id>  # record HEAD as this task's work");
@@ -2128,7 +2182,8 @@ else {
   console.error("       drydock-audit.mjs plan-status   [--write] <plan.md>  # derive status from the wavecheck reports");
   console.error("       drydock-audit.mjs resolve-plans-dir [<preferred>]   # where plans go, and whether they can be committed");
   console.error("       drydock-audit.mjs prove-failable <plan.md>            # every criterion must FAIL before its task runs");
-  console.error("       drydock-audit.mjs validate-config <drydock.config.yaml>  # the host profile drydock:init writes");
+  console.error("       drydock-audit.mjs check <intent.md>                   # diff since base vs the declared scope, then run its criteria");
+  console.error("       drydock-audit.mjs validate-config<drydock.config.yaml>  # the host profile drydock:init writes");
   console.error("       drydock-audit.mjs validate-plan [--strict] <plan.md>");
   process.exit(2);
 }
