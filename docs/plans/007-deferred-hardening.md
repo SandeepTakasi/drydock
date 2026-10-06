@@ -562,7 +562,7 @@ criterion fails at baseline under `prove-failable` (6 of 6).
 
 ## Phase 2: Release
 
-**Phase gate:** `npm run verify` in `site/` exits 0 + human approval (D9). **Mechanical half met 2026-10-06**, re-run by the auditor: `assert-copy: PASS ... version matches plugin.json` and `assert-matrix: PASS`. **AWAITING the named human approval**, which is not inferred from the instruction to execute the plan.
+**Phase gate: CLOSED, approved by Sandeep Takasi - 2026-10-06.** Human release approval given in session, recorded by name and date per D9. Conditions met: `npm run verify` in `site/` exits 0, re-run by the auditor, ending `assert-copy: PASS ... version matches plugin.json` and `assert-matrix: PASS`; wave 2.1 PASS.
 
 ### Wave 2.1 - Cut 0.15.1
 
@@ -811,5 +811,6 @@ Fresh-context Opus review of `157e70a..c75f8d1`. One CONFIRMED MAJOR, introduced
 | 2026-09-29 | Phase 1 gate | CLOSED | four suites green, assert-matrix PASS, review APPROVED |
 | 2026-10-06 | T2.1.1 | done | `16d662e`, 0.15.1 in four files, release note, architecture row |
 | 2026-10-06 | Wave 2.1 | PASS | wavecheck; duplicate attribution caught and repaired (Deviation 4) |
+| 2026-10-06 | Phase 2 gate | CLOSED | release approved by Sandeep Takasi |
 
 ## Reconcile report
