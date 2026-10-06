@@ -1,7 +1,7 @@
 ---
 plan: 007-deferred-hardening
 format_version: 3
-status: EXECUTING
+status: RECONCILED
 isolation: none
 enforcement: required
 attribution: manifest
@@ -812,5 +812,257 @@ Fresh-context Opus review of `157e70a..c75f8d1`. One CONFIRMED MAJOR, introduced
 | 2026-10-06 | T2.1.1 | done | `16d662e`, 0.15.1 in four files, release note, architecture row |
 | 2026-10-06 | Wave 2.1 | PASS | wavecheck; duplicate attribution caught and repaired (Deviation 4) |
 | 2026-10-06 | Phase 2 gate | CLOSED | release approved by Sandeep Takasi |
+| 2026-10-06 | reconcile | RECONCILED | 10 proposals (7 CLAUDE.md, 2 docs/architecture.md, 1 new ADR), none applied |
 
 ## Reconcile report
+
+Reconciled 2026-10-06. Preconditions checked: all six implementation waves (1.1, 1.2, 1.3, 1.4, 1.5, 2.1) have PASS reports and the 1.R review wave an APPROVED verdict after two rejections; the one human gate (Phase 2) reads `CLOSED, approved by Sandeep Takasi - 2026-10-06`, and the Phase 1 gate declares no human approval; the Testing Gate is `N/A` with a reason, so no `verdict.md` is required. Proposal targets are limited to `CLAUDE.md`, `docs/decisions` and `docs/architecture.md`. **Nothing below has been applied.**
+
+### Deviation synthesis
+
+| Cluster | Deviations | Produces |
+|---|---|---|
+| (a) An assumption was false | 1 and 3: the D2 rule as specified ("outside means both votes say outside") was holed by a namespace nobody enumerated, and the Wave 1.3 test brief assumed a platform guard was a capability guard | R3, R4, R10; planwright feedback |
+| (b) Instructions were incomplete | 2: the brief said "watch it fail" without saying that pasted output, not reasoning, is what discharges it. 4: nothing told an executor that `task-close` is not idempotent | R5; planwright and executor feedback |
+| (c) The environment moved mid-execution | A usage limit ended the session between Wave 1.5 and Wave 2.1. No work was lost: the armed boundary is a file on disk, so the wave survived the restart intact | R7 (the measurement route that did survive) |
+| (d) Executor overreach | none. Every executor stayed inside `owns`; three disclosed something against their own interest (inherited work, an unverified guard, a double `task-close`) | none |
+
+### Assumption postmortem
+
+| Id | Assumption | Verdict |
+|---|---|---|
+| D1 | `lane: full`, `fleet`, with a Wave 1.R review | **held, and load-bearing.** The mechanical gates passed Phase 1 on the first attempt and stayed passing through both rejections. Neither finding was reachable by any criterion written for the wave. |
+| D2 | Outside means outside textually AND after resolution | **failed as specified, now holds.** The rule was right in shape and incomplete in domain: `realpathSync.native` leaves a UNC path unchanged, so both votes read "outside" for the repo's own files. Identity corroboration (D13) closed it. |
+| D3 | Extracting the resolver into `lib/` makes the fallback testable | **held.** Four injected-fake mutations each kill a specific case; the reviewer confirmed the tests are not tautological. |
+| D4 | Release as 0.15.1 | **held.** |
+| D5 | One resolver for root and target keeps representations consistent | **held**, and it mattered: the `subst` measurement that motivated it is the same mechanism that produced the UNC hole. |
+| D6 | Duplicate the walk-up rather than share it | **held.** Two independent copies, each with its own `walkup-stops-at-git` case; no drift found between them. |
+| D7 | Spawn executors one at a time | **held**, and the session limit that hit between waves cost nothing because of it. |
+| D8 | `attribution: manifest` | **held**, and exercised in anger: it caught a double `task-close` (Deviation 4) rather than silently taking the last entry. |
+| D9 | Sandeep signs the release gate | **held.** |
+| D10 | Resolve `..` correctly rather than banning it | **held.** Measured on Linux: the relative escape denies, and no ordinary `..` path was over-denied on either platform. |
+| D11 | Testing Gate `N/A` | **held.** |
+| D12 | Bound the walk-up at `.git` | **held**, and the reviewer confirmed it stops at a `.git` FILE too, which is the worktree shape the sketch named but no earlier plan had tested. |
+| D13 | Repair the rejection with identity corroboration | **held.** Nine namespaces now deny unowned and allow owned, each with a correct repo-relative receipt. |
+| D14 | Retry 2 is the last one; a third rejection escalates | **never-exercised.** The third review approved, so the escalation rule was not tested. |
+| D15 | Fold the approving review's MINOR into a Wave 1.5 | **held.** Documentation-only: the hook diff is five comment lines. |
+| Finding | `realpathSync.native` collapses `\\?\C:`, `\\.\C:` and `subst` but not UNC | **confirmed, and it is the plan's single most load-bearing fact** (R3). |
+| Finding | No volume here makes `realpathSync.native` fail | **held.** The fallback remains verified by injection only, as D3 intended. |
+
+### New knowledge
+
+Facts execution established that no target doc states: a PowerShell pipeline reports the wrong exit code when driving the hook, and produced a false ALLOW reading twice (R1); patching a fixture copy through Git Bash can silently replace nothing while printing success, which happened three times across two sessions and one reviewer (R2); the Windows namespace asymmetry above (R3); a capability-dependent test must probe the capability rather than infer it from the platform (R4); `task-close` is not idempotent and manifest identity is the pair (plan, task) (R5, R8); a plugin update reaches HOOKS without a restart although skills stay cached (R6); `docker run node:20-slim` is the POSIX measurement route on this machine, and that image has no `git` (R7); `drydock/lib/` is now a real module boundary (R9).
+
+### Proposals
+
+#### Proposal R1 | target: CLAUDE.md | kind: addition
+Finding: a PowerShell pipeline reported exit 0 for a hook probe that genuinely denied, which nearly produced a false finding in wavecheck 1.5 and did produce a false "8.3 short names are allowed" reading during exploration.
+Confidence: high
+```diff
+@@ Toolchain facts that cost time to discover @@
+   echo "... -> $rc"`. It produced a false "no difference between old and new
+   hook" reading mid-gate in plan 006 before the capture was fixed.
++- **Do not drive the ownership hook from a PowerShell pipeline; its
++  `$LASTEXITCODE` is the pipeline's, not node's.** `$json | & node hook.mjs |
++  Select-Object -First 1` reported exit 0 for a write the hook denied, which
++  read as "8.3 short names escape the boundary" until a known-good control probe
++  contradicted it. An executor then reported a criterion verified the same way.
++  Drive it from Node instead, `spawnSync(process.execPath, [hook], { input })`,
++  and always include one control probe whose answer you already know. Measured
++  twice, 2026-09-29 and 2026-10-06, plan 007.
+```
+
+#### Proposal R2 | target: CLAUDE.md | kind: addition
+Finding: three separate attempts to patch a copy of a test fixture through Git Bash replaced nothing while reporting success, twice in the orchestrating session and twice for the Wave 1.R reviewer, each time inverting the conclusion.
+Confidence: high
+```diff
+@@ Toolchain facts that cost time to discover @@
++- **A fixture patched through Git Bash can silently replace nothing.** Escaping
++  a Windows path or a JS string literal (`"\\\\localhost\\c$"`) through bash
++  into `sed` or `node -e` mangles the needle, so the substitution matches
++  nothing, the command exits 0, and the "simulation" measures the UNCHANGED
++  file. It happened three times in plan 007, twice to the orchestrator and twice
++  to a reviewer, and each time the first reading was the opposite of the truth.
++  Do the edit from a script FILE, and print the replacement count or the changed
++  lines before drawing any conclusion from the result.
+```
+
+#### Proposal R3 | target: CLAUDE.md | kind: addition
+Finding: the Phase 1 rejection (Deviation 1) was caused entirely by one platform asymmetry that no doc recorded.
+Confidence: high
+```diff
+@@ Toolchain facts that cost time to discover @@
++- **`realpathSync.native` normalises every Windows namespace onto the drive
++  letter EXCEPT UNC.** Measured: `\\?\C:\x`, `\\.\C:\x`, a `subst` drive,
++  an 8.3 short name and a volume-GUID path all come back as `C:\...`, while
++  `\\localhost\c$\x` comes back unchanged. So the same directory has two
++  resolved spellings, and `path.relative` between them returns an ABSOLUTE
++  path. Any rule that reads "the relative path came back absolute" as "this is
++  somewhere else" is therefore wrong for the repo's own files reached by UNC:
++  that is exactly how plan 007's first fix allowed an unowned write, unlogged.
++  The ownership hook now corroborates with `dev`+`ino` identity before
++  allowing. Note also that the JS `realpathSync` and `realpathSync.native`
++  DISAGREE on a `subst` drive (`Q:\inner` versus the `C:` target), so a
++  fallback between them must resolve the root and the target through the same
++  function or their relative path is meaningless.
+```
+
+#### Proposal R4 | target: CLAUDE.md | kind: addition
+Finding: the Wave 1.3 test guarded its UNC cases on platform and drive letter, not on whether the share was reachable, which the re-review rejected (Deviation 3); the suite already had `tryDirLink` as the correct pattern for links.
+Confidence: high
+```diff
+@@ Toolchain facts that cost time to discover @@
++- **Guard a capability-dependent test on the CAPABILITY, never on the
++  platform.** `process.platform === "win32"` does not mean junctions can be
++  created, and a `C:` drive letter does not mean `\\localhost\c$` is
++  reachable: a standard user, `AutoShareWks=0`, a stopped LanmanServer or a
++  hardened image all fail it. Both mistakes have cost this repo a red suite on a
++  green product, with `symlinkSync` in plan 006 and the UNC cases in plan 007,
++  and the second one was worse: the case meant to gate the fix passed for the
++  wrong reason, satisfying its own criterion while the fix went unexercised.
++  Probe once, then `report(name, true, "SKIPPED: <capability> unavailable")`,
++  one skip line per case so a skip never stands in for two.
+```
+
+#### Proposal R5 | target: CLAUDE.md | kind: addition
+Finding: an executor ran `task-close` twice and `audit-wave` FAILED the wave on ambiguous attribution (Deviation 4).
+Confidence: high
+```diff
+@@ Executing a plan here @@
+   attribution, and a task with no entry BLOCKs the wave exactly as a missing
+   commit does.
++- **`task-close` is not idempotent: run it exactly once per task.** A second
++  run appends a second entry, and `audit-wave` FAILS the wave with "N manifest
++  entries claim it", because ambiguous attribution is the one thing per-task
++  attribution exists to prevent. Re-reading its output is not a reason to re-run
++  it; pipe the first run through `tee` instead. If it does happen, the repair is
++  to drop a BYTE-IDENTICAL duplicate only, matching on (plan, task, sha), and to
++  log it as a deviation: two entries with DIFFERENT shas are a real conflict and
++  must not be silently collapsed. Measured 2026-10-06, plan 007 deviation 4.
++  Identity in that manifest is the pair (plan, task), not the task id: plans 006
++  and 007 both have a `T2.1.1`, and the audit correctly ignored the other plan's.
+```
+
+#### Proposal R6 | target: CLAUDE.md | kind: correction
+Finding: the skill-cache note tells a reader to restart after a plugin update, but a plugin update reaches HOOKS immediately, which is how plan 006 verified its repaired hook in the same session, and every wave of plan 007 was enforced by the installed copy.
+Confidence: high
+```diff
+@@ Plugin skill files are session-cached @@
+   update drydock@drydock`**, then restart. `drydock-audit.mjs` now stamps its
+   version and path on every verdict and shouts `VERSION DRIFT` when the running
+   script and the installed plugin disagree — but note it compares versions, so
+   editing the plugin without bumping is drift it cannot see. Bump.
++  **HOOKS are not cached the way skills are.** `hooks.json` resolves
++  `${CLAUDE_PLUGIN_ROOT}` per invocation, so `claude plugin update` takes
++  effect for the ownership and detector hooks in the SAME session, with no
++  restart: measured 2026-09-21, when a denial message named
++  `.../drydock/0.15.0/hooks/enforce-owns.mjs` minutes after the update, and the
++  repaired hook was then verified live. The skill bodies in that same install
++  stayed stale until a restart. So a plan that edits a hook can be verified in
++  the session that releases it; a plan that edits a skill cannot.
+```
+
+#### Proposal R7 | target: CLAUDE.md | kind: addition
+Finding: the POSIX half of this plan (D10, the relative `..` escape) could only be measured on Linux, and the route that worked is not written down anywhere.
+Confidence: high
+```diff
+@@ Toolchain facts that cost time to discover @@
++- **POSIX behaviour of the hooks is measurable here with
++  `docker run node:20-slim`**, which is also the stated runtime floor, so it
++  doubles as a floor check. Mount the plugin with `MSYS_NO_PATHCONV=1` and
++  Windows paths. Two things differ in that image: it has no `git`, so the audit
++  and detector suites cannot run there (the `enforce-owns` and
++  `resolve-target` suites can), and `path.isAbsolute` on a relative path is
++  never true, so the hook's cross-namespace corroboration is unreachable on
++  POSIX by construction. Plan 007 found the relative-`..`-after-symlink escape
++  this way; nothing on Windows would have shown it.
+```
+
+#### Proposal R8 | target: docs/architecture.md | kind: correction
+Finding: the `.drydock/` row calls `attribution.jsonl` a "task → commit manifest", which understates it: the file is repo-wide and append-only, so identity is (plan, task) and duplicates are a failure rather than an update.
+Confidence: high
+```diff
+-| `.drydock/` | plan-execution runtime state, **gitignored**: `wave-owns.json` (the armed ownership boundary; deleting it closes the wave), `enforcement.log` (one JSONL receipt per hook decision), `attribution.jsonl` (task → commit manifest under `attribution: manifest`), `testing/` (seatrial evidence) |
++| `.drydock/` | plan-execution runtime state, **gitignored**: `wave-owns.json` (the armed ownership boundary; deleting it closes the wave, and it survives a session restart because it is a file), `enforcement.log` (one JSONL receipt per hook decision, repo-wide, so entries are keyed on (plan, wave)), `attribution.jsonl` (task → commit manifest under `attribution: manifest`, also repo-wide: identity is the pair (plan, task), and two entries for one task are ambiguity, not an update), `testing/` (seatrial evidence) |
+```
+
+#### Proposal R9 | target: docs/architecture.md | kind: addition
+Finding: `drydock/lib/` became a real module boundary in this plan (a second module, with an injected-dependency contract), and the repo-shape table does not mention it.
+Confidence: high
+```diff
+@@ Repo shape @@
+ | `drydock/` | the Claude Code plugin (skills, agents, plan-format contract) |
++| `drydock/lib/` | dependency-free logic the hooks share, kept out of them so it can be unit-tested: `owns-match.mjs` (glob matching) and `resolve-target.mjs` (path resolution, with an injectable filesystem so the `realpathSync` fallback is testable without a volume that triggers it) |
+ | `site/` | Next.js static-export homepage, live on GitHub Pages (ADR 0003) |
+```
+
+#### Proposal R10 | target: docs/decisions/0004-ownership-path-resolution.md | kind: addition
+Finding: how the hook decides "inside the repository" is now a three-part rule (resolve the whole ancestor chain, require both votes to agree, corroborate an absolute result with filesystem identity) arrived at through two rejections, with alternatives measured and rejected; it lives only in a docblock and a plan.
+Confidence: medium
+```diff
++# ADR 0004 — How the ownership hook decides "inside the repository"
++
++**Status:** accepted · **Date:** 2026-10-06 · **Origin:** plan 007, after two
++quality-review rejections
++
++## Context
++
++The `PreToolUse` hook must answer one question per write: is this path inside
++the repository, and if so which task owns it? Three attempts failed in the
++field, each measured:
++
++1. **Resolve the immediate parent** (to 0.14.0). A junction above a
++   not-yet-existing directory was never resolved, so a write through it landed
++   outside `owns` and was allowed.
++2. **Resolve the deepest existing ancestor** (0.15.0). Closed that, but treated
++   "`realpath` threw" as "does not exist", so a DANGLING link was climbed past
++   and allowed.
++3. **Treat an absolute relative path as outside** (plan 007, first pass). On
++   Windows `path.relative` across namespaces returns an absolute path, and
++   `realpathSync.native` leaves UNC unchanged while collapsing `\\?\C:`,
++   `\\.\C:`, `subst` and 8.3 onto the drive letter. A write addressed as
++   `\\localhost\c$\...\repo\site\x.ts` therefore voted "outside" twice and
++   was allowed, unowned and unlogged.
++
++## Decision
++
++The rule is three parts, all required:
++
++1. **Resolve the whole ancestor chain**, starting at the target itself, through
++   one resolver (`realpathSync.native`, then the JS `realpathSync`) used for
++   BOTH the root and the target, so the two are comparable. A path that exists
++   but cannot be resolved denies; only `ENOENT`/`ENOTDIR` climbs.
++2. **Outside the repository requires both votes**: the path must be outside
++   textually AND after resolution. A path textually inside that resolves
++   outside is denied.
++3. **An absolute resolved-relative path is corroborated by filesystem
++   identity** (`dev`+`ino`) against the project root before it may be treated
++   as outside. The repo root has one identity across every namespace.
++
++## Consequences
++
++Accepted ceilings, each measured and documented in the hook's docblock: a
++junction escape addressed through a UNC form is allowed silently; a project root
++on a filesystem reporting no file ids (`ino === 0`) disables corroboration
++entirely, allowing the UNC form there, and the guard is kept because the
++alternative false-denies ordinary owned writes on such a volume; hard links are
++followed; and Bash-mediated writes are detected after the fact rather than
++prevented.
++
++Rejected alternatives: `core.quotepath`-style normalisation of one namespace
++only (incomplete, as 3 showed); banning `..` segments outright (denies
++legitimate paths, and the OS semantics differ between Windows and POSIX);
++removing the `ino === 0` guard (false-denies real writes).
+```
+
+### Feedback for the skills
+
+**planwright (cluster a and b):**
+- A sketch that defines a BOOLEAN RULE over paths must enumerate the namespaces the platform admits, or the rule ships with a hole. D2 was correct in shape and incomplete in domain, and the gap was invisible to every mechanical criterion.
+- A task that adds a capability-dependent test must state the capability PROBE, not just a platform guard (R4). The suite already had the right pattern; the brief did not point at it.
+- A criterion built from "case-count plus token" does not check assertion STRENGTH. Two cases in this plan passed while asserting only an exit code, one of them the case gating the MAJOR. Ask each new case what it asserts, and require a message assertion where the branch under test shares an outcome with its fall-through.
+- "Watch it fail first" needs its discharge named: pasted output, not "by construction" (Deviation 2).
+
+**executor (cluster d):** nothing on scope, which held everywhere. Two contract-adjacent notes: verify a criterion in Node or Bash, never a PowerShell pipeline (R1); and run `task-close` exactly once (R5).
+
+**Tooling, for a later plan:** `task-close` could be idempotent on (plan, task, sha) and refuse a conflicting re-run; `identity()` could take an injectable `stat` so the `ino === 0` guard gets a test; `drydock-audit.mjs` still resolves ownership its own weaker way (one level, no climb, no two-vote rule), so the hook and the audit can disagree about the same path.
