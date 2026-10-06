@@ -477,6 +477,30 @@ confirmed to exist. Verdict APPROVED-WITH-FIXES; all twelve findings applied:
   any dependency.
 - **Acceptance criterion:** `node -e "let o='';try{o=require('child_process').execFileSync('node',['drydock/scripts/drydock-audit.test.mjs'],{encoding:'utf8',stdio:['ignore','pipe','ignore']})}catch(e){process.exit(1)}process.exit(/ok +. learnings finds a CLAUDE.md line naming the path/.test(o)&&/ok +. learnings finds a Deviation Log row naming the path/.test(o)&&/ok +. learnings lists basename-only hits after full-path hits/.test(o)&&/ok +. learnings ignores a short extensionless basename/.test(o)?0:1)"`
 
+### Wave 1.4 - Fixes for the Wave 1.R rejection
+
+> Added after approval (deviation 6). Retry 1 of the escalation policy's 2.
+> Finding F1 needed no code: it was repaired in the plan document by the
+> orchestrator while no wave was armed (deviation 5). This wave repairs F2.
+
+#### T1.4.1 - Restore the validate-config usage line, and pin it
+
+- **Description:** Restore the single space that T1.2.1's usage-block edit
+  removed, so the line prints `validate-config <drydock.config.yaml>` again,
+  and add one suite case that fails if any usage line loses it.
+- **Files owned:** `drydock/scripts/drydock-audit.mjs`,
+  `drydock/scripts/drydock-audit.test.mjs`
+- **Depends on:** T1.3.1
+- **Model / thinking:** Mechanical / off (Sonnet 5.5)   **Executor:** drydock:executor
+- **Context brief:** the Wave 1.R verdict below (F2) and deviation 4. The usage
+  block at the end of `drydock-audit.mjs`; at `a72deeb` the line read
+  `validate-config <drydock.config.yaml>`. The test file's `cli` helper.
+- **Cases:** `usage lists validate-config with its argument` (run the CLI with
+  no arguments; assert the output includes `validate-config <drydock.config.yaml>`).
+- **Forbidden:** any other change to the usage block or any subcommand; editing
+  existing cases; acting on the review's nice-to-have items; any dependency.
+- **Acceptance criterion:** `node -e "const c=require('child_process');let o='';try{o=c.execFileSync('node',['drydock/scripts/drydock-audit.test.mjs'],{encoding:'utf8',stdio:['ignore','pipe','ignore']})}catch(e){process.exit(1)}const u=c.spawnSync('node',['drydock/scripts/drydock-audit.mjs'],{encoding:'utf8'});process.exit(/ok +. usage lists validate-config with its argument/.test(o)&&(u.stdout+u.stderr).includes('validate-config <drydock.config.yaml>')?0:1)"`
+
 ### Wave 1.R - Quality review
 
 #### T1.R.1 - Fresh-context quality review of Phase 1
@@ -485,7 +509,7 @@ confirmed to exist. Verdict APPROVED-WITH-FIXES; all twelve findings applied:
   correctness, Windows/Linux path handling, CRLF, exit codes, and whether each
   new test can fail. Record `## Wave 1.R verdict, APPROVED|REJECTED, <date>`.
 - **Files owned:** none (review only; the verdict is written by the orchestrator after the review)
-- **Depends on:** T1.3.1
+- **Depends on:** T1.3.1, T1.4.1
 - **Model / thinking:** Judgment / extended (Opus 5.5)   **Executor:** general-purpose reviewer, fresh context
 - **Context brief:** `git diff <baseline SHA>..HEAD -- drydock/ .github/`; this
   plan's Decision Log and Phase 1 task blocks; CLAUDE.md "Toolchain facts" items
@@ -596,6 +620,8 @@ confirmed to exist. Verdict APPROVED-WITH-FIXES; all twelve findings applied:
 | 2 | T1.1.3 | Finding "Sealed waves re-audit from a clean checkout" says 14 sealed waves in plans 005-007; `audit-corpus` selects 12. **discovered-by-wavecheck** | Plans 005-007 carry exactly 12 `### Wavecheck` headings, all PASS (005: 1.0; 006: 1.1, 1.2, 1.3, 2.1, 2.2; 007: 1.1-1.5, 2.1). The 14 included the two `1.R` review waves, which own no files and get no wavecheck. The script follows D9 exactly | None on the code: no sealed wave is skipped. The finding's count was wrong, not the gate | 2026-10-07 |
 | 3 | T1.2.1 | A changed file matching a forbidden glob prints only `FLAG forbidden:`, never also `FLAG outside scope:` | The contract gave both rules and did not say which wins when one file meets both; one line per file keeps the FLAG count equal to the number of problems | One FLAG per file. Reported by the executor | 2026-10-07 |
 | 4 | T1.2.1 | Adding the `check` usage line removed the space in the existing `validate-config` usage line, which now prints `validate-config<drydock.config.yaml>`. **discovered-by-wavecheck** | Collateral damage in the shared usage block. The `validate-config` dispatch and behaviour are untouched, so the task's "changing any existing subcommand" was not crossed. The executor's report counted `-1` without naming it | Cosmetic, user-visible in usage output. Carried to Wave 1.R. A repair needs a new wave with new task ids, and must not be made under T1.2.1's sealed id | 2026-10-07 |
+| 5 | Wavecheck 1.1-1.3 | The three wavecheck reports paraphrased the audit's enforcement note, so from a clean checkout `audit-corpus` failed 3 of 15 waves. Each report gained a `2b. Enforcement ran` row quoting the sentence verbatim. **discovered by Wave 1.R review (F1)** | `audit-wave` without `.drydock/` recovers the enforcement receipt only from the literal `enforcement active: N hook decision(s) recorded for wave X (N denied)`. The orchestrator wrote prose instead. The counts (8, 6, 9, all 0 denied) are the audit's own, unchanged | Sealed reports amended in place by adding rows, not by rewording verdicts. Re-proved from a fresh clone with an empty `CLAUDE_CONFIG_DIR`. Every later report carries the sentence. A wavecheck that writes its own enforcement evidence must paste it, not paraphrase it | 2026-10-07 |
+| 6 | Wave 1.4 | Wave 1.4 / T1.4.1 added after approval; T1.R.1 now also depends on T1.4.1 | Wave 1.R REJECTED (F2). CLAUDE.md: repair a review rejection in a NEW wave with NEW task ids. Retry 1 of 2 | One extra wave in Phase 1; Wave 1.R re-runs after it | 2026-10-07 |
 
 ## Wavecheck reports
 
@@ -611,6 +637,7 @@ run and agrees.
 |-------|--------|----------|
 | 1. Plan integrity | PASS | `format_version: 3`, status `EXECUTING`, wave 1.1 is the first wave (T0 has no wave, `waveOf` → `null`), so no prior report is required. `validate-plan: PASS (11 task(s), 6 wave(s))` at T0 |
 | 2. Ownership | PASS | Table below. Repo copy and installed 0.15.1 copy both `audit-wave 1.1: PASS (3 task(s), 3 commit(s), attribution: manifest)`. Enforcement ran: 8 hook decisions, 0 denied (T1.1.1: 4 allow, T1.1.2: 2, T1.1.3: 2); bash layer 17 commands, 0 writes outside `owns`. Working tree clean |
+| 2b. Enforcement ran | PASS | `enforcement active: 8 hook decision(s) recorded for wave 1.1 (0 denied)`. The audit's literal sentence, added after Wave 1.R finding F1 (deviation 5): `audit-wave` recovers the receipt from this sentence when `.drydock/` is gone |
 | 3. Forbidden | PASS | T1.1.1: `--numstat` 21/0 and 27/0, no line removed anywhere, so no existing case, `derivePlanState` or `WAVECHECK_RE` changed; no import added. T1.1.2: commit touches only its two files; imports are `node:` built-ins only; no `writeFile`/`mkdir`/`rm`/network call in the script; no money conversion. T1.1.3: the yml diff is exactly the stats `run:` line, `fetch-depth: 0` with its comment, and the `audit-corpus` step; no `paths:`, no `\|\| true`; `drydock-audit.mjs` untouched; header states the v2 exclusion and the ceiling |
 | 4. Acceptance | PASS | Each criterion re-run by the auditor through `spawnSync(cmd, {shell: true})` (cmd.exe): T1.1.1 exit 0 (suite 142/142), T1.1.2 exit 0 (8/8), T1.1.3 exit 0 (`audit-corpus: PASS, 12 wave(s) in 3 plan(s)`) |
 | 5. Deviations | PASS | Executors reported none. One plan-finding error discovered here and logged as deviation 2 |
@@ -644,6 +671,7 @@ orchestrating session, which wrote none of the diff.
 |-------|--------|----------|
 | 1. Plan integrity | PASS | Status `EXECUTING`; wave 1.1 has a PASS report, committed at `a556e8c`. **Staleness: non-empty.** `git diff a72deeb..HEAD` over the two owned files shows exactly one commit, `8918038` (T1.1.1, this task's declared dependency): a sequential handoff, not drift. Re-validated before arming: every anchor the brief names exists, shifted +21 to +28 lines, and the executor was given current line numbers. Baseline SHA deliberately kept at `a72deeb`, because Wave 1.R's review diff is defined against it. **T1.1.1's lock exercised live:** `wave-start ... 1.3` before this wave refused with `wave-start: wave 1.2 has no PASS wavecheck report (none), so wave 1.3 cannot be armed.`, exit 1, no `wave-owns.json` written; `wave-start ... 1.2` then armed |
 | 2. Ownership | PASS | Table below. Repo copy and installed 0.15.1 copy both `audit-wave 1.2: PASS (1 task(s), 1 commit(s))`. Enforcement ran: 6 hook decisions, 0 denied; bash layer 8 commands, 0 writes outside `owns`. Working tree clean |
+| 2b. Enforcement ran | PASS | `enforcement active: 6 hook decision(s) recorded for wave 1.2 (0 denied)`. Added after Wave 1.R finding F1 (deviation 5) |
 | 3. Forbidden | PASS, one finding | No import added; the diff never names `wave-owns`; no existing subcommand's code changed: the only removed line is in the shared usage block, see deviation 4. Live run against this repo (base `a72deeb`, owned `drydock/**`, one passing and one `exit 4` criterion): flagged `.github/workflows/verify.yml` and both plan files outside scope, `FLAG criterion exited 4`, `check: FLAG (4)`, exit 1 |
 | 4. Acceptance | PASS | Criterion re-run by the auditor through cmd.exe: exit 0; suite 148/148. The executor showed the moved-file case is failable: it dropped `--no-renames`, saw that case alone fail (147/148), and restored the flag |
 | 5. Deviations | PASS | Executor-reported deviation logged as 3; one discovered here, logged as 4 |
@@ -666,6 +694,7 @@ orchestrating session, which wrote none of the diff.
 |-------|--------|----------|
 | 1. Plan integrity | PASS | Status `EXECUTING`; waves 1.1 and 1.2 have PASS reports (`4af95ed`), so the repo-copy `wave-start` (T1.1.1's lock) armed 1.3 without refusal. Staleness non-empty for the same reason as 1.2: `git diff a72deeb..HEAD` over the owned files is exactly `8918038` and `9d351fb`, this task's dependency chain; anchors re-located and current line numbers given to the executor |
 | 2. Ownership | PASS | Table below. Repo copy and installed 0.15.1 copy both `audit-wave 1.3: PASS (1 task(s), 1 commit(s))`. Enforcement ran: 9 hook decisions, 0 denied; bash layer 5 commands, 0 writes outside `owns`. Working tree clean |
+| 2b. Enforcement ran | PASS | `enforcement active: 9 hook decision(s) recorded for wave 1.3 (0 denied)`. Added after Wave 1.R finding F1 (deviation 5) |
 | 3. Forbidden | PASS | The only removed line is the `node:fs` import, re-added with `readdirSync`: no dependency. No existing subcommand changed; the `validate-config` usage line (deviation 4) was left untouched as instructed. Reads only `git ls-files` and the plans dir. Live runs: `learnings` with no path prints usage and exits 2; `learnings drydock/skills/planwright/SKILL.md index` groups by path and lists basename-only hits under `basename only:`. The executor's run for `drydock/scripts/drydock-audit.mjs` reported 3 hits, and the auditor's own awk/grep count of Deviation Log rows plus `CLAUDE.md` lines agrees: 1 + 2 |
 | 4. Acceptance | PASS | Criterion re-run by the auditor through cmd.exe: exit 0; suite 153/153. The executor mutated the basename floor (6 → 1) and the list order; each turned its case red; both were reverted |
 | 5. Deviations | PASS | None reported; none discovered |
@@ -684,6 +713,41 @@ session and by any session until 0.16.0 is installed.
 
 Deviations logged: 4 (2 discovered by wavecheck)
 
+## Wave 1.R verdict, REJECTED, 2026-10-07
+
+Fresh-context Opus 5.5 reviewer, read-only, given only T1.R.1's context brief
+plus the two items wavecheck routed to it. Two must-fix findings, both
+re-measured by the orchestrator before acting.
+
+- **F1 (T1.1.3's CI step, caused by this plan's own reports).** From a clean
+  clone with an empty `CLAUDE_CONFIG_DIR`, `audit-corpus` failed
+  `FAIL, 3 of 15 wave(s)`: plan 008 waves 1.1-1.3 each exit 1 with
+  `plan declares enforcement: required but ... enforcement.log holds no entries`.
+  `sealedRecord` recovers the receipt only from the audit's literal sentence
+  `enforcement active: N hook decision(s) recorded for wave X (N denied)`, and
+  the three reports paraphrased it ("Enforcement ran: 8 hook decisions"). The
+  local PASS held only because this checkout still has `.drydock/`. **Repair:**
+  no code; each report gained a `2b. Enforcement ran` row carrying the sentence
+  verbatim (deviation 5), and every later report in this plan carries it too.
+- **F2 (T1.2.1, deviation 4).** `validate-config<drydock.config.yaml>` in the
+  usage output, a regression from `a72deeb`. **Repair:** Wave 1.4, T1.4.1.
+
+Nice-to-haves recorded, not acted on: `learnings` with a bare short path
+substring-matches broadly (conformant; planwright passes concrete paths, and
+an `owns` glob such as `drydock/**` matches nothing); `check` prints
+`exited undefined` for a signal-killed or maxBuffer-overflowed criterion; a
+non-ancestor `base` diffs without warning; arming an `x.R` wave skips the
+earlier-wave check; `audit-corpus` detects `format_version: 3` on any line, not
+only the frontmatter; the stats suite has no exit-2 or CRLF case (both work by
+hand); `learnings --plans-dir` with no value exits 3, not 2.
+
+Verified fine by the reviewer, with evidence: D11 semantics and non-vacuous
+lock tests; D7/D8 dedupe with exact sums that would differ without dedupe
+(101 vs 102, 59 vs 5/50); per-session totals summing to orchestration; the
+corpus heading rule character-for-character `WAVECHECK_RE`; `check` on CRLF
+intents, deleted files and continuation-line criteria; `learnings` on nested
+`CLAUDE.md` and CRLF Deviation Logs.
+
 ## Progress log
 
 | Date | Task | Result | Notes |
@@ -697,5 +761,6 @@ Deviations logged: 4 (2 discovered by wavecheck)
 | 2026-10-07 | Wave 1.2 | PASS | wavecheck 1.2; deviation 4 carried to 1.R |
 | 2026-10-07 | T1.3.1 | DONE | `7440fc0`; suite 153/153 |
 | 2026-10-07 | Wave 1.3 | PASS | wavecheck 1.3 |
+| 2026-10-07 | T1.R.1 | REJECTED | F1 (CI from a clean checkout) repaired in the plan; F2 to Wave 1.4 |
 
 ## Reconcile report
