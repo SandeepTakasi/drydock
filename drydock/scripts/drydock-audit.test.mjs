@@ -1901,6 +1901,47 @@ cases.push(
   }, (out) => out.includes("EXIT:3") && out.includes("does not resolve")],
 );
 
+// --------------------------------------------------------------------------
+// `learnings <path>...`: CLAUDE.md lines and Deviation Log rows naming a path.
+
+const lrn = (name, claude, log, paths) => {
+  const dir = mkrepo(name);
+  writeFileSync(join(dir, "CLAUDE.md"), claude);
+  git(dir, ["add", "CLAUDE.md"]);
+  git(dir, ["commit", "-q", "-m", "claude"]);
+  mkdirSync(join(dir, "docs", "plans"), { recursive: true });
+  writeFileSync(join(dir, "docs", "plans", "001-x.md"),
+    `# x\n\n## Deviation Log\n\n| # | what |\n|---|---|\n${log}\n\n## Next\n\n| 9 | src/lib/widget.js outside the log |\n`);
+  const r = spawnSync(NODE, [CLI, "learnings", ...paths], { cwd: dir, encoding: "utf8" });
+  return `EXIT:${r.status}\n${r.stdout}${r.stderr}`;
+};
+
+cases.push(
+  ["learnings finds a CLAUDE.md line naming the path", () =>
+    lrn("lr-claude", "intro\nnever edit src/lib/widget.js by hand\n", "| 1 | unrelated |", ["src/lib/widget.js"]),
+  (out) => out.includes("EXIT:0") && out.includes("## src/lib/widget.js") && /CLAUDE\.md:2 {2}never edit src\/lib\/widget\.js/.test(out) && !out.includes("(none)")],
+
+  ["learnings finds a Deviation Log row naming the path", () =>
+    lrn("lr-log", "nothing\n", "| 1 | src/lib/widget.js broke the build |", ["src/lib/widget.js"]),
+  (out) => /001-x\.md:7 {2}\| 1 \| src\/lib\/widget\.js broke/.test(out) && !out.includes("outside the log") && !out.includes("| # |") && !out.includes("---")],
+
+  ["learnings lists basename-only hits after full-path hits", () =>
+    lrn("lr-order", "see other/widget.js too\nsrc/lib/widget.js is fragile\n", "| 1 | none |", ["src/lib/widget.js"]),
+  (out) => {
+    const full = out.indexOf("CLAUDE.md:2"), only = out.indexOf("basename only:"), base = out.indexOf("CLAUDE.md:1");
+    return full > 0 && only > full && base > only;
+  }],
+
+  ["learnings ignores a short extensionless basename", () =>
+    lrn("lr-short", "the index is rebuilt\nit lives in a.js\n", "| 1 | index and a.js |", ["src/index", "x/a.js"]),
+  (out) => out.split("(none)").length === 3],
+
+  ["learnings with no paths is exit 2", () => {
+    const r = spawnSync(NODE, [CLI, "learnings"], { cwd: DIR, encoding: "utf8" });
+    return `EXIT:${r.status}`;
+  }, (out) => out === "EXIT:2"],
+);
+
 let failed = 0;
 for (const [name, run, ok] of cases) {
   const out = run();

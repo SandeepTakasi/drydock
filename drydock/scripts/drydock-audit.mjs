@@ -28,7 +28,7 @@
  * pointing forwards — are always errors, because those are wrong in any version.
  */
 
-import { readFileSync, writeFileSync, appendFileSync, mkdirSync, existsSync, realpathSync } from "node:fs";
+import { readFileSync, writeFileSync, appendFileSync, mkdirSync, existsSync, realpathSync, readdirSync } from "node:fs";
 import { execFileSync, spawnSync } from "node:child_process";
 import { dirname, join, resolve, relative, basename } from "node:path";
 // LOCAL matcher, not `path.matchesGlob`. A named import of matchesGlob is a
@@ -2142,6 +2142,51 @@ function check(intentPath) {
   console.log(`check: PASS (${changed.length} file(s), ${criteria.length} criteria)`);
 }
 
+// `learnings [--plans-dir <dir>] <path>...` (plan 008 D10): past lessons that
+// name a path. A grep over every tracked CLAUDE.md line and every Deviation Log
+// table row. Full-path hits lead; a basename-only hit (extension, >= 6 chars, so
+// `index` never matches but `SKILL.md` does) is listed apart because common
+// basenames hit many rows. Informational: exits 0 whenever it ran.
+function learnings(args) {
+  const i = args.indexOf("--plans-dir");
+  const plansDir = i >= 0 ? args[i + 1] : "docs/plans";
+  const paths = args.filter((a, j) => a !== "--plans-dir" && (i < 0 || j !== i + 1));
+  if (!paths.length) { console.error("usage: drydock-audit.mjs learnings [--plans-dir <dir>] <path>..."); process.exit(2); }
+
+  const root = repoRoot();
+  const rel = (p) => p.replace(/\\/g, "/");
+  const rows = []; // { src, n, text }
+  const files = execFileSync("git", ["ls-files", "-z"], { cwd: root, encoding: "utf8", maxBuffer: 64 << 20 })
+    .split("\0").filter((f) => f.split("/").pop() === "CLAUDE.md");
+  for (const f of files) {
+    readFileSync(join(root, f), "utf8").split(/\r?\n/).forEach((text, n) => rows.push({ src: f, n: n + 1, text }));
+  }
+  const dir = join(root, plansDir);
+  for (const f of existsSync(dir) ? readdirSync(dir).filter((x) => x.endsWith(".md")).sort() : []) {
+    const lines = readFileSync(join(dir, f), "utf8").split(/\r?\n/);
+    const start = lines.findIndex((l) => /^## (?:\d+\.\s*)?Deviation Log\s*$/i.test(l));
+    if (start === -1) continue;
+    for (let n = start + 1; n < lines.length && !/^## /.test(lines[n]); n++) {
+      const sep = /^\|[\s:|-]+$/;
+      // header = the | row directly above a separator; separators carry no lesson
+      if (!lines[n].startsWith("|") || sep.test(lines[n]) || sep.test(lines[n + 1] ?? "")) continue;
+      rows.push({ src: `${rel(plansDir)}/${f}`, n: n + 1, text: lines[n] });
+    }
+  }
+
+  const fmt = (r) => `${r.src}:${r.n}  ${r.text.trim().slice(0, 200)}`;
+  for (const p of paths.map(rel)) {
+    const base = p.split("/").pop();
+    const byBase = /\.[^.]+$/.test(base) && base.length >= 6;
+    const full = rows.filter((r) => r.text.includes(p));
+    const only = byBase ? rows.filter((r) => !r.text.includes(p) && r.text.includes(base)) : [];
+    console.log(`## ${p}`);
+    full.forEach((r) => console.log(fmt(r)));
+    if (only.length) { console.log("basename only:"); only.forEach((r) => console.log(fmt(r))); }
+    if (!full.length && !only.length) console.log("(none)");
+  }
+}
+
 // ------------------------------------------------------------------ main ----
 
 const argv = process.argv.slice(2);
@@ -2174,6 +2219,7 @@ else if (command === "prove-failable" && rest[0]) proveFailable(rest[0]);
 else if (command === "validate-config" && rest[0]) validateConfig(rest[0]);
 else if (command === "resolve-plans-dir") resolvePlansDir(rest[0]);
 else if (command === "check" && rest[0]) check(rest[0]);
+else if (command === "learnings") learnings(rest);
 else {
   console.error("usage: drydock-audit.mjs wave-start   <plan.md> <wave>      # arm the ownership hook");
   console.error("       drydock-audit.mjs task-close   <plan.md> <task-id>  # record HEAD as this task's work");
@@ -2183,6 +2229,7 @@ else {
   console.error("       drydock-audit.mjs resolve-plans-dir [<preferred>]   # where plans go, and whether they can be committed");
   console.error("       drydock-audit.mjs prove-failable <plan.md>            # every criterion must FAIL before its task runs");
   console.error("       drydock-audit.mjs check <intent.md>                   # diff since base vs the declared scope, then run its criteria");
+  console.error("       drydock-audit.mjs learnings [--plans-dir <dir>] <path>...  # CLAUDE.md lines and Deviation Log rows naming a path");
   console.error("       drydock-audit.mjs validate-config<drydock.config.yaml>  # the host profile drydock:init writes");
   console.error("       drydock-audit.mjs validate-plan [--strict] <plan.md>");
   process.exit(2);
