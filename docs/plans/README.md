@@ -14,6 +14,7 @@ would have lost.
 | [005-small-lane-and-solo-mode](005-small-lane-and-solo-mode.md) | The `lane: small` / `execution: solo` short-form track (v0.8.0) | RECONCILED |
 | [006-external-review-repairs](006-external-review-repairs.md) | The nine repairs an outside review and this plan's own gate found (v0.15.0) | RECONCILED |
 | [007-deferred-hardening](007-deferred-hardening.md) | The seven items plan 006 deferred, hook path resolution hardened (v0.15.1) | RECONCILED |
+| [008-stats-gates-check-learnings](008-stats-gates-check-learnings.md) | Token split per plan, the wave-order lock, `check`, and past learnings for planwright (v0.16.0) | EXECUTING |
 
 Plan 001 also has a [field case study](../case-study-001-homepage.md) written
 against it, including the parts that reflect badly on the tool.
