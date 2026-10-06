@@ -593,13 +593,54 @@ confirmed to exist. Verdict APPROVED-WITH-FIXES; all twelve findings applied:
 | # | Task | What deviated | Why | Impact | Recorded |
 |---|---|---|---|---|---|
 | 1 | T0 | T0's criterion tested `/_pending_/` against the whole plan; narrowed to `/[\|] _pending_ [\|]/`, a table cell | The plan contains the literal `_pending_` twice outside the Baseline table, in pressure-test item 11 and in the criterion's own text, so the criterion could fail but never pass (exit 1 with every cell filled). Item 11 states the intent: "no `_pending_` cell". Both halves re-proved through `spawnSync(..., {shell: true})`: exit 1 with one cell set back to `_pending_`, exit 0 filled | Criterion text changed after approval, in the orchestrator's T0 commit; intent unchanged. Same class as CLAUDE.md's "can fail but can never pass" note: a criterion that greps a file must not be able to match itself | 2026-10-07 |
+| 2 | T1.1.3 | Finding "Sealed waves re-audit from a clean checkout" says 14 sealed waves in plans 005-007; `audit-corpus` selects 12. **discovered-by-wavecheck** | Plans 005-007 carry exactly 12 `### Wavecheck` headings, all PASS (005: 1.0; 006: 1.1, 1.2, 1.3, 2.1, 2.2; 007: 1.1-1.5, 2.1). The 14 included the two `1.R` review waves, which own no files and get no wavecheck. The script follows D9 exactly | None on the code: no sealed wave is skipped. The finding's count was wrong, not the gate | 2026-10-07 |
 
 ## Wavecheck reports
+
+### Wavecheck 1.1, PASS, 2026-10-07
+
+Executed `fleet`: each task by its own spawned `drydock:executor` (Sonnet 5.5),
+one at a time, each committed and `task-close`d before the next spawned. This
+audit is by the orchestrating session, which wrote none of the diff. Wave armed
+and audited with the REPO copy (D15); the installed 0.15.1 `audit-wave` was also
+run and agrees.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `format_version: 3`, status `EXECUTING`, wave 1.1 is the first wave (T0 has no wave, `waveOf` → `null`), so no prior report is required. `validate-plan: PASS (11 task(s), 6 wave(s))` at T0 |
+| 2. Ownership | PASS | Table below. Repo copy and installed 0.15.1 copy both `audit-wave 1.1: PASS (3 task(s), 3 commit(s), attribution: manifest)`. Enforcement ran: 8 hook decisions, 0 denied (T1.1.1: 4 allow, T1.1.2: 2, T1.1.3: 2); bash layer 17 commands, 0 writes outside `owns`. Working tree clean |
+| 3. Forbidden | PASS | T1.1.1: `--numstat` 21/0 and 27/0, no line removed anywhere, so no existing case, `derivePlanState` or `WAVECHECK_RE` changed; no import added. T1.1.2: commit touches only its two files; imports are `node:` built-ins only; no `writeFile`/`mkdir`/`rm`/network call in the script; no money conversion. T1.1.3: the yml diff is exactly the stats `run:` line, `fetch-depth: 0` with its comment, and the `audit-corpus` step; no `paths:`, no `\|\| true`; `drydock-audit.mjs` untouched; header states the v2 exclusion and the ceiling |
+| 4. Acceptance | PASS | Each criterion re-run by the auditor through `spawnSync(cmd, {shell: true})` (cmd.exe): T1.1.1 exit 0 (suite 142/142), T1.1.2 exit 0 (8/8), T1.1.3 exit 0 (`audit-corpus: PASS, 12 wave(s) in 3 plan(s)`) |
+| 5. Deviations | PASS | Executors reported none. One plan-finding error discovered here and logged as deviation 2 |
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.1.1 | `8918038` | `drydock/scripts/drydock-audit.mjs`<br>`drydock/scripts/drydock-audit.test.mjs` | `drydock/scripts/drydock-audit.mjs`<br>`drydock/scripts/drydock-audit.test.mjs` | none |
+| T1.1.2 | `94b2a28` | `drydock/scripts/drydock-stats.mjs`<br>`drydock/scripts/drydock-stats.test.mjs` | `drydock/scripts/drydock-stats.mjs`<br>`drydock/scripts/drydock-stats.test.mjs` | none |
+| T1.1.3 | `58b0fee` | `.github/workflows/verify.yml`<br>`drydock/scripts/audit-corpus.mjs` | `drydock/scripts/audit-corpus.mjs`<br>`.github/workflows/verify.yml` | none |
+
+Executor notes carried forward to Wave 1.R: T1.1.1's gate checks nothing when
+the target wave owns no task (a review wave such as `1.R` is never refused).
+T1.1.2's per-session row total counts the requests first held by that main
+session, not its subagents; overhead prints to one decimal. A smoke run on plan
+007 reported 92.0% overhead with one session holding 152M of 161M orchestration
+tokens while naming six other plans, which is D7's caveat measured, not a defect.
+
+**Unexercised (D14):** Wave 2.1's three skill edits (`check`, planwright,
+reconcile) have not run yet. When they do, this session and every session until
+0.16.0 is installed will load the 0.15.1 copies, so this report says nothing
+about them.
+
+Deviations logged: 2 (1 discovered by wavecheck)
 
 ## Progress log
 
 | Date | Task | Result | Notes |
 |---|---|---|---|
 | 2026-10-07 | T0 | DONE | Baseline at `a72deeb`; README row added; status EXECUTING; criterion repaired (deviation 1) and exits 0; `assert-matrix` PASS |
+| 2026-10-07 | T1.1.1 | DONE | `8918038`; suite 142/142 |
+| 2026-10-07 | T1.1.2 | DONE | `94b2a28`; stats suite 8/8 |
+| 2026-10-07 | T1.1.3 | DONE | `58b0fee`; `audit-corpus: PASS, 12 wave(s) in 3 plan(s)` |
+| 2026-10-07 | Wave 1.1 | PASS | wavecheck 1.1 |
 
 ## Reconcile report
