@@ -1940,6 +1940,9 @@ cases.push(
     const r = spawnSync(NODE, [CLI, "learnings"], { cwd: DIR, encoding: "utf8" });
     return `EXIT:${r.status}`;
   }, (out) => out === "EXIT:2"],
+
+  ["usage lists validate-config with its argument", () => cli(DIR, []),
+  (out) => out.includes("validate-config <drydock.config.yaml>")],
 );
 
 let failed = 0;

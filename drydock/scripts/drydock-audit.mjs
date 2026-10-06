@@ -2230,7 +2230,7 @@ else {
   console.error("       drydock-audit.mjs prove-failable <plan.md>            # every criterion must FAIL before its task runs");
   console.error("       drydock-audit.mjs check <intent.md>                   # diff since base vs the declared scope, then run its criteria");
   console.error("       drydock-audit.mjs learnings [--plans-dir <dir>] <path>...  # CLAUDE.md lines and Deviation Log rows naming a path");
-  console.error("       drydock-audit.mjs validate-config<drydock.config.yaml>  # the host profile drydock:init writes");
+  console.error("       drydock-audit.mjs validate-config <drydock.config.yaml>  # the host profile drydock:init writes");
   console.error("       drydock-audit.mjs validate-plan [--strict] <plan.md>");
   process.exit(2);
 }
