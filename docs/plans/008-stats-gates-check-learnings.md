@@ -501,6 +501,30 @@ confirmed to exist. Verdict APPROVED-WITH-FIXES; all twelve findings applied:
   existing cases; acting on the review's nice-to-have items; any dependency.
 - **Acceptance criterion:** `node -e "const c=require('child_process');let o='';try{o=c.execFileSync('node',['drydock/scripts/drydock-audit.test.mjs'],{encoding:'utf8',stdio:['ignore','pipe','ignore']})}catch(e){process.exit(1)}const u=c.spawnSync('node',['drydock/scripts/drydock-audit.mjs'],{encoding:'utf8'});process.exit(/ok +. usage lists validate-config with its argument/.test(o)&&(u.stdout+u.stderr).includes('validate-config <drydock.config.yaml>')?0:1)"`
 
+### Wave 1.5 - Fixes for the second Wave 1.R rejection
+
+> Added after approval (deviation 7). Retry 2 of the escalation policy's 2: a
+> third rejection goes one model tier up, then to a human.
+
+#### T1.5.1 - Make the check fixtures' criteria portable to /bin/sh
+
+- **Description:** Two `check` cases pass criteria written as
+  `node -e process.exit(7)` and `node -e process.exit(0)`. `check` runs criteria
+  through the platform shell, and under `/bin/sh` (dash on ubuntu, and Git's sh
+  here) the unquoted `(` is a syntax error that exits 2, so both cases fail on
+  every ubuntu leg of the `plugin` job. Replace the two criteria with `exit 7`
+  and `exit 0`.
+- **Files owned:** `drydock/scripts/drydock-audit.test.mjs`
+- **Depends on:** T1.4.1
+- **Model / thinking:** Mechanical / off (Sonnet 5.5)   **Executor:** drydock:executor
+- **Context brief:** the second Wave 1.R verdict below (G1). Test file lines
+  ~1870 and ~1894. Measured by the orchestrator: `spawnSync(cmd, {shell})` with
+  Git's `sh.exe` gives status 2 for `node -e process.exit(7)`, 7 for
+  `node -e "process.exit(7)"`, and 7 for `exit 7`; cmd.exe gives 7 for all three.
+- **Forbidden:** editing `drydock-audit.mjs`; changing any case name or any
+  other assertion; any dependency.
+- **Acceptance criterion:** `node -e "const c=require('child_process'),fs=require('fs');let o='';try{o=c.execFileSync('node',['drydock/scripts/drydock-audit.test.mjs'],{encoding:'utf8',stdio:['ignore','pipe','ignore']})}catch(e){process.exit(1)}const s=fs.readFileSync('drydock/scripts/drydock-audit.test.mjs','utf8');process.exit(/ok +. check flags a failing criterion/.test(o)&&/ok +. check passes an in-scope diff whose criteria exit 0/.test(o)&&!s.includes('-e process.exit(')?0:1)"`
+
 ### Wave 1.R - Quality review
 
 #### T1.R.1 - Fresh-context quality review of Phase 1
@@ -509,7 +533,7 @@ confirmed to exist. Verdict APPROVED-WITH-FIXES; all twelve findings applied:
   correctness, Windows/Linux path handling, CRLF, exit codes, and whether each
   new test can fail. Record `## Wave 1.R verdict, APPROVED|REJECTED, <date>`.
 - **Files owned:** none (review only; the verdict is written by the orchestrator after the review)
-- **Depends on:** T1.3.1, T1.4.1
+- **Depends on:** T1.3.1, T1.4.1, T1.5.1
 - **Model / thinking:** Judgment / extended (Opus 5.5)   **Executor:** general-purpose reviewer, fresh context
 - **Context brief:** `git diff <baseline SHA>..HEAD -- drydock/ .github/`; this
   plan's Decision Log and Phase 1 task blocks; CLAUDE.md "Toolchain facts" items
@@ -622,6 +646,7 @@ confirmed to exist. Verdict APPROVED-WITH-FIXES; all twelve findings applied:
 | 4 | T1.2.1 | Adding the `check` usage line removed the space in the existing `validate-config` usage line, which now prints `validate-config<drydock.config.yaml>`. **discovered-by-wavecheck** | Collateral damage in the shared usage block. The `validate-config` dispatch and behaviour are untouched, so the task's "changing any existing subcommand" was not crossed. The executor's report counted `-1` without naming it | Cosmetic, user-visible in usage output. Carried to Wave 1.R. A repair needs a new wave with new task ids, and must not be made under T1.2.1's sealed id | 2026-10-07 |
 | 5 | Wavecheck 1.1-1.3 | The three wavecheck reports paraphrased the audit's enforcement note, so from a clean checkout `audit-corpus` failed 3 of 15 waves. Each report gained a `2b. Enforcement ran` row quoting the sentence verbatim. **discovered by Wave 1.R review (F1)** | `audit-wave` without `.drydock/` recovers the enforcement receipt only from the literal `enforcement active: N hook decision(s) recorded for wave X (N denied)`. The orchestrator wrote prose instead. The counts (8, 6, 9, all 0 denied) are the audit's own, unchanged | Sealed reports amended in place by adding rows, not by rewording verdicts. Re-proved from a fresh clone with an empty `CLAUDE_CONFIG_DIR`. Every later report carries the sentence. A wavecheck that writes its own enforcement evidence must paste it, not paraphrase it | 2026-10-07 |
 | 6 | Wave 1.4 | Wave 1.4 / T1.4.1 added after approval; T1.R.1 now also depends on T1.4.1 | Wave 1.R REJECTED (F2). CLAUDE.md: repair a review rejection in a NEW wave with NEW task ids. Retry 1 of 2 | One extra wave in Phase 1; Wave 1.R re-runs after it | 2026-10-07 |
+| 7 | Wave 1.5 | Wave 1.5 / T1.5.1 added after approval; T1.R.1 now also depends on T1.5.1 | The re-review REJECTED on G1: two `check` fixtures used shell syntax that only cmd.exe accepts. Every wavecheck re-ran the criteria on Windows only, so none could see it. Retry 2 of 2 | One more Phase 1 wave. The lesson for this repo: CLAUDE.md warns about criteria that cross cmd.exe, and the same applies in reverse to test fixtures that `check` runs through `/bin/sh` in CI | 2026-10-07 |
 
 ## Wavecheck reports
 
@@ -736,6 +761,30 @@ session and by any session until 0.16.0 is installed.
 
 Deviations logged: 6 (2 discovered by wavecheck, 1 by review)
 
+## Wave 1.R verdict, REJECTED, 2026-10-07 (re-review after Wave 1.4)
+
+A second fresh-context Opus 5.5 reviewer, read-only.
+
+- **F1: VERIFIED.** A fresh clone of `e13c148` with no `.drydock/` and an empty
+  `CLAUDE_CONFIG_DIR`/`HOME` gave `audit-corpus: PASS, 16 wave(s) in 4 plan(s)`,
+  rc 0. It passed both as a CRLF checkout and as an LF (`core.autocrlf=false`)
+  clone, which is what the Linux CI checkout gets.
+- **F2: VERIFIED.** Usage prints `validate-config <drydock.config.yaml>`. With
+  the space removed again in a scratch clone, the pinning case failed (153/154).
+- **G1, must-fix (T1.2.1's fixtures).** `check flags a failing criterion` and
+  `check passes an in-scope diff whose criteria exit 0` pass the criteria
+  `node -e process.exit(7)` / `node -e process.exit(0)`. Under `/bin/sh` on
+  ubuntu-latest (dash), the unquoted `(` is a syntax error that exits 2, so both
+  cases fail on every ubuntu leg of the `plugin` job. CI has not run on Phase 1
+  yet (local `main` is ahead of `origin/main`). The orchestrator re-measured it
+  with Git's `sh.exe`: status 2 unquoted, 7 quoted, 7 for `exit 7`, against 7
+  for all three under cmd.exe. **Repair:** Wave 1.5, T1.5.1.
+
+Nice-to-haves, not acted on: `audit-corpus` prints `nullnull` if a spawn itself
+fails (the exit code still gates); `learnings ./x` does not normalise a leading
+`./`; of the three lock cases only the refusal case turns red without the lock,
+because the other two are allow-cases.
+
 ## Wave 1.R verdict, REJECTED, 2026-10-07
 
 Fresh-context Opus 5.5 reviewer, read-only, given only T1.R.1's context brief
@@ -787,5 +836,6 @@ intents, deleted files and continuation-line criteria; `learnings` on nested
 | 2026-10-07 | T1.R.1 | REJECTED | F1 (CI from a clean checkout) repaired in the plan; F2 to Wave 1.4 |
 | 2026-10-07 | T1.4.1 | DONE | `e2cff77` |
 | 2026-10-07 | Wave 1.4 | PASS | wavecheck 1.4 |
+| 2026-10-07 | T1.R.1 | REJECTED | re-review: F1, F2 verified; G1 (fixtures fail under /bin/sh) to Wave 1.5 |
 
 ## Reconcile report
