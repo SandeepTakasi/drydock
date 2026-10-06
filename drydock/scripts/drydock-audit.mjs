@@ -928,6 +928,27 @@ function waveStart(planPath, wave) {
     process.exit(1);
   }
 
+  // EARLIER WAVES MUST HAVE PASSED. Order comes from the tasks (first
+  // appearance of each non-superseded wave), not `### Wave` headings, which
+  // fixtures may lack. Review waves (`x.R`) take no wavecheck, and T0 has no
+  // wave, so both are exempt. After a BLOCK the escape is a re-audit heading
+  // whose PASS supersedes it: the last verdict wins.
+  const order = [...new Set(plan.tasks.filter((t) => !t.superseded).map(waveOf))].filter(
+    (w) => w && !w.endsWith(".R")
+  );
+  const verdicts = derivePlanState(plan).verdicts;
+  for (const w of order.slice(0, Math.max(order.indexOf(wave), 0))) {
+    if (verdicts.get(w) !== "PASS") {
+      console.error(
+        `wave-start: wave ${w} has no PASS wavecheck report (${verdicts.get(w) ?? "none"}), so wave ${wave} cannot be armed.`
+      );
+      console.error(
+        `  Run drydock:wavecheck on wave ${w} (after a BLOCK and a replan, a re-audit heading whose PASS supersedes the BLOCK), commit the report, then re-arm.`
+      );
+      process.exit(1);
+    }
+  }
+
   // `.drydock/` holds the armed boundary, the enforcement receipts and the
   // attribution manifest. The docs said it "is gitignored", which was true of
   // THIS repo only: in a fresh host repo the first `audit-wave` failed on the

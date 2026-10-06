@@ -1763,6 +1763,18 @@ const bareRepo = (name, fv = 3) => {
   return dir;
 };
 
+// Committed two-wave plan (1.0 then 1.1), no `### Wave` headings; `reports` is
+// appended verbatim, so each case chooses which wavecheck headings exist.
+const twoWaveRepo = (name, reports) => {
+  const dir = bareRepo(name);
+  writeFileSync(
+    join(dir, "plan.md"),
+    planText(3, "manifest") + `\n#### T1.1.1 — third\n- **Files owned:** \`c.txt\`\n- **Acceptance criterion:** \`true\` exits 0.\n${reports}`
+  );
+  git(dir, ["add", "-A"]); git(dir, ["commit", "-q", "-m", "plan"]);
+  return dir;
+};
+
 cases.push(
   ["wave-start refuses a plan the validator rejects", () => {
     const dir = bareRepo("ws-invalid", 9);
@@ -1790,6 +1802,21 @@ cases.push(
     const dir = bareRepo("ws-dirty-abs");
     return cli(dir, ["wave-start", join(dir, "plan.md"), "1.0"]);
   }, (out) => out.includes("uncommitted changes") && !out.includes("armed")],
+
+  ["wave-start refuses when an earlier wave has no PASS report", () => {
+    const dir = twoWaveRepo("ws-gate-none", "");
+    return cli(dir, ["wave-start", "plan.md", "1.1"]);
+  }, (out) => out.includes("wave-start: wave 1.0 has no PASS wavecheck report (none)") && !out.includes("wave-start: armed")],
+
+  ["wave-start arms a wave whose earlier waves all PASS", () => {
+    const dir = twoWaveRepo("ws-gate-pass", "\n### Wavecheck 1.0 — PASS\n");
+    return cli(dir, ["wave-start", "plan.md", "1.1"]);
+  }, (out) => out.includes("armed") && !out.includes("cannot be armed")],
+
+  ["wave-start arms after a re-audit PASS supersedes a BLOCK", () => {
+    const dir = twoWaveRepo("ws-gate-reaudit", "\n### Wavecheck 1.0 — BLOCK\n\n### Wavecheck 1.0 re-audit — PASS\n");
+    return cli(dir, ["wave-start", "plan.md", "1.1"]);
+  }, (out) => out.includes("armed") && !out.includes("cannot be armed")],
 
   ["wave-start prints a path that actually runs", () => {
     const dir = bareRepo("ws-path");
