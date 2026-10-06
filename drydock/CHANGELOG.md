@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.15.1: 2026-10-06
+
+**The seven items plan 006 deferred ship as 0.15.1, produced by plan `docs/plans/007-deferred-hardening.md`, and the plan's own reviews rejected its first two passes.**
+
+**F7, both hooks went inert from a subdirectory.** With `CLAUDE_PROJECT_DIR` unset and the working directory a subdirectory, both hooks failed to find `.drydock/wave-owns.json`; measured, an unowned write returned exit 0 instead of 2. They now walk up to the nearest ancestor holding that file, stopping at the repository root (`.git`, directory or file), so a stale armed wave in a parent directory is never adopted.
+
+**F10, a write to another Windows drive was denied.** `path.relative` across drives returns an absolute path, which the hook read as an escape. "Outside" now means outside BOTH textually and after resolution.
+
+**The resolver split.** The ancestor walk moved into `drydock/lib/resolve-target.mjs` with an injectable filesystem, so the JS `realpathSync` fallback (for volumes where `realpathSync.native` fails, which would otherwise deny every write in an armed wave) is testable by injection. Its suite runs in CI.
+
+**A relative target containing `..`.** `path.resolve` collapsed it textually before the kernel followed the link, so on POSIX `docs/esc/../site/x.ts` with `docs/esc -> ../site` was allowed and the write landed outside `owns` (measured on Linux under the floor runtime). Relative targets are now joined unnormalized.
+
+**The detector.** A working-tree rename (` R`, after `git add -N`) had its old path sliced by three characters, naming a file that does not exist (measured `e/a.ts` for `site/a.ts`).
+
+**Receipts.** A deny raised by a thrown check wrote none; it now does, with a string-coerced path. Still leaving nothing: the unusable-config deny, the outside-the-repo allow, and the pre-config allows. The hook's docblock now lists them.
+
+**What this plan's own reviews caught.** The first quality review REJECTED Phase 1: the new "outside" rule allowed a write addressed through a UNC form of the repo's own path (`\\localhost\c$\...`), unowned and unlogged, where the previous hook denied it, because `realpathSync.native` collapses `\\?\C:` and `subst` onto `C:` but leaves UNC unchanged, so both votes read "outside". Fixed by corroborating an absolute relative path with filesystem identity (`dev` and `ino`). The re-review REJECTED again: the new UNC cases never checked the admin share was reachable, so a box without it went red while the case gating the fix passed for the wrong reason. The third review APPROVED.
+
+**Ceilings, stated.** A junction escape addressed through a UNC form of the repo is still allowed silently. A project root on a filesystem **without file ids** (`ino === 0`, some FAT/exFAT and some network filesystems) disables identity corroboration entirely, so a UNC form is allowed there too; the guard exists because the alternative false-denies ordinary owned writes on such a volume. Hard links are still followed.
+
+**Verification.** Exercised by the suites (audit 139, enforce-owns 42, detector 21, resolver 8), by a direct reproduction per finding, and on Linux under the floor runtime via Docker. The installed plugin must be updated before a host session loads them; no live host session has verified 0.15.1.
+
+Tests: enforce-owns 33 to 42, detector 18 to 21, resolver new at 8, audit unchanged at 139.
+
 ## 0.15.0: 2026-09-21
 
 **Nine findings, eight from a 2026-09-20 external review plus one found by this
