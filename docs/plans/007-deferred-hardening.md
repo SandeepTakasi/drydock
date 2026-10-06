@@ -813,6 +813,7 @@ Fresh-context Opus review of `157e70a..c75f8d1`. One CONFIRMED MAJOR, introduced
 | 2026-10-06 | Wave 2.1 | PASS | wavecheck; duplicate attribution caught and repaired (Deviation 4) |
 | 2026-10-06 | Phase 2 gate | CLOSED | release approved by Sandeep Takasi |
 | 2026-10-06 | reconcile | RECONCILED | 10 proposals (7 CLAUDE.md, 2 docs/architecture.md, 1 new ADR), none applied |
+| 2026-10-06 | R6 | withdrawn and replaced | the live probe after release contradicted it: the hook stayed at 0.15.0 |
 
 ## Reconcile report
 
@@ -961,6 +962,29 @@ Confidence: high
 +  stayed stale until a restart. So a plan that edits a hook can be verified in
 +  the session that releases it; a plan that edits a skill cannot.
 ```
+
+#### Proposal R6 is WITHDRAWN as written, and replaced, 2026-10-06
+
+**Measured after the report was filed, while verifying 0.15.1 in the live host:** the claim R6 makes does not hold reliably. After `claude plugin update drydock@drydock` took the install from 0.15.0 to 0.15.1, two separate Write probes in the same session were both answered by `.../drydock/0.15.0/hooks/enforce-owns.mjs`, the OLD copy, which is the opposite of what plan 006 observed when the same command took it from 0.14.0 to 0.15.0 and the denial immediately named the new path. One observation each way, and no mechanism found in the plugin cache or settings that explains the difference; there is no version pointer or symlink, just version directories side by side.
+
+So the honest rule is the conservative one, and the cheap check matters more than the rule:
+
+```diff
+@@ Plugin skill files are session-cached @@
+   editing the plugin without bumping is drift it cannot see. Bump.
++  **Whether a plugin update reaches the HOOKS without a restart is not
++  reliable, so assume it does not and check.** Measured both ways: updating
++  0.14.0 to 0.15.0 had the very next denial name the new copy's path, while
++  updating 0.15.0 to 0.15.1 had two probes in the same session still answered
++  by `.../0.15.0/hooks/enforce-owns.mjs`. Nothing in the plugin cache explains
++  the difference, and the cache holds plain version directories with no
++  "latest" pointer. **Every denial message names the hook file that produced
++  it**, so the version actually enforcing a wave is one deliberate probe away:
++  arm a scratch boundary, attempt a write outside it, and read the path. Do
++  that before claiming a released hook has been exercised in a host session.
+```
+
+**Consequence for this plan's claims, stated rather than left implied:** 0.15.1's hooks are exercised by their suites, by a direct reproduction per finding and on Linux under the floor runtime, and they are **not** yet exercised by a host session. The probes above were answered by 0.15.0, so they verified the previous release, not this one. A session started after this release will load 0.15.1; that verification is a follow-up, not a thing this plan may claim.
 
 #### Proposal R7 | target: CLAUDE.md | kind: addition
 Finding: the POSIX half of this plan (D10, the relative `..` escape) could only be measured on Linux, and the route that worked is not written down anywhere.
