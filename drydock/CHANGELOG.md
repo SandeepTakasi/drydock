@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.15.2: 2026-10-06
+
+**The resolver suite failed on every `windows-latest` runner, and the product code was fine.** 0.15.1's CI went red on `resolve-target.test.mjs` across Node 20, 22 and 24 on Windows, while passing on ubuntu and on the development machine. The two real-filesystem cases normalised their fixture with the JS `realpathSync`, while the module under test resolves through `realpathWithFallback`, which tries `realpathSync.native` first. Those two disagree about Windows 8.3 short names: JS keeps `REPRO8~2`, native expands it to the long directory name. A GitHub runner's temp path is `C:\Users\RUNNER~1\AppData\Local\Temp`, so the expectation and the result described the same directory by different names and could never match. Neither this machine's temp path nor ubuntu's has a short component, which is why three reviews and a green local suite missed it.
+
+**This is plan 007's own decision D5 applied to the wrong side of the test.** D5 says resolve the root and the target through the same function or their relative path is meaningless; the fixture used a different ruler than the code it measured. Both fixtures now use `realpathSync.native`, with the reason recorded where the next reader will hit it.
+
+**Verified by simulating the runner rather than by waiting for CI:** with `TMP` pointed at a path carrying an 8.3 component, the fixed suite reports `PASS, 8 cases` and the pre-fix file reports `FAIL, 2 of 8`, naming exactly the two cases CI named. No product file changed; the hooks, the resolver module and the audit are untouched.
+
+Tests: unchanged at audit 139, enforce-owns 42, detector 21, resolver 8.
+
 ## 0.15.1: 2026-10-06
 
 **The seven items plan 006 deferred ship as 0.15.1, produced by plan `docs/plans/007-deferred-hardening.md`, and the plan's own reviews rejected its first two passes.**

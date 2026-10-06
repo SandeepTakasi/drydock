@@ -203,8 +203,19 @@ const enoent = (p) => Object.assign(new Error(`ENOENT: ${p}`), { code: "ENOENT" 
 
 // --- resolveTarget: the default fs argument works against a real disk ------
 
+// `realpathSync.native`, NOT the JS `realpathSync`, and the distinction is the
+// whole reason this comment exists. The two disagree on Windows 8.3 short names:
+// JS keeps `REPRO8~2`, native expands it to the long directory name. The module
+// under test resolves through `realpathWithFallback`, which tries `native`
+// first, so a fixture normalised with the JS version describes the same
+// directory by a different name and the assertion below can never match. It
+// passed on this machine and on ubuntu because neither has a short component in
+// `tmpdir`; it failed on every windows-latest runner, whose temp path is
+// `C:\Users\RUNNER~1\AppData\Local\Temp`. Measured 2026-10-06, CI run 46. This
+// is plan 007's decision D5 ("one resolver for both sides, or the comparison is
+// meaningless") applied to the fixture rather than the hook.
 {
-  const dir = realpathSync(mkdtempSync(join(tmpdir(), "resolve-target-real-")));
+  const dir = realpathSync.native(mkdtempSync(join(tmpdir(), "resolve-target-real-")));
   mkdirSync(join(dir, "inner"), { recursive: true });
   let result;
   let ok = true;
@@ -226,7 +237,7 @@ const enoent = (p) => Object.assign(new Error(`ENOENT: ${p}`), { code: "ENOENT" 
 // it tolerates symlinkSync failing and just skips rather than failing the
 // suite).
 {
-  const dir = realpathSync(mkdtempSync(join(tmpdir(), "resolve-target-real-link-")));
+  const dir = realpathSync.native(mkdtempSync(join(tmpdir(), "resolve-target-real-link-")));
   mkdirSync(join(dir, "site"), { recursive: true });
   let linked = true;
   // skip-only-on-link-failure: this try covers ONLY link creation. A box
