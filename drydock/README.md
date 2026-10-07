@@ -8,6 +8,23 @@ ownership**, plan-conformance **verification gates** between waves, and a
 **reconcile loop** that feeds what execution learned back into your project
 docs. The plan is the source of truth from first question to final doc diff.
 
+## Just the guard
+
+No plan needed. `/drydock:check` writes the intent file below and can run these
+steps for you. Set `DD` as in the lifecycle section further down, then:
+
+```bash
+DD=$(ls -d ~/.claude/plugins/cache/drydock/drydock/*/ | sort -V | tail -1)
+# .drydock/check.md: base: <commit sha>, Files owned: `src/**`-style globs
+node "$DD/scripts/drydock-audit.mjs" arm .drydock/check.md    # Write/Edit outside the globs are denied
+# ...work...
+node "$DD/scripts/drydock-audit.mjs" check .drydock/check.md  # audit the diff against the same file
+rm .drydock/wave-owns.json                                    # disarm
+```
+
+Ceilings: Bash writes are detected rather than prevented, and catch-all globs
+(anything starting with `**`) are refused, so name the directories.
+
 ## The lifecycle
 
 ```

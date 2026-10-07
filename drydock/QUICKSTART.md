@@ -45,6 +45,22 @@ You want `PASS` from both. They run in temp directories and touch nothing in
 your repo. The two are different layers: the first denies a write at the tool
 boundary, the second records a write a Bash command already made.
 
+## 0. Just the guard
+
+No plan needed. `/drydock:check` writes the intent file and can run these steps
+for you. With `DD` set as above:
+
+```bash
+# .drydock/check.md: base: <commit sha>, Files owned: `src/api/*`-style globs
+node "$DD/scripts/drydock-audit.mjs" arm .drydock/check.md    # Write/Edit outside the globs are denied
+# ...work...
+node "$DD/scripts/drydock-audit.mjs" check .drydock/check.md  # audit the diff against the same file
+rm .drydock/wave-owns.json                                    # disarm
+```
+
+Ceilings: Bash writes are detected rather than prevented, and catch-all globs
+(anything starting with `**`) are refused.
+
 ## 1. Ask for a plan
 
 Describe the change. You do not need to say "plan".
