@@ -515,6 +515,7 @@ install, FAQ; `/drydock/evidence/` renders the full matrix; `npm run verify` and
 | 4 | T1.1.2 | `lifecycle.flow` is no longer rendered by `Lifecycle.tsx`, and T1.2.1's removal list does not name it, so it stays in `copy.ts` as unrendered copy | The task's description lists steps, diagram and the nine-name list; the flow strip has no place in it | Dead copy only; no pinned literal lives in it (checked against `assert-copy.mjs` REQUIRED). Left for the review or a follow-up rather than widening T1.2.1 | executor report |
 | 5 | T1.3.1 | `REQUIRED_HOME` drops `"outside the project directory are not enforced"` and `"Bash-mediated writes bypass file-tool hooks"`, which the sketch keeps on home (it removes exactly seven named literals, and these two are not among them). They appear only in `REQUIRED_EVIDENCE`, so home carries 18 pinned literals where the sketch specifies 20. The executor reported "deviations: none" | Unknown; both literals are also in `REQUIRED_EVIDENCE`, so the executor likely treated the list as a move rather than a copy | Weakens an existing check, which the task forbids: the home page's Limits section can lose both enforcement ceilings and `npm run verify` stays green. Unreported | discovered-by-wavecheck |
 | 6 | Wave 1.R | First review REJECTED with two blockers: B1, the evidence page header renders unstyled outside the container (`app/evidence/page.tsx`); B2, the excerpt check matches each line against the whole of plan 004, which also holds the PASS re-audit, so the hero's BLOCK row or verdict could read PASS with `npm run verify` green, and the source attributes were unconstrained | B1 was noted in wavecheck 1.1 as quality, not conformance; B2 sat inside T1.3.1's sketch, which asked only for a substring match | Repaired in Wave 1.4 (D19), a new wave with new task ids per CLAUDE.md; T1.R.1 now depends on T1.4.1 and T1.4.2 | Wave 1.R review |
+| 7 | T1.4.1 | Beyond the sketch: both path checks also reject any path containing `..`; a failed `docs/plans/` prefix does not skip the content checks (extra failure lines); a first line that is not a `### ` heading reports one failure and skips that excerpt's per-line checks | Executor hardening choices | Stricter only: every case still fails, and no passing case changed (the export passes with home 21 / evidence 7) | executor report |
 
 ## Wavecheck reports
 
@@ -644,6 +645,29 @@ Re-run in full after the remediation (D18), not spot-checked on the one finding.
 
 Deviations logged: 5 (2 discovered by wavecheck)
 
+### Wavecheck 1.4 - PASS - 2026-10-07
+
+`execution: fleet`: T1.4.1 and T1.4.2 were written by spawned `drydock:executor` agents (Sonnet 5.5), one at a time; this audit is by the orchestrator, which wrote none of the diff.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `status: EXECUTING`; wave 1.4 and D19 committed in `3b62f7a` before `wave-start`; waves 1.0-1.3 have PASS reports (1.3 by re-audit). Staleness: every change to the owned paths since `15570df` is this plan's own task commits, a handoff |
+| 2. Ownership audit | PASS | `audit-wave 1.4: PASS` (2 tasks, 2 commits, attribution: manifest); 11 hook decisions recorded, so enforcement ran; no Bash write outside `owns`. Table and enforcement sentence below |
+| 3. Forbidden audit | PASS | T1.4.1: the only removed code is the old per-line whole-file substring loop, replaced by the in-order, single-report check (strictly stronger); every other check present; no `copy.ts` read; no dependency. T1.4.2: `copy.ts` diff changes exactly `meta.evidence` eyebrow and heading, the caption, the step 02 body (one phrase), and deletes `installLabel` and `flow` (value and type); no `evidence.rows`, `provenance`, `hero.artifact.lines`, `refusals` or `limits` line; one `<h1>`; no `/drydock` literal |
+| 4. Acceptance audit | PASS | Both criteria re-run through `spawnSync(crit, {shell: true})` (cmd.exe): T1.4.1 0, T1.4.2 0 (this also settles the cmd.exe round-trip T1.4.1's executor left unverified). `npm run verify` green: `assert-copy: PASS ... (home: 21 literals, evidence: 7 literals; 5x executor, 1 h1 per page, 1 excerpt (10 lines), 4 pins, motion contract, version matches plugin.json)`, `assert-matrix: PASS`. `measure-reduced-motion.mjs` PASS |
+| 5. Deviation reconciliation | PASS | T1.4.1 reported deviations beyond the sketch, logged as 7. T1.4.2 reported none and its diff shows none |
+
+### audit-wave 1.4, docs/plans/012-homepage-restructure.md
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.4.1 | `41ebcb0` | `site/scripts/assert-copy.mjs` | `site/scripts/assert-copy.mjs` | none |
+| T1.4.2 | `3fb6701` | `site/app/evidence/page.tsx`<br>`site/content/copy.ts` | `site/app/evidence/page.tsx`<br>`site/content/copy.ts` | none |
+
+  note: enforcement active: 11 hook decision(s) recorded for wave 1.4 (0 denied)
+
+Deviations logged: 7 (2 discovered by wavecheck)
+
 ## Wave 1.R verdict, REJECTED, 2026-10-07
 
 Fresh-context review (general-purpose agent, Opus 5.5, read-only) of `git diff 15570df..7801579 -- site/` and both built pages, served at `/drydock/` and driven with Playwright MCP, plus 15 fixture-mode mutations of `assert-copy.mjs`.
@@ -673,5 +697,6 @@ Remedy: Wave 1.4 (D19, deviation 6).
 | 2026-10-07 | T1.3.1 | BLOCK | `61ed102`; criterion exits 0 but wavecheck 1.3 BLOCK on deviation 5; status BLOCKED, awaiting a human decision |
 | 2026-10-07 | T1.3.1r1 | PASS | `2fe92cf`; D18 approved by Sandeep Takasi; wavecheck 1.3 re-audit PASS |
 | 2026-10-07 | T1.R.1 | REJECTED | B1, B2 blocking; repair Wave 1.4 added (D19) |
+| 2026-10-07 | T1.4.1, T1.4.2 | PASS | `41ebcb0`, `3fb6701`; wavecheck 1.4 PASS |
 
 ## Reconcile report
