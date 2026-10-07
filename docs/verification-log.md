@@ -673,6 +673,71 @@ verification: per-session availability is a property of the environment, and
 
 ---
 
+## A10 — check skill in a live session
+
+**Date:** 2026-10-07
+**Host version:** `claude --version` → `2.1.292 (Claude Code)`
+**Node:** v24.14.1
+**Repo SHA at run time:** base `9755beac47b62bf5d97541d342d5d52bc0abeab8` (the intent file's `base:`), working tree uncommitted
+
+**What this entry claims.** The installed 0.16.0 `drydock:check` skill loaded
+through the Skill tool, and its Step 4 audit, run against an intent file written
+at Step 2, FLAGged an untracked file outside the owned globs (exit 1) and, once
+that file was removed, reported `check: PASS` (exit 0).
+
+**What this entry does not claim.** This run departs from the skill as shipped
+in four ways:
+
+1. It was model-invoked through the Skill tool, not typed as the slash command.
+2. It ran inside a subagent and inside an ARMED plan wave, although the skill
+   says no plan, no waves, no subagents.
+3. The ownership hook was armed, and the probe write was allowed only because
+   this task owns `check-probe.txt`. So the run does not show `check` on
+   unplanned, unarmed work.
+4. The task brief overrode Step 5's "ask the user" and the skill's "do not
+   delete to make a FLAG go away": the brief answered the FLAG in advance and the
+   probe was deleted.
+
+### Method
+
+1. `git rev-parse HEAD` for the base; wrote `.drydock/check.md` (owned:
+   `docs/verification-log.md`, `docs/compatibility.md`; forbidden: `site/**`;
+   criterion: `git diff --quiet HEAD -- site`).
+2. Created untracked `check-probe.txt` at the repo root, then ran the audit.
+3. Deleted the probe, finished this entry, ran the audit again.
+
+`${CLAUDE_PLUGIN_ROOT}` did not appear in the skill text; Step 4 showed the
+installed cache path, which was used as printed.
+
+Command (both runs):
+
+```
+node C:/Users/91891/.claude/plugins/cache/drydock/drydock/0.16.0/scripts/drydock-audit.mjs check .drydock/check.md
+```
+
+### Raw output, run 1 (probe present)
+
+```
+FLAG outside scope: check-probe.txt
+check: FLAG (1)
+```
+
+Exit code 1.
+
+### Raw output, run 2 (probe deleted, entry finished)
+
+```
+check: PASS (2 file(s), 1 criteria)
+```
+
+Exit code 0.
+
+### Verdict
+
+FLAG on the probe, then PASS after its removal, under the four departures above.
+
+---
+
 ## A9 — Bash write detection (PostToolUse)
 
 **Date:** 2026-09-19
