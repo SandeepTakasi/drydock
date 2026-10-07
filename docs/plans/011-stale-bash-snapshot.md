@@ -1,7 +1,7 @@
 ---
 plan: 011-stale-bash-snapshot
 format_version: 3
-status: DONE
+status: RECONCILED
 isolation: none
 enforcement: required
 attribution: manifest
@@ -415,3 +415,96 @@ Deviations logged: 3 (1 discovered by wavecheck)
 | 2026-10-07 | Phase 1 gate, mechanical half | GREEN | audit 159/159, enforce-owns 42, detect-bash-writes 24, resolve-target 8, stats 8/8. `validate-plan` over the corpus: all PASS except 004's permanent, CI-excluded FAIL. `audit-corpus` from a clean worktree with an empty `CLAUDE_CONFIG_DIR`, as CI runs it: `PASS, 27 wave(s) in 7 plan(s)`. In the working copy it reports only plan 010 wave 1.1, from that wave's permanent false-positive receipts in the local `.drydock/enforcement.log`, which plan 010's D16 covers and CI never sees. `cd site && npm run verify` exit 0. Signed by Sandeep Takasi. |
 
 ## Reconcile report
+
+Preconditions: both implementation waves' last reports are PASS, the only human gate reads `CLOSED, approved by Sandeep Takasi - 2026-10-07`, and the Testing Gate is `N/A` with a reason. Released as `v0.17.1` at `55fb519`.
+
+### Token usage
+
+```
+bucket          input       cache_create  cache_read    output      total
+orchestration   240         318415        28343423      143892      28805970
+execution       244         237144        2254972       13114       2505474
+other subagents 0           0             0             0           0
+overhead: 92.0% (orchestration + other subagents) of 31311444 tokens across 1 session(s)
+45eada8e-a6ef-47b9-9194-3693f22a156d  28805970  also mentions: 009-site-016-additions, 001-drydock-homepage, 002-design-system-modernisation, 003-hero-revamp, 004-seatrial-e2e-gate, 005-small-lane-and-solo-mode, 006-external-review-repairs, 007-deferred-hardening, 008-stats-gates-check-learnings, 010-guard-entry-point
+a session that mentions 011-stale-bash-snapshot is counted whole, including unrelated work in it; tokens, not cost
+```
+
+### Deviation synthesis
+
+| Cluster | Deviations | Root cause | Produces |
+|---|---|---|---|
+| (b) ambiguous instructions | 2 | T1.1.3's brief described a causal explanation instead of pinning it, and its criterion checked only literals. A Mechanical-tier executor paraphrased the cause into false statements that passed the gate. | CLAUDE.md proposal R1, planwright feedback. |
+| (a) assumption false | 3 | D1 assumed the small lane would hold. It needed a repair wave, for the second plan in a row (plan 010 D17). | Planwright feedback (CLAUDE.md already carries the rule, from plan 010 R3). |
+| (d) executor | 1 | A Haiku executor overrode the brief's co-author trailer with its own model name. This is the same class as plan 010 Deviation 5. | Executor feedback. |
+
+### Assumption postmortem
+
+| Id | Verdict | Note |
+|---|---|---|
+| D1 (lane small) | **failed** | The CHANGELOG repair forced `lane: full`. Plans 010 and 011 both broke the small lane on their first wave. |
+| D2 (fleet, one at a time) | held | |
+| D3 (hook-side fix only) | held | `drydock-audit.mjs` and `enforce-owns.mjs` are untouched (ownership table, wave 1.1). |
+| D4 (key `plan|wave|mtimeNs`) | held | The suite case `re-arming the same wave discards the snapshot too` passes, and it failed before the fix. |
+| D5 (shape, old shape treated as missing) | held | The suite case `an old flat snapshot is treated as missing` passes. |
+| D6 (receipt text) | held | The suite asserts both strings, and the existing seeded case still passes. |
+| D7 (delete R2) | held | 7 deletions, 0 insertions. |
+| D8 (commit the 009 specs) | held | `5e1fa6c`. Both waves audited with a clean tree and no override. |
+| D9 (0.17.1, signed) | held | |
+| D10 (clear the snapshot before arming) | held | **This is the live confirmation of the diagnosis.** With the leftover snapshot removed, the installed 0.16.0 hook's first receipt in each wave was `first Bash command of the wave, snapshot seeded, nothing to diff against`, and 0 writes were detected outside `owns` across 21 commands. |
+| D12 (no live proof of the fix) | **never-exercised** | The new hook code has not run in a live session. Hooks load from the installed plugin. |
+| D14 (pinned repair text) | held | The repaired entry matches the pinned text byte for byte. |
+| Findings: "root cause is a stale snapshot" | held | D10's receipts and the three suite cases agree. Plan 010's Deviation 2, Q1 and its CLAUDE.md R2 were wrong, and that is now corrected in the CHANGELOG and CLAUDE.md. |
+
+### New knowledge
+
+- Until the installed plugin is at least 0.17.1, every wave in this repo runs
+  the buggy detector. `rm -f .drydock/bash-tree.json` immediately before
+  `wave-start` neutralises it, as measured by D10 twice. This becomes obsolete
+  after `claude plugin update drydock@drydock`. Covered by R2.
+- A criterion made only of required literals cannot catch false prose around
+  those literals. Byte-comparing the result against a pinned block can, and
+  wavecheck 1.2 did exactly that. Covered by R1.
+
+### Proposals
+
+#### Proposal R1 | target: CLAUDE.md | kind: addition
+Finding: A Mechanical-tier task asked to explain a cause in release notes paraphrased it into false statements that passed its literal-only criterion. Pinning the full text and byte-comparing the result fixed it (Deviation 2, D14).
+Confidence: high
+```diff
+   plan to `lane: full` in the same commit and log that too; plan 010 did (D17).
++- **Pin release-note prose that explains a cause; do not describe it.** A
++  criterion of required literals passes whatever sentences surround them. Plan
++  011's Haiku executor wrote a 0.17.1 entry that called the Bash detector "the
++  ownership hook" and inverted what its snapshot is for, and it passed. Put the
++  exact text in the task block, and have wavecheck compare the result byte for
++  byte against it (plan 011 deviation 2, D14).
+ - **An executor cut off mid-task leaves real work uncommitted in its owned
+```
+
+#### Proposal R2 | target: CLAUDE.md | kind: addition
+Finding: The installed hook stays buggy until a release at 0.17.1 or later is installed. Clearing the leftover snapshot before arming neutralises the bug, and this was measured twice (D10).
+Confidence: high
+```diff
+ - **Per task: edit (file tool) → commit only owned files →
++- **On an installed plugin older than 0.17.1, run `rm -f .drydock/bash-tree.json`
++  before every `wave-start`.** The older Bash detector diffs a wave's first
++  command against the snapshot the previous wave left behind, and reports
++  everything changed in between as that command's writes (plan 011). Delete
++  this bullet once `claude plugin update drydock@drydock` has installed 0.17.1.
++- **Per task: edit (file tool) → commit only owned files →
+```
+
+### Feedback for the skill files (not proposals)
+
+- **Planwright (cluster b):** when a task writes prose that explains a cause or
+  a behaviour (CHANGELOG, README), pin the text in the task block, or require a
+  byte comparison in the criterion. "States the cause" is not checkable.
+- **Planwright (cluster a):** the small lane has needed a repair wave on 2 of
+  its last 2 plans. Either allow one repair wave under `lane: small` in
+  `validate-plan`, or have planwright warn that any BLOCK or quality repair
+  moves the plan to `lane: full`.
+- **Executor contract (cluster d):** the agent definition should state that the
+  commit trailer is set by the orchestrator and copied verbatim, never in the
+  subject and never rewritten to the executor's own model. This failed twice
+  (plan 010 Deviation 5, plan 011 Deviation 1).
