@@ -1,6 +1,6 @@
 // "What it refuses": the section lead, then four refusals. Each shows its title,
 // body, the command line, and the verbatim output in a <pre> that carries
-// data-source and data-pin. The output scrolls inside its own box.
+// data-source and data-pin. The output wraps within its container.
 import Section from "@/components/Section";
 import { refusals } from "@/content/copy";
 import type { SectionProps } from "@/lib/section";
@@ -16,15 +16,15 @@ export default function Refusals({ meta }: SectionProps) {
               {item.title}
             </h3>
             <p className="mt-5 text-body text-ink-dim">{item.body}</p>
-            <p className="mt-5 overflow-x-auto font-mono text-mark text-accent">
+            <p className="mt-5 font-mono text-mark text-accent break-words">
               <span aria-hidden="true">$ </span>
               {item.command}
             </p>
-            <div className="mt-3 overflow-x-auto bg-ground px-4 py-3">
+            <div className="mt-3 bg-ground px-4 py-3">
               <pre
                 data-source={item.source}
                 data-pin={item.pin}
-                className="font-mono text-mark text-ink"
+                className="font-mono text-mark text-ink whitespace-pre-wrap break-words"
               >
                 {item.output}
               </pre>
