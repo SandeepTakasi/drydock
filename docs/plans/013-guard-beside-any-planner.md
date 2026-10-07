@@ -472,13 +472,43 @@ N/A: `lane: small` takes no adversarial pressure test (D2). The planner re-opene
 
 | # | Task | What deviated | Why | Impact | Recorded |
 |---|---|---|---|---|---|
+| 1 | T1.1.1 | The case `wave-start still replaces a leftover plan-wave boundary` asserts `wave-start: armed` and that the old plan name `009-x` is gone, rather than that the file names this plan | Executor choice | Equivalent in effect: the boundary was rewritten by this arming. Suite 161/161 | executor report |
+| 2 | T1.1.3 | The commit trailer reads `Co-Authored-By: Claude Haiku 4.5` instead of the trailer the brief gave | The executor used its own model identity | None under `attribution: manifest`; the subject and owned files are as specified | executor report |
+| 3 | T1.1.5 | The comment above the new pins is the executor's own wording (the task gave its content, not its text), and the two pins now sit after `/drydock:init` in `REQUIRED_HOME` | The comment was not pinned | Comment reads as specified (A12, the Bash half must stay); order inside the list has no effect on the check | executor report |
+| 4 | T0 (plan defect) | The site A10 evidence row keeps its old `label`, `check skill runs in a live session (model-invoked, inside a plan wave)`, which its updated note now contradicts (slash command, unplanned work). T0's pinned spec said `id`, `label` and `tone` unchanged | Planner oversight when pinning the A10 site texts | A label narrower than its note: an understatement, not an over-claim. Carried to the Phase 1 gate as a one-line follow-up; `docs/compatibility.md`'s A10 property text is already correct | discovered-by-wavecheck |
 
 ## Wavecheck reports
+
+### Wavecheck 1.1 - PASS - 2026-10-07
+
+`execution: fleet`: each task was written by its own spawned `drydock:executor` (Sonnet 5.5 for T1.1.1 and T1.1.5, Haiku 4.5 for the rest), one at a time; this audit is by the orchestrator, which wrote none of the wave's diff. T0 (the live run and the pinned texts) was the orchestrator's own work, so the byte comparisons below check copying, not the truth of what T0 recorded.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `status: EXECUTING` (set in `13cd34e` before `wave-start`); wave 1.1 is the only implementation wave; T0 criterion exit 0. Staleness: no owned file changed between `eaa60fa` and `wave-start` |
+| 2. Ownership audit | PASS | `audit-wave 1.1: PASS` (6 tasks, 6 commits, attribution: manifest); 16 hook decisions recorded, so enforcement ran; no Bash write outside `owns`. The run printed VERSION DRIFT (repo script 0.18.0 after T1.1.6, installed 0.17.1): expected until the post-gate install (Execution policies) |
+| 3. Forbidden audit | PASS | T1.1.1 (`3bd5178`): additions only (13 lines in `waveStart`, before `ensureDrydockIgnored`; 2 cases); `arm`, `check`, `readIntent` and existing cases untouched; refuses only `wave === "check"`. T1.1.2, T1.1.3: no other line changed; no `GSD`. T1.1.4: three table lines changed in `compatibility.md` (A10 replaced, A12 added), one entry appended to the log; no promotion. T1.1.5: `limits.items[1]`, `VERSION`, A10 `status`/`note`, A12 row, and the pin swap with its comment; no em dash or apostrophe in the new strings. T1.1.6: version in two places, one CHANGELOG entry |
+| 4. Acceptance audit | PASS | All six criteria re-run through `spawnSync(crit, {shell: true})` (cmd.exe): T1.1.1 0, T1.1.2 0, T1.1.3 0, T1.1.4 0, T1.1.5 0, T1.1.6 0. Pinned texts compared byte for byte (line endings normalised): the T1.1.2 skill subsection, the T1.1.3 recipe in both files, the A12 and A10 compatibility rows, the A12 log entry, the site A12 row, both site A10 lines, the CHANGELOG entry: all MATCH. Suites: audit 161/161, enforce-owns 42, detect-bash-writes 24, resolve-target 8, stats 8. `npm run verify` PASS (home 22 literals, evidence 7; 13 matrix rows) |
+| 5. Deviation reconciliation | PASS | Executor-reported deviations logged as 1-3; one plan defect discovered here, logged as 4, non-blocking (an understatement), carried to the gate |
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.1.1 | `3bd5178` | `drydock/scripts/drydock-audit.mjs`<br>`drydock/scripts/drydock-audit.test.mjs` | `drydock/scripts/drydock-audit.mjs`<br>`drydock/scripts/drydock-audit.test.mjs` | none |
+| T1.1.2 | `78929d6` | `drydock/skills/check/SKILL.md` | `drydock/skills/check/SKILL.md` | none |
+| T1.1.3 | `e91936b` | `drydock/QUICKSTART.md`<br>`drydock/README.md` | `drydock/README.md`<br>`drydock/QUICKSTART.md` | none |
+| T1.1.4 | `577d07e` | `docs/compatibility.md`<br>`docs/verification-log.md` | `docs/compatibility.md`<br>`docs/verification-log.md` | none |
+| T1.1.5 | `fa94c3b` | `site/content/copy.ts`<br>`site/scripts/assert-copy.mjs` | `site/content/copy.ts`<br>`site/scripts/assert-copy.mjs` | none |
+| T1.1.6 | `e0847c1` | `README.md`<br>`drydock/.claude-plugin/plugin.json`<br>`drydock/CHANGELOG.md` | `drydock/.claude-plugin/plugin.json`<br>`drydock/CHANGELOG.md`<br>`README.md` | none |
+
+  note: enforcement active: 16 hook decision(s) recorded for wave 1.1 (0 denied)
+
+Deviations logged: 4 (1 discovered by wavecheck)
 
 ## Progress log
 
 | Date | Task | Result | Notes |
 |---|---|---|---|
 | 2026-10-07 | T0 | PASS | Baseline, README row, live guard run (steps 1-6 as specified; slash command typed by the user), pinned texts written; status EXECUTING |
+| 2026-10-07 | T1.1.1-T1.1.6 | PASS | `3bd5178`, `78929d6`, `e91936b`, `577d07e`, `fa94c3b`, `e0847c1`; wavecheck 1.1 PASS |
 
 ## Reconcile report
