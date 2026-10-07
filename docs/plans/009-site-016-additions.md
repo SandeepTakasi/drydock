@@ -437,7 +437,7 @@ and `prove-failable` re-run after the edits (below).
 
 ## Phase 2: The page
 
-**Phase gate:** `cd site && npm run verify` exits 0, Wave 2.R APPROVED, seatrial GO, and human approval of the rendered page recorded by name and date (D17). No push before this line reads CLOSED.
+**Phase gate: OPEN, awaiting human approval of the rendered page (D17).** Mechanical half met 2026-10-07 at `706e5f4`: `cd site && npm run verify` exits 0 (`assert-copy: PASS ... 26 literals ... version matches plugin.json`, `assert-matrix: PASS — 12 matrix rows`); Wave 2.R APPROVED on re-review after repair Wave 2.2; seatrial **GO** (5/5, TG5 failed as designed; sheet at `.drydock/testing/009-site-016-additions/verdict.md`). No push before this line reads CLOSED.
 
 ### Wave 2.1 - Copy and layout
 
@@ -703,5 +703,6 @@ and VERSION are untouched. Repair: Wave 2.2 (deviation 1), then a re-review.
 | 2026-10-07 | T2.R.1 | REJECTED | F1 major (audit-corpus overclaim) plus minors; repair Wave 2.2 appended |
 | 2026-10-07 | T2.2.1 | DONE | `75a1b02`; F1-F4, F6 repaired; wavecheck 2.2 PASS |
 | 2026-10-07 | T2.R.1 | APPROVED | Re-review after Wave 2.2 (retry 1 of 2 used); one minor, two nits left as follow-ups |
+| 2026-10-07 | Testing Gate | GO | Staleness HALT answered "re-validate" by Sandeep Takasi; TG1-TG5 PASS (TG5 by inversion); specs GENERATED, NOT EXECUTED in `e2e/009-site-016-additions/` (uncommitted) |
 
 ## Reconcile report
