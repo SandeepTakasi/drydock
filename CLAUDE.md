@@ -263,6 +263,12 @@ work — plan 001's has 49 entries and most are still live constraints.
   log it as a deviation. Plans 004 and 006 both did this. **Under `lane: small`
   the repair wave fails `validate-plan`** (one implementation wave), so move the
   plan to `lane: full` in the same commit and log that too; plan 010 did (D17).
+- **Pin release-note prose that explains a cause; do not describe it.** A
+  criterion of required literals passes whatever sentences surround them. Plan
+  011's Haiku executor wrote a 0.17.1 entry that called the Bash detector "the
+  ownership hook" and inverted what its snapshot is for, and it passed. Put the
+  exact text in the task block, and have wavecheck compare the result byte for
+  byte against it (plan 011 deviation 2, D14).
 - **An executor cut off mid-task leaves real work uncommitted in its owned
   files, and parallel spawns share one fate.** A usage limit ended all three of
   plan 006's Wave 1.1 executors together. Before respawning, run `git status`
