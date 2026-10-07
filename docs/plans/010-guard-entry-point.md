@@ -405,6 +405,7 @@ skill and docs describe them, and 0.17.0 is cut locally and unpushed.
 | 3 | T1.1.2 | The `check` skill's frontmatter `description:` still ends "Detects scope misses after the fact; prevents nothing.", while the body now offers opt-in prevention. | Reported by the executor as an observation. The task block did not name the description, and no forbidden item covers it. | The description is what the host shows when it chooses a skill, so it now understates the skill. This is inside T1.1.2's `owns`, so it can be repaired in a new wave with a new task id. | 2026-10-07 |
 | 4 | — (plan) | `lane: small` changed to `lane: full` after Wave 1.1 (D17). | `validate-plan` caps the small lane at one implementation wave, so the format contract's "targeted fix task appended" remedy for a BLOCK is impossible there. | The plan's ceremony is unchanged in practice (no review wave, no pressure test). The finding goes to reconcile: the small lane has no repair path. | 2026-10-07 |
 | 5 | T1.2.1 | The commit `cf81664` puts `Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>` on the **subject line**, where the brief asked for the Opus trailer on its own final line. | Executor error (Haiku 4.5, Mechanical tier). | Cosmetic only. Attribution is the manifest (`attribution: manifest`), which recorded T1.2.1 → `cf81664`. Not rewritten: rewriting a commit would invalidate the manifest entry, and a sealed record outweighs a tidy trailer. `discovered-by-wavecheck` | 2026-10-07 |
+| 6 | — (orchestrator) | The wavecheck 1.1 and 1.2 reports first carried **reformatted** audit tables (SHAs without backticks inside a code block, and a row escaped into a cell). The 1.1 re-audit, which is the last report for that wave, carried no table at all. A clean-checkout `audit-corpus` (as CI runs it, empty `CLAUDE_CONFIG_DIR`) then FAILed both waves: `no entry in .drydock/attribution.jsonl` for T1.1.4 and T1.2.1. | The wavecheck skill says "paste its table verbatim". The orchestrator reformatted it instead, and the sealed-record parser reads only the verbatim row shape, from the last report for the wave. | Caught before any push, by re-running the gate the way CI does. The verbatim tables are now pasted into both final reports, and the clean-checkout re-run is recorded in the Progress log. | 2026-10-07 |
 
 ## Wavecheck reports
 
@@ -440,6 +441,17 @@ Deviations logged: 3 (2 discovered by wavecheck)
 
 The only change since the BLOCK is the override. **This is not a clean mechanical pass:** `audit-wave 1.1` still reports `FAIL (2)`, and both lines are the `e2e/009-site-016-additions/` paths that D16 accepts by name, signed by Sandeep Takasi, 2026-10-07. Every other check is as reported above: all four commits are inside `owns`, all four criteria exit 0, the forbidden audit is clean, and `enforcement active: 20 hook decision(s) recorded for wave 1.1 (0 denied)`.
 
+`audit-wave 1.1`, verbatim (Deviation 6):
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.1.1 | `a795149` | `drydock/scripts/drydock-audit.mjs`<br>`drydock/scripts/drydock-audit.test.mjs` | `drydock/scripts/drydock-audit.mjs`<br>`drydock/scripts/drydock-audit.test.mjs` | none |
+| T1.1.2 | `cc96426` | `drydock/skills/check/SKILL.md` | `drydock/skills/check/SKILL.md` | none |
+| T1.1.3 | `0e4e3cd` | `drydock/QUICKSTART.md`<br>`drydock/README.md` | `drydock/README.md`<br>`drydock/QUICKSTART.md` | none |
+| T1.1.4 | `28cbceb` | `README.md`<br>`drydock/.claude-plugin/plugin.json`<br>`drydock/CHANGELOG.md`<br>`site/content/copy.ts` | `drydock/.claude-plugin/plugin.json`<br>`drydock/CHANGELOG.md`<br>`site/content/copy.ts`<br>`README.md` | none |
+
+  note: enforcement active: 20 hook decision(s) recorded for wave 1.1 (0 denied)
+
 Deviations logged: 4 (2 discovered by wavecheck)
 
 ### Wavecheck 1.2, PASS, 2026-10-07
@@ -454,7 +466,15 @@ Execution: `fleet`, one `drydock:executor` (Haiku 4.5). The auditor did not writ
 | 4. Acceptance audit | PASS | The auditor re-ran the criterion through `spawnSync(..., {shell: true})`: exit 0. |
 | 5. Deviation reconciliation | PASS (logged) | The executor reported no deviations. Deviation 5 was discovered by wavecheck. |
 
-Deviations logged: 5 (3 discovered by wavecheck)
+`audit-wave 1.2`, verbatim:
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.2.1 | `cf81664` | `drydock/skills/check/SKILL.md` | `drydock/skills/check/SKILL.md` | none |
+
+  note: enforcement active: 1 hook decision(s) recorded for wave 1.2 (0 denied)
+
+Deviations logged: 6 (3 discovered by wavecheck)
 
 ## Progress log
 
