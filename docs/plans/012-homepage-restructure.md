@@ -1,7 +1,7 @@
 ---
 plan: 012-homepage-restructure
 format_version: 3
-status: APPROVED
+status: EXECUTING
 isolation: none
 enforcement: required
 attribution: manifest
@@ -92,15 +92,15 @@ change, no plugin version bump.
 
 ## Baseline
 
-_Filled by T0._
+_Filled by T0, 2026-10-07._
 
 | Item | Value |
 |---|---|
-| Commit SHA | _pending_ |
-| Installed plugin version (no VERSION DRIFT) | _pending_ |
-| `cd site && npm run verify` | _pending_ |
-| `cd site && node scripts/measure-reduced-motion.mjs` | _pending_ |
-| `node drydock/scripts/drydock-audit.mjs prove-failable docs/plans/012-homepage-restructure.md` | _pending_ |
+| Commit SHA | `15570df` |
+| Installed plugin version (no VERSION DRIFT) | 0.17.1 at `6fae4de`; `validate-plan` PASS (11 tasks, 5 waves), no VERSION DRIFT |
+| `cd site && npm run verify` | PASS (assert-copy 26 literals, 5x executor, 1 h1, motion contract; assert-matrix 12 rows) once this plan's README row exists; the first run, before the row, failed assert-matrix on exactly that missing row |
+| `cd site && node scripts/measure-reduced-motion.mjs` | PASS (waterline "10px, 8px", hull opacity 1 dasharray none, invisibleText=0, drift 0/0) |
+| `node drydock/scripts/drydock-audit.mjs prove-failable docs/plans/012-homepage-restructure.md` | PASS, 11 of 11 criteria fail at baseline |
 
 ## Practices in effect
 
@@ -465,5 +465,6 @@ install, FAQ; `/drydock/evidence/` renders the full matrix; `npm run verify` and
 
 | Date | Task | Result | Notes |
 |---|---|---|---|
+| 2026-10-07 | T0 | PASS | Baseline filled, README row added, status EXECUTING |
 
 ## Reconcile report
