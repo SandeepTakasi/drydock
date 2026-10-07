@@ -1,7 +1,7 @@
 ---
 plan: 010-guard-entry-point
 format_version: 3
-status: DONE
+status: RECONCILED
 isolation: none
 enforcement: required
 attribution: manifest
@@ -487,5 +487,115 @@ Deviations logged: 6 (3 discovered by wavecheck)
 | 2026-10-07 | Wavecheck 1.1 | BLOCK, then PASS under override | BLOCK on pre-existing untracked e2e specs (`713771d`); D16 override signed by Sandeep Takasi; D17 lane change; Wave 1.2 added. |
 | 2026-10-07 | Wave 1.2 | T1.2.1 DONE, wavecheck PASS (D16) | `cf81664`. |
 | 2026-10-07 | Phase 1 gate, mechanical half | GREEN | audit 159/159, enforce-owns 42, detect-bash-writes 21, resolve-target 8, stats 8/8. `validate-plan` over the corpus: all PASS except 004's permanent, CI-excluded FAIL. `cd site && npm run verify` exit 0 (`assert-copy: PASS`, version matches plugin.json; `assert-matrix: PASS`). `audit-corpus` from a clean worktree with an empty `CLAUDE_CONFIG_DIR`, as CI runs it: `PASS, 25 wave(s) in 6 plan(s)`. In the working copy it reports plan 010's two waves FAIL on the `e2e/009` paths D16 accepts. Signed by Sandeep Takasi. |
+| 2026-10-07 | release | 0.17.0 pushed | `main` at `9ae41c6`, tag `v0.17.0`. |
 
 ## Reconcile report
+
+Preconditions: every implementation wave's last report is PASS (1.1 under the D16 override, 1.2 likewise), and the only human gate reads `CLOSED, approved by Sandeep Takasi - 2026-10-07`. The Testing Gate is `N/A` with a reason, so no verdict sheet is required.
+
+### Token usage
+
+```
+bucket          input       cache_create  cache_read    output      total
+orchestration   152         220390        14222177      84125       14526844
+execution       188         258463        2631949       16701       2907301
+other subagents 0           0             0             0           0
+overhead: 83.3% (orchestration + other subagents) of 17434145 tokens across 1 session(s)
+45eada8e-a6ef-47b9-9194-3693f22a156d  14526844  also mentions: 009-site-016-additions, 001-drydock-homepage, 002-design-system-modernisation, 003-hero-revamp, 004-seatrial-e2e-gate, 005-small-lane-and-solo-mode, 006-external-review-repairs, 007-deferred-hardening, 008-stats-gates-check-learnings
+a session that mentions 010-guard-entry-point is counted whole, including unrelated work in it; tokens, not cost
+```
+
+### Deviation synthesis
+
+| Cluster | Deviations | Root cause | Produces |
+|---|---|---|---|
+| (a) assumption false | 2, 4 | Two tool behaviours the plan did not know about. The Bash detector credits pre-existing untracked files to the first command after arming, and those receipts are permanent (2). `lane: small` cannot hold the contract's own repair wave (4). | CLAUDE.md proposals R2, R3. |
+| (a) assumption false | 6 | The sealed-wave recovery reads only verbatim audit rows from the **last** report for a wave. CLAUDE.md's description of recovery says neither. | CLAUDE.md correction R1. |
+| orchestrator error | 1, 6 | A truncated `ls` (1). A reformatted audit table (6, which is also (a) above). | Covered by R1. Deviation 1 needs no doc change. |
+| (d) executor overreach | 5 | A Mechanical-tier executor put the co-author trailer on the subject line. | Executor feedback below. |
+| (b) ambiguous instructions | 3 | T1.1.2's brief named the skill body, not its `description:` line, which is also user-facing. | Planwright feedback below. |
+
+### Assumption postmortem
+
+| Id | Verdict | Note |
+|---|---|---|
+| D1 (lane small) | **failed** | It held for the first wave only. A BLOCK repair needed a second wave, which the small lane forbids (Deviation 4, D17). |
+| D2 (fleet, one at a time) | held | Five executors, sequential. No cut-off. |
+| D3 (opt-in arming) | held | The skill, its description and the docs all keep audit-only as the default. |
+| D4 (arm reads the intent file) | held | `readIntent` is shared by `arm` and `check`. |
+| D5 (`**`-led globs refused) | held | Suite case `arm refuses a glob that reaches every directory`. |
+| D6 (0.17.0, signed gate) | held | Signed before the push. |
+| D7 (wave id `"check"`) | held | It is exercised by the suite. A live `arm` receipt in a plan audit was never observed: **never-exercised** in a real session. |
+| D8 (no disarm) | held | |
+| D9 (`source`/`base`, no identity) | held | |
+| D10 (boundary compare, no receipt count) | held | Suite case `check flags an armed boundary that differs from the intent`. |
+| D11 (refuse over an armed boundary) | held | Suite case. Also implied by this run: the real repo's armed plan wave was never overwritten. |
+| D13 (skill edits unexercised) | held as stated | **never-exercised**: no session has run the new skill step. |
+| D14 (repo copy arms) | held | `wave-start` was unchanged, and the wave-order lock accepted the D16 re-audit. |
+| D15 (contract strings) | held | Every string quoted in the docs, the skill and the CHANGELOG matches the code. Four tasks ran in parallel against the pinned text. |
+| D16 (override) | held | Covers only the `e2e/009` paths. A clean-checkout `audit-corpus` passes without it. |
+| D17 (lane full) | held | Forced. See R3. |
+| Findings: "the hook needs nothing new" | held | Suite case `the hook enforces a boundary written by arm`, run against the real hook. |
+| Findings: "receipt leakage is the trap" | held | Never triggered, because D7 prevented it by construction. |
+| Findings: "untracked e2e dir is pre-existing, no task touches it" | **failed in part** | No task touched it, but the detector reported it as a wave write anyway (Deviation 2). The plan assumed pre-existing dirt only affects the dirty-tree check. |
+
+### New knowledge
+
+- From a clean checkout, `audit-corpus` is the only gate that sees what CI sees. In the working copy it can fail on local state and pass in CI, as here, and the reverse is also possible (Deviation 6). Run it from a detached worktree with an empty `CLAUDE_CONFIG_DIR` before any push. Plan 008's Findings measured this; no doc states it as a pre-push step. Covered by R1.
+- `plan-status --write` refuses to choose in two states: `EXECUTING or BLOCKED` while a wave is still unreported after a re-audit, and `DONE or RECONCILED` at the end. Both were set by hand, as CLAUDE.md already instructs for `EXECUTING`.
+
+### Proposals
+
+#### Proposal R1 | target: CLAUDE.md | kind: correction
+Finding: The sealed-wave recovery reads verbatim audit rows only, and only from the LAST `### Wavecheck <wave>` report. Plan 010's reformatted tables and its table-less re-audit made both of its waves unauditable from a clean checkout until they were re-pasted (Deviation 6).
+Confidence: high
+```diff
+   v0.8.7 a sealed wave still re-audits: `audit-wave` recovers the task→commit
+-  lookup from the wavecheck report already pasted into the plan, and re-derives
+-  every file set from `git show`, so a recovered ownership verdict is exactly as
+-  strong as the original. The enforcement receipt is **not** recoverable — a
++  lookup from the wavecheck report already pasted into the plan, and re-derives
++  every file set from `git show`, so a recovered ownership verdict is exactly as
++  strong as the original. **It reads only the LAST report for the wave, and only
++  rows in `audit-wave`'s own shape (`` | T1.1.1 | `a795149` | ``)**, so paste the
++  table verbatim into every report, a re-audit heading included. A reformatted
++  table or a table-less re-audit passes locally (the manifest is still there)
++  and FAILs CI. Prove it before pushing: `audit-corpus.mjs` from a detached
++  worktree with an empty `CLAUDE_CONFIG_DIR` (plan 010 deviation 6). The
++  enforcement receipt is **not** recoverable — a
+```
+
+#### Proposal R2 | target: CLAUDE.md | kind: addition
+Finding: The Bash detector credits every untracked file that exists before the first Bash command of an armed wave to that command, as a write outside `owns`. Its receipts are permanent in `enforcement.log`, so a wave over pre-existing untracked files cannot pass mechanically (Deviation 2; measured 2026-10-07: five plan 009 specs dated 2.5 h before arming were reported against a read-only `git diff`).
+Confidence: high
+```diff
+ - **Per task: edit (file tool) → commit only owned files →
++- **Start a wave from a tree with no untracked files.** The Bash detector has no
++  snapshot before the wave's first Bash command, so it reports every untracked
++  file already present as a write by that command, outside `owns`. The receipt
++  is permanent in `.drydock/enforcement.log`, so committing or moving the files
++  afterwards does not clear the FAIL; only a signed human override does. Commit,
++  stash or move them **before** `wave-start`. Measured 2026-10-07, plan 010
++  deviation 2; the detector's ceiling list does not name it yet.
++- **Per task: edit (file tool) → commit only owned files →
+```
+
+#### Proposal R3 | target: CLAUDE.md | kind: addition
+Finding: Under `lane: small`, `validate-plan` rejects a second implementation wave, so the BLOCK remedy this bullet describes ("targeted fix task appended", in a new wave) forces a lane change (Deviation 4, D17).
+Confidence: high
+```diff
+   contract's "targeted fix task appended" remedy needs no `/drydock:replan`;
+-  log it as a deviation. Plans 004 and 006 both did this.
++  log it as a deviation. Plans 004 and 006 both did this. **Under `lane: small`
++  the repair wave fails `validate-plan`** (one implementation wave), so move the
++  plan to `lane: full` in the same commit and log that too; plan 010 did (D17).
+```
+
+#### Question Q1 (low confidence, not a diff)
+Should the detector's first-command false positive be fixed in code, for example by taking a snapshot at `wave-start`? Doing so would let R2 be deleted, not just documented. It touches `drydock/hooks/detect-bash-writes.mjs` and `wave-start`, so it belongs in its own plan.
+
+### Feedback for the skill files (not proposals)
+
+- **Planwright (cluster b):** a task that changes what a skill does should name the skill's `description:` line in its brief, because the host shows it to users when choosing a skill (Deviation 3). Planwright should also warn, when it chooses `lane: small`, that a BLOCK repair will force `lane: full`.
+- **Executor contract (cluster d):** state the commit trailer rule in the agent definition: trailers go on their own final line, never in the subject. A Mechanical-tier executor got it wrong when the rule was only in the brief (Deviation 5).
+- **Wavecheck:** its "paste its table verbatim" instruction was not enough to stop the orchestrator reformatting. It should also say that a re-audit heading must carry the table, because recovery reads only the last report (R1).
