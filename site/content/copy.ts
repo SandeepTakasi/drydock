@@ -247,7 +247,7 @@ export const evidence: {
         "check skill runs in a live session (model-invoked, inside a plan wave)",
       status: "OBSERVED FLAG THEN PASS",
       tone: "hold",
-      note: "2026-10-07. The audit flagged an untracked probe outside the owned globs, then reported a pass once the probe was deleted. Not shown: the slash command, or check on unplanned, unarmed work, because this run sat inside an armed plan wave whose owned files included the probe, and check itself prevents nothing.",
+      note: "2026-10-07. The audit flagged an untracked probe outside the owned globs, then reported a pass once the probe was deleted on the task brief's instruction, which the skill itself forbids. Not shown: the slash command, or check on unplanned, unarmed work, because this run sat inside an armed plan wave whose owned files included the probe, and check itself prevents nothing.",
     },
     {
       id: "A11",
@@ -342,7 +342,7 @@ export const lifecycle: { flow: string[]; loop: string; pieces: Piece[] } = {
       kind: "skill",
       invocation: "blocking gate inside every plan",
       detail:
-        "Audits the finished wave against the plan, using the actual diff: ownership, forbidden lists, acceptance criteria, deviations. PASS or BLOCK. Its mechanical half is audit-wave, judged against the boundary wave-start derived from the plan. wave-start refuses to arm a wave while an earlier one lacks a PASS report. drydock/scripts/audit-corpus.mjs re-audits every sealed wave from a clean checkout, and this repository runs it in CI on every push.",
+        "Audits the finished wave against the plan, using the actual diff: ownership, forbidden lists, acceptance criteria, deviations. PASS or BLOCK. Its mechanical half is audit-wave, judged against the boundary wave-start derived from the plan. wave-start refuses to arm a wave while an earlier one lacks a PASS report. drydock/scripts/audit-corpus.mjs re-audits every sealed wave of every plan from 005 on, and this repository runs it in CI, from a clean checkout, on every push to main and every pull request.",
     },
     {
       name: "replan",

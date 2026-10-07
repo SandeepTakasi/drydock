@@ -83,14 +83,17 @@ const REQUIRED = [
   "replan",
   "seatrial",
   "reconcile",
-  // check and init joined in 0.16.0, and the heading's count is a claim like
-  // any other: pinning "Nine pieces" stops it going stale when a piece is added
-  // or dropped. "prevents nothing" is check's whole honesty caveat; without it
-  // the page could sell a post-hoc audit as enforcement and still go green.
+  // check and init joined the page in 0.16.0 (init itself shipped in 0.14.0).
+  // The "Nine pieces" pin fixes the heading's text and does not count the
+  // cards, so adding or dropping a card still means editing the heading by
+  // hand. The check pin is the card's whole sentence, because the bare phrase
+  // "prevents nothing" also appears in the A10 note and would pass without the
+  // card. It is check's honesty caveat; without it the page could sell a
+  // post-hoc audit as enforcement and still go green.
   "/drydock:check",
   "/drydock:init",
   "Nine pieces",
-  "prevents nothing",
+  "It detects after the fact and prevents nothing.",
 ];
 
 /** The site must never claim a benchmark it does not have. */
