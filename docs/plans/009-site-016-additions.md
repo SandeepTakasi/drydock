@@ -350,7 +350,7 @@ and `prove-failable` re-run after the edits (below).
 
 ## Phase 1: Exercise and record
 
-**Phase gate:** `node site/scripts/assert-matrix.mjs` exits 0 with A10 and A11 rows each citing an existing entry, and both waves PASS wavecheck. No review wave (D13).
+**Phase gate: CLOSED, approved by wavechecks 1.1 and 1.2 - 2026-10-07.** Conditions met: `node site/scripts/assert-matrix.mjs` exits 0 (`12 matrix rows`) with A10 and A11 each citing an existing `## A10` / `## A11` entry, and both waves PASS wavecheck with their records reproduced (D13). No review wave (D13).
 
 ### Wave 1.1 - Exercise /drydock:check
 
@@ -542,11 +542,32 @@ audit is not self-authored. Wavecheck ran from the installed 0.16.0 skill.
 
 Deviations logged: 0 (0 discovered by wavecheck)
 
+### Wavecheck 1.2 - PASS - 2026-10-07
+
+`execution: fleet`: T1.2.1 ran in a spawned `drydock:executor` (Sonnet), so this
+audit is not self-authored. Wavecheck ran from the installed 0.16.0 skill.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | Status `EXECUTING`; wave 1.1 has a PASS report; `plan-status` agreed after 1.1 |
+| 2. Ownership | PASS | `audit-wave 1.2: PASS, docs/plans/009-site-016-additions.md (1 task(s), 1 commit(s), attribution: manifest)`; table below. **enforcement active: 2 hook decision(s) recorded for wave 1.2 (0 denied)**; bash layer 6 command(s) seen, 0 write(s) detected outside `owns`. Working tree clean. Staleness diff before arming was T1.1.1's own `ca612bf` only (handoff, baseline kept) |
+| 3. Forbidden | PASS | `f93aa6c` touches only the two owned docs: no file under `docs/plans/` or `site/`. Transcript shows exactly one `learnings` Bash call, issued after the `Skill` invocation as the skill's Step 2 command; no Step 3+ artefact written. Status `OBSERVED PARTIAL` matches a run stopped after Step 2 |
+| 4. Acceptance | PASS | T1.2.1 criterion run through `spawnSync(..., {shell: true})` (`cmd.exe`): exit 0 |
+| D13 reproduction | PASS | Re-ran the recorded command (repo copy, same 0.16.0 program) `node drydock/scripts/drydock-audit.mjs learnings drydock/scripts/drydock-audit.mjs drydock/scripts/drydock-audit.test.mjs`: output equals the entry's raw-output fence exactly after CRLF normalisation. Subagent transcript `subagents/agent-a5b43afdb3e6a318a.jsonl` contains a `Skill` tool_use with `"skill":"drydock:planwright"`, `Launching skill: drydock:planwright`, and the `learnings` output as a Bash tool result |
+| 5. Deviations | PASS | Executor reported none of substance. Its read of `drydock-audit.mjs` 698-731 is planwright's own Step 2 exploration, not a substitute for the skill |
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.2.1 | `f93aa6c` | `docs/compatibility.md`<br>`docs/verification-log.md` | `docs/verification-log.md`<br>`docs/compatibility.md` | none |
+
+Deviations logged: 0 (0 discovered by wavecheck)
+
 ## Progress log
 
 | Date | Task | Result | Notes |
 |---|---|---|---|
 | 2026-10-07 | T0 | DONE | Baseline at `9276d74`; installed 0.16.0, no VERSION DRIFT; `verify.yml` green on `9276d74`; README row added; status EXECUTING; criterion exits 0; `assert-matrix` PASS |
 | 2026-10-07 | T1.1.1 | DONE | `ca612bf`; A10 `OBSERVED FLAG THEN PASS`; wavecheck 1.1 PASS, reproduction matched |
+| 2026-10-07 | T1.2.1 | DONE | `f93aa6c`; A11 `OBSERVED PARTIAL`; wavecheck 1.2 PASS, reproduction matched |
 
 ## Reconcile report
