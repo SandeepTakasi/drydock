@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.18.0: 2026-10-07
+
+**`wave-start` no longer silently replaces a guard armed with `arm`.** With a `"check"` boundary in `.drydock/wave-owns.json` it refuses (exit 1, the file untouched): `wave-start: refused, a check boundary is armed (arm, base <base>); close it with rm .drydock/wave-owns.json, then re-run wave-start`. Until now it overwrote the file and the guard's prevention vanished without a message. A leftover plan-wave boundary is still replaced, as before.
+
+**The `/drydock:check` skill reads another planner's task.** When the work comes from another planning tool, the skill copies the paths that task says it will create, modify or test into the intent file, shows the list, and waits for confirmation before arming. A Superpowers `writing-plans` task lists them under `**Files:**`. Nothing parses the other tool's format, so a change to it needs no Drydock release, and the audit afterwards still flags a path the model missed. The plugin README and QUICKSTART carry the recipe.
+
+**`arm` is now observed in a live session (A12).** A Write outside an armed check boundary was denied by the live hook and the file left absent; a Bash write landed and `check` flagged it, the ceiling observed rather than assumed. The homepage now says what the armed guard prevents, beside that ceiling.
+
+**Unexercised, stated plainly.** The skill's new step has not been run by any session, because sessions load the installed plugin copy. It is gated only on mechanical criteria until a session on an installed 0.18.0 runs it.
+
+Tests: audit 159 to 161, others unchanged.
+
 ## 0.17.1: 2026-10-07
 
 **The Bash write detector diffed against a snapshot from an earlier wave.** `detect-bash-writes.mjs` compares the working tree after each Bash command with `.drydock/bash-tree.json`, the snapshot the previous command left. Closing a wave removes `.drydock/wave-owns.json` but leaves that snapshot behind, so the next armed wave's first command was diffed against the previous wave's tree, and everything that changed in between was reported as that command's writes outside `owns`. Measured: plan 010's first Bash command logged five `detected` receipts and no `seeded` one, all for plan 009 seatrial specs written after plan 009's last wave closed.
