@@ -191,6 +191,7 @@ _Filled by T0, 2026-10-07._
 | 16 | Who writes the copy? | T1.0.1 drafts it; the human approves the wording at the phase gate | user | The gate is "approve the rendered page" |
 | 17 | Pressure test by a spawned agent? | Done inline by the planner with fresh eyes (re-opened every claimed file) | planner | The session runs under a no-unrequested-agents rule; the skill permits the inline pass |
 | 18 | How is wavecheck 1.3's BLOCK (deviation 5) repaired? | A targeted fix task with a new id via the contract's replaced-task mechanism: `T1.3.1` struck through, `T1.3.1r1` added to wave 1.3, then a re-audit of wave 1.3. Not a new Wave 1.4, which the user first chose: `wave-start` will not arm any wave after one whose last verdict is BLOCK | user (Sandeep Takasi, 2026-10-07) | The tool's designed escape from a BLOCK is a re-audit PASS of the same wave; plan 004 Decision 10 is the precedent. Consumed by T1.3.1r1 |
+| 19 | How is the first Wave 1.R REJECTED (B1, B2) repaired? | Wave 1.4, new ids T1.4.1 (B2, `assert-copy.mjs`) and T1.4.2 (B1, evidence page and `copy.ts`), then a fresh Wave 1.R. Folded into T1.4.2 as exact text: the step 02 "file-tool writes" wording, the excerpt caption naming trimmed lines, deleting unrendered `hero.installLabel` and `lifecycle.flow` (deviation 4). Left for the human gate: deviation 3's whole-lines question, the evidence page's `Section` reveal starting at `opacity:0`, and the console 404 for `__next.evidence.__PAGE__.txt` | user (standing instruction for this run: "A review rejection is repaired in a new wave with new task ids") | Retry 1 of 2 under the escalation policy; a review wave takes no wavecheck, so `wave-start` arms 1.4 on 1.0-1.3's PASS reports |
 
 ## Open questions
 
@@ -451,6 +452,44 @@ install, FAQ; `/drydock/evidence/` renders the full matrix; `npm run verify` and
 - **Forbidden:** removing either literal from `REQUIRED_EVIDENCE`; changing any other literal, check or message; reading `copy.ts`; editing any other file.
 - **Acceptance criterion:** `node -e "const c=require('child_process'),fs=require('fs'),os=require('os'),p=require('path');try{c.execSync('npm run verify',{cwd:'site',stdio:'ignore'})}catch(e){process.exit(1)}const h=fs.readFileSync('site/out/index.html','utf8');const run=(name,body)=>{const f=p.join(os.tmpdir(),name);fs.writeFileSync(f,body);return c.spawnSync('node',['scripts/assert-copy.mjs',f],{cwd:'site',encoding:'utf8'})};const r0=run('dd012r-ok.html',h);const r1=run('dd012r-pin.html',h.split('does not own').join('does-not-own'));const r2=run('dd012r-exc.html',h.split('Deviation reconciliation').join('Deviation reconcilation'));const r3=run('dd012r-bash.html',h.split('Bash-mediated writes bypass file-tool hooks').join('Bash-mediated writes skip file-tool hooks'));const r4=run('dd012r-out.html',h.split('outside the project directory are not enforced').join('outside the project directory are unenforced'));const d=c.spawnSync('node',['scripts/assert-copy.mjs'],{cwd:'site',encoding:'utf8'});process.exit(r0.status===0&&r1.status===1&&(r1.stderr||'').includes('pin')&&r2.status===1&&(r2.stderr||'').includes('excerpt')&&r3.status===1&&r4.status===1&&d.status===0&&(d.stdout||'').includes('home: 20 literals')&&(d.stdout||'').includes('evidence: 7 literals')?0:1)"`
 
+### Wave 1.4 - Repair: Wave 1.R rejection (deviation 6)
+
+> Repair of the first Wave 1.R REJECTED verdict (retry 1 of 2 under the
+> escalation policy), new wave and new task ids per CLAUDE.md. B1 and B2 are the
+> review's blockers; the folded-in non-blocking items are copy-only and named
+> exactly below.
+
+#### T1.4.1 - The excerpt check is bound to one report, in order, and the source attributes are constrained
+
+- **Description:** Harden `assert-copy.mjs` so the hero excerpt cannot claim a verdict its report does not carry (review B2): each excerpt line must be found in order inside the single `### ` report its first line heads; no empty line; at least 6 lines; `data-excerpt-of` must start `docs/plans/` and every `data-source` must start `drydock/`; and `REQUIRED_HOME` gains `"5. Deviation reconciliation | BLOCK"` (D2 requires that row).
+- **Files owned:** `site/scripts/assert-copy.mjs`
+- **Depends on:** T1.3.1r1
+- **Model / thinking:** Complex / extended (Sonnet 5.5)   **Executor:** drydock:executor
+- **Context brief:** D2, D10, D11, D19; deviation 6; `site/scripts/assert-copy.mjs` in full; `docs/plans/004-seatrial-e2e-gate.md` lines 1150-1200 (the BLOCK report at 1154 is followed by a PASS re-audit at 1189, which is why per-line substring matching against the whole file is too weak); the built `site/out/index.html` excerpt markup (`<pre data-excerpt-of=...>` with one `<span class="block ...">` per line).
+- **Implementation sketch (complete rule bodies):**
+  - Normalise P as today (`**` and backticks stripped, whitespace collapsed). Find the normalised first excerpt line in P; it must be immediately preceded by `### ` (it is a report heading). The report slice runs from there to the next `### ` or the end of P.
+  - Every excerpt line, normalised, must be non-empty and found inside that slice at or after the end of the previous line's match (in order, no reuse). Fewer than 6 lines fails. Failure messages contain the word `excerpt`.
+  - `data-excerpt-of` not starting `docs/plans/` fails with a message containing `excerpt`; a `data-source` not starting `drydock/` fails with a message containing `pin`.
+  - Add `"5. Deviation reconciliation | BLOCK"` to `REQUIRED_HOME` with a one-line comment citing D2. Update the file's header comment so it says it reads both `out/index.html` and `out/evidence/index.html` (review note).
+- **Forbidden:** weakening or deleting any existing check; reading `copy.ts`; a dependency; editing any other file.
+- **Acceptance criterion:** `node -e "const c=require('child_process'),fs=require('fs'),os=require('os'),p=require('path');try{c.execSync('npm run verify',{cwd:'site',stdio:'ignore'})}catch(e){process.exit(1)}const q=String.fromCharCode(34);const h=fs.readFileSync('site/out/index.html','utf8');const run=(n,a,b)=>{const f=p.join(os.tmpdir(),'dd012-r2-'+n+'.html');fs.writeFileSync(f,a===null?h:h.split(a).join(b));return c.spawnSync('node',['scripts/assert-copy.mjs',f],{cwd:'site',encoding:'utf8'})};const R5='| 5. Deviation reconciliation | BLOCK |';const ok=run('ok',null,null);const bad=[run('flip',R5,'| 5. Deviation reconciliation | PASS |'),run('verdict','Verdict: BLOCK. Wave 1.2 must not start.','Verdict: PASS. Wave 1.2 may start.'),run('drop','<span class='+q+'block text-block'+q+'>'+R5+'</span>',''),run('empty','>| 2. Ownership audit | PASS |<','><'),run('excsrc','data-excerpt-of='+q+'docs/plans/004-seatrial-e2e-gate.md'+q,'data-excerpt-of='+q+'site/content/copy.ts'+q),run('pinsrc','data-source='+q+'drydock/scripts/drydock-audit.mjs'+q+' data-pin='+q+'same-wave','data-source='+q+'site/content/copy.ts'+q+' data-pin='+q+'same-wave'),run('pin','does not own','does-not-own'),run('exc','Deviation reconciliation','Deviation reconcilation')];const d=c.spawnSync('node',['scripts/assert-copy.mjs'],{cwd:'site',encoding:'utf8'});process.exit(ok.status===0&&bad.every(r=>r.status===1)&&(bad[1].stderr||'').includes('excerpt')&&(bad[3].stderr||'').includes('excerpt')&&(bad[4].stderr||'').includes('excerpt')&&(bad[5].stderr||'').includes('pin')&&d.status===0&&(d.stdout||'').includes('home: 21 literals')?0:1)"`
+
+#### T1.4.2 - The evidence page header is styled and not duplicated; copy fixes
+
+- **Description:** Give the evidence page's header the site's container and type (review B1), stop its section repeating the `<h1>` and the home page's `04` eyebrow, and apply four exact copy fixes from the review.
+- **Files owned:** `site/app/evidence/page.tsx`, `site/content/copy.ts`
+- **Depends on:** T1.3.1r1
+- **Model / thinking:** Standard / default (Sonnet 5.5)   **Executor:** drydock:executor
+- **Context brief:** D9, D16, D19; deviations 3, 4, 6; `site/app/evidence/page.tsx`; `site/components/sections/Hero.tsx` (the `<h1>` classes `font-display text-display font-semibold text-ink`, the caption link classes); `site/app/layout.tsx` (the `mx-auto w-full max-w-6xl px-6 sm:px-10` container); `site/components/Section.tsx`; `site/content/copy.ts` `meta.evidence`, `evidencePage`, `hero`, `lifecycle`.
+- **Implementation sketch:**
+  - `page.tsx`: wrap the header in a `mx-auto w-full max-w-6xl px-6 pt-16 sm:px-10` container; the `<h1>` takes `font-display text-display font-semibold text-ink`; the lead `mt-6 max-w-3xl text-lead text-ink-dim`; the home link `mt-6 inline-block text-accent underline underline-offset-2`. Still exactly one `<h1>` and `next/link`.
+  - `meta.evidence`: eyebrow `"THE MATRIX"` (no number) and a heading that does not repeat `evidencePage.heading`: `"Every row, with its status and date"`.
+  - `lifecycle.steps[1].body`: replace `a hook denies writes outside its boundary` with `a hook denies file-tool writes outside its boundary`, nothing else in the sentence.
+  - `hero.artifact.caption`: exactly `An excerpt of a real wavecheck report, verbatim from plan 004 with lines trimmed, never reworded: every acceptance criterion passed, and the gate still blocked a verdict value the contract does not define.`
+  - Delete the unrendered `hero.installLabel` and `lifecycle.flow` (value and type field) after grepping `site/app site/components` to confirm nothing reads them (deviation 4).
+- **Forbidden:** changing `evidence.rows`, `evidence.provenance`, `hero.artifact.lines`, any `refusals` item, any `limits` item, or any other string; a second `<h1>`; hardcoding `/drydock`; editing any other file.
+- **Acceptance criterion:** `node -e "const c=require('child_process'),fs=require('fs');try{c.execSync('npx next build',{cwd:'site',stdio:'ignore'});c.execSync('npx tsc --noEmit',{cwd:'site',stdio:'ignore'});c.execSync('npx eslint app/evidence/page.tsx content/copy.ts',{cwd:'site',stdio:'ignore'})}catch(e){process.exit(1)}const raw=fs.readFileSync('site/out/evidence/index.html','utf8').replace(new RegExp('<script[^>]*>[^]*?</script>','g'),'');const a=raw.indexOf('<h1'),b=raw.indexOf('</h1>',a);const h1=raw.slice(raw.indexOf('>',a)+1,b);const s=fs.readFileSync('site/content/copy.ts','utf8');process.exit(a>-1&&raw.split('<h1').length===2&&raw.slice(a,raw.indexOf('>',a)).includes('text-display')&&raw.slice(Math.max(0,a-600),a).includes('max-w-6xl')&&h1.length>0&&raw.split(h1).length===2&&!raw.includes('04 / THE EVIDENCE')&&!s.includes('installLabel')&&!s.includes('flow: [')&&s.includes('denies file-tool writes outside its boundary')&&s.includes('with lines trimmed, never reworded')?0:1)"`
+
 ### Wave 1.R - Quality review
 
 #### T1.R.1 - Fresh-context review of the page against the evidence
@@ -461,7 +500,7 @@ install, FAQ; `/drydock/evidence/` renders the full matrix; `npm run verify` and
   paint, the SVG contracts hold, the new gate checks can fail. Record
   `## Wave 1.R verdict, APPROVED|REJECTED, <date>`.
 - **Files owned:** none (the verdict is written by the orchestrator)
-- **Depends on:** T1.3.1r1
+- **Depends on:** T1.4.1, T1.4.2
 - **Model / thinking:** Judgment / extended (Opus 5.5)   **Executor:** general-purpose reviewer, fresh context
 - **Context brief:** `git diff <baseline SHA>..HEAD -- site/`; this plan's Requirement, Decision Log, task blocks and Testing Gate; CLAUDE.md "Honesty rule for site copy"; `docs/compatibility.md`.
 - **Acceptance criterion:** `node -e "const s=require('fs').readFileSync('docs/plans/012-homepage-restructure.md','utf8');process.exit(/^## Wave 1[.]R verdict, APPROVED/m.test(s)?0:1)"`
@@ -475,6 +514,7 @@ install, FAQ; `/drydock/evidence/` renders the full matrix; `npm run verify` and
 | 3 | T1.0.1 | Hero excerpt lines 2-6 are the first two cells of the plan 004 table rows (the Evidence cell is cut), line 7 starts mid-sentence inside row 5's Evidence cell, and line 10 omits that line's trailing `Plan status set to BLOCKED.` | Fits 10 lines in the hero; each line still passes this plan's operational test (normalised substring of the plan 004 file, Execution policies, D2) | Characters are verbatim but not every kept line is a whole source line. Not blocking under the plan's mechanical definition; flagged for the human at the Phase 1 gate (D16), who may require whole lines | discovered-by-wavecheck |
 | 4 | T1.1.2 | `lifecycle.flow` is no longer rendered by `Lifecycle.tsx`, and T1.2.1's removal list does not name it, so it stays in `copy.ts` as unrendered copy | The task's description lists steps, diagram and the nine-name list; the flow strip has no place in it | Dead copy only; no pinned literal lives in it (checked against `assert-copy.mjs` REQUIRED). Left for the review or a follow-up rather than widening T1.2.1 | executor report |
 | 5 | T1.3.1 | `REQUIRED_HOME` drops `"outside the project directory are not enforced"` and `"Bash-mediated writes bypass file-tool hooks"`, which the sketch keeps on home (it removes exactly seven named literals, and these two are not among them). They appear only in `REQUIRED_EVIDENCE`, so home carries 18 pinned literals where the sketch specifies 20. The executor reported "deviations: none" | Unknown; both literals are also in `REQUIRED_EVIDENCE`, so the executor likely treated the list as a move rather than a copy | Weakens an existing check, which the task forbids: the home page's Limits section can lose both enforcement ceilings and `npm run verify` stays green. Unreported | discovered-by-wavecheck |
+| 6 | Wave 1.R | First review REJECTED with two blockers: B1, the evidence page header renders unstyled outside the container (`app/evidence/page.tsx`); B2, the excerpt check matches each line against the whole of plan 004, which also holds the PASS re-audit, so the hero's BLOCK row or verdict could read PASS with `npm run verify` green, and the source attributes were unconstrained | B1 was noted in wavecheck 1.1 as quality, not conformance; B2 sat inside T1.3.1's sketch, which asked only for a substring match | Repaired in Wave 1.4 (D19), a new wave with new task ids per CLAUDE.md; T1.R.1 now depends on T1.4.1 and T1.4.2 | Wave 1.R review |
 
 ## Wavecheck reports
 
@@ -604,6 +644,24 @@ Re-run in full after the remediation (D18), not spot-checked on the one finding.
 
 Deviations logged: 5 (2 discovered by wavecheck)
 
+## Wave 1.R verdict, REJECTED, 2026-10-07
+
+Fresh-context review (general-purpose agent, Opus 5.5, read-only) of `git diff 15570df..7801579 -- site/` and both built pages, served at `/drydock/` and driven with Playwright MCP, plus 15 fixture-mode mutations of `assert-copy.mjs`.
+
+| # | Check | Result |
+|---|---|---|
+| 1 | Honesty: claims trace to compatibility.md or verbatim artifacts | PASS; non-blocking: step 02 "a hook denies writes" over-generalises A6 (file-tool writes only) |
+| 2 | Hero excerpt vs plan 004 | PASS mechanically; non-blocking: rows are trimmed (deviation 3), and the caption does not say so |
+| 3 | Refusal outputs match their emitting templates | PASS; refusal 3 reproduced live, byte-identical |
+| 4 | First paint | PASS: no inline `opacity:0` before the thesis band; install commands' bottom edge at about 700px of 800 |
+| 5 | SVG contracts | PASS: one dashed `data-reveal` path, one `data-reveal-path`, geometry identical to `15570df:Hero.tsx` |
+| 6 | Gate checks can fail | **B2 BLOCKING**: row 5 `BLOCK`→`PASS`, verdict `BLOCK`→`PASS`, deleting row 5, emptying a line, and pointing `data-excerpt-of` or `data-source` at `site/content/copy.ts` all exit 0 |
+| 7 | Evidence page | **B1 BLOCKING**: header unstyled at x=0 outside the container; the section repeats the `<h1>` text as a larger `<h2>` under `04 / THE EVIDENCE`. Non-blocking: the matrix starts at the shared `Section` reveal's inline `opacity:0` |
+| 8 | Nav from both pages | PASS live; non-blocking: every load logs a 404 for `/drydock/evidence/__next.evidence.__PAGE__.txt` (the export writes `__next.evidence/__PAGE__.txt`); navigation falls back and works |
+| 9 | Other | Non-blocking: `lifecycle.flow` and `hero.installLabel` unrendered; `assert-copy.mjs` header says it reads one page |
+
+Remedy: Wave 1.4 (D19, deviation 6).
+
 ## Progress log
 
 | Date | Task | Result | Notes |
@@ -614,5 +672,6 @@ Deviations logged: 5 (2 discovered by wavecheck)
 | 2026-10-07 | T1.2.1 | PASS | `642363f`; wavecheck 1.2 PASS |
 | 2026-10-07 | T1.3.1 | BLOCK | `61ed102`; criterion exits 0 but wavecheck 1.3 BLOCK on deviation 5; status BLOCKED, awaiting a human decision |
 | 2026-10-07 | T1.3.1r1 | PASS | `2fe92cf`; D18 approved by Sandeep Takasi; wavecheck 1.3 re-audit PASS |
+| 2026-10-07 | T1.R.1 | REJECTED | B1, B2 blocking; repair Wave 1.4 added (D19) |
 
 ## Reconcile report
