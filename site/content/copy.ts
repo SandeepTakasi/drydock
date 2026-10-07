@@ -80,12 +80,12 @@ export const meta: Record<
   refuses: {
     id: "refuses",
     eyebrow: "03 / WHAT IT REFUSES",
-    heading: "Four refusals, from real runs",
+    heading: "Four things it will not let through",
   },
   limits: {
     id: "limits",
     eyebrow: "04 / LIMITS",
-    heading: "What it does not do",
+    heading: "What it cannot do, said up front",
   },
   evidence: {
     id: "evidence",
@@ -95,7 +95,7 @@ export const meta: Record<
   install: {
     id: "install",
     eyebrow: "05 / INSTALL",
-    heading: "Two commands",
+    heading: "Two commands to start",
   },
   faq: {
     id: "faq",
@@ -121,7 +121,7 @@ const BLOB = `${REPO}/blob/main`;
 export const site = {
   title: "Drydock: plan-first parallel execution for Claude Code",
   description:
-    "Plan-first execution for Claude Code: a rigorous plan document as the source of truth, subagents executing it in parallel waves with disjoint file ownership (or one session executing it in sequence and saying so), a conformance audit gating every wave, and a reconcile loop that feeds execution learnings back into your docs.",
+    "A Claude Code plugin that makes the plan the contract: parallel subagents that each own their files, every wave audited against the real diff, and what execution learned fed back into your docs.",
   status: "open pilot, field benchmarks pending",
   version: VERSION,
   selfAuditHref: `${BLOB}/docs/self-audit.md`,
@@ -152,9 +152,9 @@ export const hero = {
   kicker: "CLAUDE CODE PLUGIN",
   headline: "Drydock",
   promise:
-    "Agents drift: green tests, a clean review, and a diff that does things nobody asked for.",
+    "Agents drift: the tests pass, the review is clean, and the diff still does things nobody asked for.",
   thesis: "NOTHING SAILS UNTIL IT LEAVES THE DOCK",
-  sub: "A plan document is the source of truth. Each wave is audited against the actual diff, never against what the executor reports.",
+  sub: "Drydock makes the plan the contract. Subagents build in parallel, each inside the files it owns, and every wave is checked against the real diff, not the agent report, before the next one starts.",
   badges: [`v${VERSION} · OPEN PILOT`, "MIT", "PLAN FORMAT v3"],
   ctaPrimary: "Install it",
   /**
@@ -210,20 +210,20 @@ export const hero = {
 };
 
 export const problem = {
-  lead: "Running subagents in parallel has two failure modes, and the second one is the expensive one.",
+  lead: "Running subagents in parallel fails in two ways. The first is loud. The second is quiet, and it is the expensive one.",
   modes: [
     {
       index: "01",
       title: "Collision",
-      body: "Two subagents editing the same file collide. One write lands on top of the other and the loss is invisible until something downstream breaks.",
+      body: "Two agents edit the same file. One write lands on top of the other, and nobody notices until something downstream breaks.",
     },
     {
       index: "02",
       title: "Drift",
-      body: "Worse, they drift: green tests, a clean review, and a diff that quietly does things nobody asked for.",
+      body: "Each agent does something reasonable: a helpful refactor, a renamed export, a fix while it was nearby. Every check stays green, and the change you shipped is no longer the change you planned.",
     },
   ],
-  coda: "Drifted code is often good code. It just is not the code the plan specified, and nothing in a quality review is looking for that difference.",
+  coda: "Drifted code is often good code. It is just not the code the plan asked for, and a quality review is not looking for that difference. Drydock is.",
 };
 
 export const evidence: {
@@ -331,17 +331,17 @@ export const lifecycle: {
     {
       index: "01",
       title: "Plan",
-      body: "planwright writes a plan document: phases, parallel waves, and atomic tasks that each own their files. A human approves it before anything runs.",
+      body: "planwright turns your request into a plan: phases, waves of tasks that can run side by side, and the exact files each task may touch. You approve it before anything runs.",
     },
     {
       index: "02",
       title: "Run in parallel waves",
-      body: "Subagents run each wave in parallel with disjoint file ownership, or one session runs it in sequence and says so. While a wave is armed, a hook denies file-tool writes outside its boundary.",
+      body: "Subagents run a wave in parallel, each owning different files, or one session runs it in order and says so. While the wave runs, a hook denies file-tool writes outside its boundary.",
     },
     {
       index: "03",
       title: "Audit each wave against the diff",
-      body: "wavecheck audits the finished wave against the plan using the actual diff: ownership, forbidden lists, acceptance criteria, deviations. PASS or BLOCK, and no retries.",
+      body: "wavecheck reads what actually changed in git, not what the agents say they did: ownership, forbidden changes, acceptance criteria, deviations. PASS lets the next wave start. BLOCK stops the plan until you or replan decide.",
     },
   ],
   readmeHref: `${BLOB}/drydock/README.md`,
@@ -369,25 +369,25 @@ export const lifecycle: {
     {
       name: "executor-isolated",
       kind: "agent",
-      summary: "The executor's contract in its own git worktree, so tasks running side by side never share a checkout.",
+      summary: "The executor contract in its own git worktree, so tasks running side by side never share a checkout.",
       invocation: "spawned per task",
     },
     {
       name: "wavecheck",
       kind: "skill",
-      summary: "Audits each finished wave against the real diff, not the agents' reports: file ownership, forbidden changes, acceptance criteria, deviations. PASS or BLOCK, and the next wave waits on a PASS.",
+      summary: "Audits each finished wave against the real diff, not what the agents report: file ownership, forbidden changes, acceptance criteria, deviations. PASS or BLOCK, and the next wave waits on a PASS.",
       invocation: "blocking gate inside every plan",
     },
     {
       name: "replan",
       kind: "skill",
-      summary: "Repairs a blocked or stale plan: re-checks its decisions against today's code and patches only what broke. Finished waves and their reports stay untouched.",
+      summary: "Repairs a blocked or stale plan: re-checks its decisions against the current code and patches only what broke. Finished waves and their reports stay untouched.",
       invocation: "human-only (disable-model-invocation)",
     },
     {
       name: "seatrial",
       kind: "skill",
-      summary: "Runs the plan's end-to-end cases in a real browser, captures the evidence each case asks for, and hands QA re-runnable Playwright specs and a go/no-go sheet.",
+      summary: "Runs the end-to-end cases written into the plan in a real browser, captures the evidence each case asks for, and hands QA re-runnable Playwright specs and a go/no-go sheet.",
       invocation: "model, or /drydock:seatrial (after the final wave)",
     },
     {
@@ -406,7 +406,7 @@ export const lifecycle: {
 };
 
 export const refusals: { lead: string; items: Refusal[] } = {
-  lead: "Four refusals, each pasted from a real run against a scratch fixture and traced to the file that prints it.",
+  lead: "Not mockups. Each message below was pasted from a real run against a scratch repo, and the build checks that its key phrase still exists in the file that prints it.",
   items: [
     // `node drydock/scripts/drydock-audit.mjs validate-plan plan.md` in a scratch
     // dir; plan.md is a format_version 3 plan whose T1.0.1 and T1.0.2 (wave 1.0)
@@ -459,12 +459,13 @@ export const refusals: { lead: string; items: Refusal[] } = {
 };
 
 export const limits: { lead: string; items: string[]; evidenceLinkText: string } = {
-  lead: "What the mechanism cannot see, stated before you find it.",
+  lead: "Better you read these here than find them in your repo.",
   items: [
     "Two ceilings stand, both exercised rather than assumed: Bash-mediated writes bypass file-tool hooks entirely, and paths outside the project directory are not enforced. The wave audit is the backstop.",
     "For work too small for a plan, the check skill audits scope afterwards. It detects after the fact and prevents nothing.",
     "Gate compliance is measured, not asserted: 28 of 29 wave gates were invoked at their boundary across 5 pilot plans. Every session counted knew it was being observed, so read the figure as a ceiling, not a rate.",
     "Human approval is an instruction the plan format states and a reader upholds. Nothing in the tooling stops a session writing status: APPROVED itself.",
+    "It is an open pilot. Every figure on this site comes from pilot plans run in this repo; there are no field benchmarks yet.",
   ],
   evidenceLinkText: "See the full evidence matrix",
 };
@@ -499,7 +500,7 @@ export const install: {
   ],
   scopeNote: "Add --scope project to share it with your team.",
   configNote:
-    "Configured on enable: where plans live (default docs/plans), which docs reconcile may propose changes to, and where seatrial writes its generated specs (default e2e). If your repo forbids committing planning artifacts and gitignores that path, plans fall back to .drydock/plans and the plan says so in one fixed line rather than arguing its own case. Then run /drydock:planwright on something small.",
+    "Then run /drydock:init once so Drydock learns your repo, and /drydock:planwright on something small. Settings on enable: where plans live (default docs/plans), which docs reconcile may propose changes to, and where seatrial writes its specs (default e2e). A repo that gitignores planning files gets them under .drydock/plans instead.",
   requirement:
     "Requires Node 20.17 or newer on PATH, as declared in the plugin manifest and tested on 20, 22 and 24: the ownership hook and the plan audit are Node programs. The hook is inert, by design, whenever no wave is armed.",
   copyLabel: "Copy",
@@ -510,31 +511,35 @@ export const install: {
 export const faq: FaqItem[] = [
   {
     q: "Is this overkill for a one-file change?",
-    a: "Yes, and then do not use it. Drydock earns its keep on multi-file changes, parallel execution, and teams. For everything in between there is a small lane: one phase, one wave, one gate, no separate quality-review wave and no pressure test, declared as lane: small in the plan header and held to it by the validator. What scales with risk stays: ownership, acceptance criteria, both logs. Only what scales with cost is dropped. Inflating structure to look thorough is an anti-pattern the planner refuses.",
+    a: "Yes, so do not use a plan for it. For a change that small, the check skill audits your scope in a few lines with no plan at all. For mid-sized work there is a small lane: one phase, one wave, one gate, declared as lane: small and held to it by the validator. Ownership, acceptance criteria and both logs stay; only the ceremony goes. Drydock earns its keep on multi-file changes, parallel agents and teams.",
+  },
+  {
+    q: "Who is it for?",
+    a: "Anyone using Claude Code on changes that touch several files at once, and especially anyone running subagents in parallel. If you have ever merged a green pull request and then found work in it nobody asked for, this is the problem it is built around.",
   },
   {
     q: "How is this different from other planning plugins?",
-    a: "The gate audits plan conformance, not code quality: did the wave do exactly what the plan said and nothing else, judged against the actual diff rather than against what the executors claim. From v0.6.0 disjoint file ownership is enforced rather than requested: wave-start generates the boundary from the plan, a hook denies every write outside it until the wave closes, and outside a wave it is inert. The audit is the backstop for what a hook cannot see; see A6. Per-task model right-sizing lives in the plan instead of global config. And reconcile closes the loop by turning what execution learned into proposed doc diffs.",
+    a: "A plan is only worth what the result has to answer to. Drydock checks the result against it: did the wave do exactly what the plan said and nothing else, judged from the actual diff rather than from what the agents claim. File ownership is enforced, not requested: while a wave runs, a hook denies file-tool writes outside its boundary, and the audit catches what a hook cannot see, such as Bash writes (see A6). Each task names the model it needs, and reconcile turns what execution learned into proposed doc changes.",
   },
   {
     q: "What if I do not run subagents at all?",
-    a: "Then say so, and the plan stops pretending otherwise. execution: solo in the header means the orchestrating session runs the tasks itself, which is what happens under a standing rule against spawning agents. It relaxes no gate, no ownership boundary and no acceptance criterion; it removes a claim the plan was making falsely, and states once that the session writing the diff is the session auditing it, rather than logging that as a deviation on every wave. Same-wave dependencies also become legal, because the prohibition exists for simultaneity that solo does not have.",
+    a: "Then say so in the plan header with execution: solo, and one session runs the tasks in order. Every gate, ownership boundary and acceptance criterion still applies. The plan states once that the session writing the code is also the one auditing it, so a reader knows how much weight the audit carries.",
   },
   {
     q: "My repo forbids tool names in commit messages.",
-    a: "Then attribution comes from a manifest instead. Attribution used to be a commit-subject match, which made a house style the one thing that could block every wave with no way out but a hand-written table. With attribution: manifest the subject follows your convention and the task records which commit is its own; the ownership audit is unchanged, because it reads the files a commit touched, not its text. The same applies to plans themselves: a repo that gitignores the plans directory gets them under .drydock/plans instead.",
+    a: "Use attribution: manifest. Your commit messages follow your own convention, and each task records which commit is its own in a manifest. The ownership audit works the same either way, because it reads the files a commit touched, not its message.",
   },
   {
     q: "Does it review code quality?",
-    a: "No, deliberately. Wavecheck audits conformance only; a separate fresh-context review runs after it passes.",
+    a: "No, on purpose. wavecheck answers one question: did the wave do what the plan said. Code quality is judged by a separate fresh-context review after it passes, so the two never blur together.",
   },
   {
     q: "Can the model skip the gates?",
-    a: "Honestly: gates are named as blocking instructions in every plan, and compliance is measured (A3), not asserted. The figure is 28 of 29 invoked at their boundary across 5 pilot plans, and one was skipped. That skip is on the record because the next gate caught it and the retroactive audit found a real ownership breach behind it. Every one of those sessions knew it was being watched, so it is a ceiling rather than a rate. One thing is mechanically absolute: replan carries `disable-model-invocation`, so a model cannot invoke it. The human approval step is not. It is an instruction the plan format states and a reader upholds, and nothing in the tooling stops a session writing `status: APPROVED` itself. This line said two until 0.10.0, which was an over-claim about the one property a reader most needs to be true.",
+    a: "Sometimes, and that is measured rather than promised away. Across 5 pilot plans, 28 of 29 wave gates were invoked at their boundary and one was skipped. The next gate refused to open without the missing report, and the audit that followed found a real ownership breach behind the skip. Every session counted knew it was being watched, so treat that as a ceiling, not a rate. Two things are mechanical: wave-start will not open a wave whose predecessor has no PASS, and a model cannot invoke replan at all. Human approval is not mechanical: nothing in the tooling stops a session marking its own plan APPROVED.",
   },
   {
     q: "Does anything actually touch a browser?",
-    a: "Yes, that is seatrial. A plan can carry a Testing Gate of end-to-end cases written before the code, and seatrial drives them through Playwright MCP, capturing each case's declared evidence into a go/no-go sheet. It refuses rather than improvises: a step it cannot perform is reported, not worked around; a missing driver halts; and it never overrides its own failures. Run end to end on this site: six cases, three passes, three designed failures. The specs it writes now run in CI here and pass, Chromium only; see A7.",
+    a: "Yes, through seatrial. A plan can carry end-to-end cases written before the code, and seatrial drives them in a real browser through Playwright MCP, saving the evidence each case asks for into a go/no-go sheet. It reports a step it cannot perform rather than improvising one, halts when the driver is missing, and never overrides its own failures. The specs it generated for this site run in CI and pass, Chromium only (see A7).",
   },
   {
     q: "Why the name?",
