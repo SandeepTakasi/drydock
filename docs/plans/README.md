@@ -15,6 +15,7 @@ would have lost.
 | [006-external-review-repairs](006-external-review-repairs.md) | The nine repairs an outside review and this plan's own gate found (v0.15.0) | RECONCILED |
 | [007-deferred-hardening](007-deferred-hardening.md) | The seven items plan 006 deferred, hook path resolution hardened (v0.15.1) | RECONCILED |
 | [008-stats-gates-check-learnings](008-stats-gates-check-learnings.md) | Token split per plan, the wave-order lock, `check`, and past learnings for planwright (v0.16.0) | RECONCILED |
+| [009-site-016-additions](009-site-016-additions.md) | The homepage learns 0.16.0's `check`, learnings step, wave lock and CI re-audit, claiming only what ran | EXECUTING |
 
 Plan 001 also has a [field case study](../case-study-001-homepage.md) written
 against it, including the parts that reflect badly on the tool.
