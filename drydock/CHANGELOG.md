@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.17.1: 2026-10-07
+
+**`.drydock/bash-tree.json` outlives the wave that wrote it, creating a stale snapshot.** The ownership hook snapshots Bash-written file metadata to detect writes in the first command of every wave. Closing a wave removes `.drydock/wave-owns.json` (the armed boundary) but leaves `bash-tree.json` behind. The next armed wave diffed against it, and a re-armed wave diffed against its own prior self through the old mtime. Both reported everything written after the first arming — or not at all — as the first command's writes, and neither re-seeded the snapshot. Measured: plan 010's first command reported five detected writes, all seatrial specs written after plan 009's wave closed, and the wave audit wrongly attributed them to a missing snapshot.
+
+**The fix (plan 011 T0 baseline).** An arming is identified by `"<plan>|<wave>|<mtimeNs of .drydock/wave-owns.json>"`. When the snapshot exists, its `"armed"` key is checked: a matching key diffs as before, and a mismatched key means the snapshot is from an earlier arming and is discarded. The snapshot shape is `{ "armed": "<key>", "paths": { "<rel>": "<size>:<mtimeNs>" } }`. No usable snapshot → `observed`, detail unchanged `first Bash command of the wave, snapshot seeded, nothing to diff against`. A well-shaped snapshot from a different arming → `observed`, detail `snapshot from an earlier arming discarded, snapshot seeded, nothing to diff against`. Both re-seed with the current key and diff nothing; a matching key diffs exactly as before.
+
+**Plan 010 named the wrong cause.** The 0.17.0 release (plan 010) attributed the stale snapshot to a missing snapshot on the first command of the wave, recorded in CLAUDE.md as a workaround: "start a wave from a tree with no untracked files". That note is deleted in this release; the actual cause and fix are stated above. The cost is explicit and existing: the first command after any arming or re-arming goes undiffed, a built-in ceiling described in D5.
+
+**Unexercised, stated plainly.** This fix has not been run in a live session, because hook code loads from the installed plugin, not from the working tree. It is gated only on mechanical criteria — the suite exercises the real hook process — until a session on an installed 0.17.1 runs it.
+
+Tests: detect-bash-writes 21 to 24, others unchanged.
+
 ## 0.17.0: 2026-10-07
 
 **`drydock-audit.mjs arm <intent.md>` arms the ownership hook without a plan.** It reads the same intent file `/drydock:check` writes (one source for the armed boundary and the audited scope) and writes `.drydock/wave-owns.json` as `{"plan": null, "wave": "check", "source": "arm", "base": ..., "owns": [...]}`. The wave id is the literal `"check"` because `audit-wave` counts a receipt with no plan toward every plan with the same wave id, and a plan's wave ids are numeric. Usage: `node "$DD/scripts/drydock-audit.mjs" arm .drydock/check.md`, then work, then `check .drydock/check.md`, then `rm .drydock/wave-owns.json` (there is no disarm subcommand).
