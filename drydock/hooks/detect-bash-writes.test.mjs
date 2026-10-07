@@ -13,7 +13,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync, readFileSync, realpathSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync, readFileSync, realpathSync, utimesSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -244,6 +244,56 @@ const mutate = (dir, script, sub) =>
   report("the first command of a wave says it seeded",
     r.length === 1 && r[0].decision === "observed" && /seeded/.test(r[0].detail ?? ""),
     `detail=${JSON.stringify(r[0]?.detail)}`);
+  rmSync(dir, { recursive: true, force: true });
+}
+
+// Plan 011: a snapshot belongs to the arming that wrote it. Closing a wave
+// leaves bash-tree.json behind, so the next plan's first command used to diff
+// against the last plan's tree and "detect" writes made between the two.
+{
+  const dir = mkrepo("stale-arming");
+  seed(dir);
+  mutate(dir, "require('fs').writeFileSync('site/between.txt','x')");
+  writeFileSync(join(dir, ".drydock", "wave-owns.json"), JSON.stringify({ plan: "p", wave: "2.0", owns: ["docs/**"] }));
+  fire(dir, "true");
+  const r = receipts(dir).slice(1); // drop the seeding receipt
+  report("a snapshot from an earlier arming is discarded, not diffed",
+    r.filter((e) => e.decision === "detected").length === 0 &&
+      r.filter((e) => e.decision === "observed" && /earlier arming/.test(e.detail ?? "")).length === 1,
+    `receipts=${JSON.stringify(r.map((e) => [e.decision, e.detail]))}`);
+  rmSync(dir, { recursive: true, force: true });
+}
+
+{
+  const dir = mkrepo("rearm-same");
+  seed(dir);
+  mutate(dir, "require('fs').writeFileSync('site/between.txt','x')");
+  // Identical content, so only the mtime tells the armings apart. Set it
+  // explicitly rather than trust the clock to tick between two writes.
+  const cfg = join(dir, ".drydock", "wave-owns.json");
+  const body = readFileSync(cfg, "utf8");
+  writeFileSync(cfg, body);
+  const future = new Date(Date.now() + 5000);
+  utimesSync(cfg, future, future);
+  fire(dir, "true");
+  const r = receipts(dir).slice(1);
+  report("re-arming the same wave discards the snapshot too",
+    r.filter((e) => e.decision === "detected").length === 0 &&
+      r.filter((e) => e.decision === "observed" && /earlier arming/.test(e.detail ?? "")).length === 1,
+    `receipts=${JSON.stringify(r.map((e) => [e.decision, e.detail]))}`);
+  rmSync(dir, { recursive: true, force: true });
+}
+
+{
+  const dir = mkrepo("old-flat");
+  writeFileSync(join(dir, ".drydock", "bash-tree.json"), JSON.stringify({ "site/x.txt": "1:1" }));
+  mutate(dir, "require('fs').writeFileSync('site/x.txt','x')");
+  fire(dir, "true");
+  const r = receipts(dir);
+  report("an old flat snapshot is treated as missing",
+    r.filter((e) => e.decision === "detected").length === 0 &&
+      r.filter((e) => e.decision === "observed" && /first Bash command/.test(e.detail ?? "")).length === 1,
+    `receipts=${JSON.stringify(r.map((e) => [e.decision, e.detail]))}`);
   rmSync(dir, { recursive: true, force: true });
 }
 

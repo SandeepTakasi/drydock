@@ -51,6 +51,11 @@
  *     Identity is `size:mtimeNs` from `statSync`, not a content hash -- cheap,
  *     and a spurious `detected` on an unchanged file is far cheaper to live
  *     with than silently missing a real edit.
+ *   - A snapshot is bound to ONE arming (plan|wave|config mtime) and is never
+ *     diffed under another. Closing a wave leaves bash-tree.json behind, and
+ *     plan 010's first command diffed against plan 009's, reporting five
+ *     writes made between the plans. The cost: the first command after any
+ *     (re-)arming goes undiffed.
  *   - Paths outside the repo are invisible, same as the file-tool hook.
  *   - A backgrounded command (`run_in_background: true`) finishes after this
  *     hook fires; its writes land in a later command's diff or nowhere.
@@ -212,14 +217,29 @@ try {
   done();
 }
 
+// Identifies THIS arming (plan 011). Re-arming the same wave rewrites the config
+// with identical content, so only the mtime tells the armings apart. A failed
+// stat gives null, which no stored key equals, so the hook re-seeds -- the safe
+// direction.
+let armingKey = null;
+try {
+  armingKey = `${config.plan ?? ""}|${config.wave ?? ""}|${statSync(configPath, { bigint: true }).mtimeNs}`;
+} catch {}
+
 let before = null;
+let staleKey = false;
 try {
   if (existsSync(snapshotPath)) {
     const raw = JSON.parse(readFileSync(snapshotPath, "utf8"));
-    // Compat: the snapshot used to be a JSON array of bare paths (no identity).
-    // An old-shaped snapshot is unusable for identity comparison -- treat it
-    // as missing, same as a corrupt file, rather than crash on it.
-    before = raw && !Array.isArray(raw) && typeof raw === "object" ? raw : null;
+    // Shape is `{ armed, paths }`. Anything else -- the old flat object, the
+    // older array of bare paths, corrupt JSON -- is unusable and is treated as
+    // missing rather than crashed on. A well-shaped snapshot from a different
+    // arming is discarded too: closing a wave leaves it behind, and diffing it
+    // against the next plan's tree reported that gap as that plan's writes.
+    if (raw && raw.armed && raw.paths && typeof raw.paths === "object" && !Array.isArray(raw.paths)) {
+      staleKey = raw.armed !== armingKey;
+      before = staleKey ? null : raw.paths;
+    }
   }
 } catch {
   before = null; // a corrupt snapshot is a missing snapshot
@@ -233,14 +253,16 @@ const afterSnap = snapshotOf(afterPaths);
 // up in git status (committed, reverted) naturally drops out.
 try {
   mkdirSync(dir, { recursive: true });
-  writeFileSync(snapshotPath, JSON.stringify(afterSnap));
+  writeFileSync(snapshotPath, JSON.stringify({ armed: armingKey, paths: afterSnap }));
 } catch {}
 
 // No snapshot yet means this is the first Bash command of the wave and there is
 // nothing to diff against. Seeding silently would hide writes made by that very
 // command, so say what happened instead of guessing.
 if (before === null) {
-  record("observed", null, "first Bash command of the wave, snapshot seeded, nothing to diff against");
+  record("observed", null, staleKey
+    ? "snapshot from an earlier arming discarded, snapshot seeded, nothing to diff against"
+    : "first Bash command of the wave, snapshot seeded, nothing to diff against");
   done();
 }
 
