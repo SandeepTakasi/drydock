@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRef } from "react";
 import { nav } from "@/content/copy";
 
@@ -24,13 +25,13 @@ export default function MobileNav() {
       <ul className="absolute right-0 z-50 mt-2 flex w-44 flex-col border border-line bg-surface">
         {nav.map((item) => (
           <li key={item.href} className="border-b border-line last:border-b-0">
-            <a
+            <Link
               href={item.href}
               onClick={() => ref.current?.removeAttribute("open")}
               className="block px-4 py-3 font-mono text-mark text-ink-dim uppercase transition-colors hover:text-ink"
             >
               {item.label}
-            </a>
+            </Link>
           </li>
         ))}
       </ul>

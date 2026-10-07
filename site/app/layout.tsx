@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 
 import mark from "@/assets/drydock-mark.png";
 
@@ -83,8 +84,8 @@ export default function RootLayout({
 
         <header className="sticky top-0 z-40 border-b border-line bg-ground">
           <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-6 px-6 sm:px-10">
-            <a
-              href="#content"
+            <Link
+              href="/"
               className="flex shrink-0 items-center gap-2.5 font-display text-body font-semibold tracking-tight text-ink"
             >
               {/* A STATIC IMPORT, not a string src. Measured: `next/image`
@@ -105,19 +106,19 @@ export default function RootLayout({
                 className="h-[26px] w-[26px]"
               />
               {site.wordmark}
-            </a>
+            </Link>
             <span className="hidden border border-line px-2 py-1 font-mono text-mark text-ink-dim uppercase sm:inline-block">
               {site.status}
             </span>
             <nav className="ml-auto flex items-center gap-5">
               {nav.map((item) => (
-                <a
+                <Link
                   key={item.href}
                   href={item.href}
                   className="hidden py-1.5 font-mono text-mark text-ink-dim uppercase transition-colors hover:text-ink md:inline-block"
                 >
                   {item.label}
-                </a>
+                </Link>
               ))}
               <MobileNav />
               <span className="font-mono text-mark text-accent uppercase">
