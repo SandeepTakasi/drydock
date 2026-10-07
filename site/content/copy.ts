@@ -54,7 +54,7 @@ export const meta: Record<
   lifecycle: {
     id: "lifecycle",
     eyebrow: "02 / HOW IT WORKS",
-    heading: "Seven pieces, one contract",
+    heading: "Nine pieces, one contract",
   },
   terminal: {
     id: "terminal",
@@ -241,6 +241,22 @@ export const evidence: {
       tone: "hold",
       note: "Run twice, 2026-08-20 and 2026-08-26, twelve commits apart, with identical verdicts: six cases, three passes, and three failures that the plan designed to fail: a false expectation, an unperformable step that halted to ask rather than improvise, and a video clause this driver cannot satisfy. Both sheets closed NO-GO; seatrial writes no override for its own failures. The second run also halted on stale cases and on an unreachable target, and wrote nothing at all when the driver dropped mid-suite. The specs it generated now run in CI and pass: Chromium only, one viewport, first executed 2026-09-02.",
     },
+    {
+      id: "A10",
+      label:
+        "check skill runs in a live session (model-invoked, inside a plan wave)",
+      status: "OBSERVED FLAG THEN PASS",
+      tone: "hold",
+      note: "2026-10-07. The audit flagged an untracked probe outside the owned globs, then reported a pass once the probe was deleted. Not shown: the slash command, or check on unplanned, unarmed work, because this run sat inside an armed plan wave whose owned files included the probe, and check itself prevents nothing.",
+    },
+    {
+      id: "A11",
+      label:
+        "planwright runs its learnings step in a live session (stopped after Step 2)",
+      status: "OBSERVED PARTIAL",
+      tone: "hold",
+      note: "2026-10-07. In Step 2 the skill ran the learnings call on two concrete paths and carried the hits it printed into its findings text. Not shown: Steps 3 to 6, since the run stopped after Step 2 on supplied interview answers and wrote no plan, nor the slash command or a real user.",
+    },
   ],
   provenance: "This page is not a brochure for something built elsewhere. The site was planned, executed in parallel waves and gated with Drydock itself, across five plans whose deviation logs are in the repo.",
   planHref: `${BLOB}/docs/plans/001-drydock-homepage.md`,
@@ -294,11 +310,18 @@ export const lifecycle: { flow: string[]; loop: string; pieces: Piece[] } = {
   loop: "on BLOCK, drift, or NO-GO: /drydock:replan or a human decision. No retries.",
   pieces: [
     {
+      name: "init",
+      kind: "skill",
+      invocation: "model or /drydock:init (once per repo)",
+      detail:
+        "Onboards a repository once: scans for its quality gates, test framework, commit convention and CI, asks only what scanning cannot answer, and writes a host profile that later plans read instead of asking again.",
+    },
+    {
       name: "planwright",
       kind: "skill",
       invocation: "model or /drydock:planwright",
       detail:
-        "Interrogates the request and writes the plan document: phases, parallel waves, atomic tasks with owned files, and the gates between them. Then checks it with drydock-audit.mjs validate-plan, which catches what a reader cannot: duplicate task ids, two tasks owning one file, a dependency that cannot hold.",
+        "Interrogates the request and writes the plan document: phases, parallel waves, atomic tasks with owned files, and the gates between them. Then checks it with drydock-audit.mjs validate-plan, which catches what a reader cannot: duplicate task ids, two tasks owning one file, a dependency that cannot hold. While exploring, it pulls the CLAUDE.md lines and past Deviation Log rows that name the files the plan will own.",
     },
     {
       name: "executor",
@@ -319,7 +342,7 @@ export const lifecycle: { flow: string[]; loop: string; pieces: Piece[] } = {
       kind: "skill",
       invocation: "blocking gate inside every plan",
       detail:
-        "Audits the finished wave against the plan, using the actual diff: ownership, forbidden lists, acceptance criteria, deviations. PASS or BLOCK. Its mechanical half is audit-wave, judged against the boundary wave-start derived from the plan.",
+        "Audits the finished wave against the plan, using the actual diff: ownership, forbidden lists, acceptance criteria, deviations. PASS or BLOCK. Its mechanical half is audit-wave, judged against the boundary wave-start derived from the plan. wave-start refuses to arm a wave while an earlier one lacks a PASS report. drydock/scripts/audit-corpus.mjs re-audits every sealed wave from a clean checkout, and this repository runs it in CI on every push.",
     },
     {
       name: "replan",
@@ -341,6 +364,13 @@ export const lifecycle: { flow: string[]; loop: string; pieces: Piece[] } = {
       invocation: "final step of every plan",
       detail:
         "Turns deviations and failed assumptions into proposed diffs for CLAUDE.md, ADRs and architecture docs. Proposed, never auto-applied.",
+    },
+    {
+      name: "check",
+      kind: "skill",
+      invocation: "model or /drydock:check (no plan)",
+      detail:
+        "For work too small for a plan: state the scope in a few lines, do the work, and an audit afterwards flags every tracked or untracked file changed outside it and every criterion that fails. It detects after the fact and prevents nothing.",
     },
   ],
 };

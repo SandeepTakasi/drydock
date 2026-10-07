@@ -72,7 +72,7 @@ const REQUIRED = [
   "drift",
   "one-file change",
   "NOTHING SAILS UNTIL IT LEAVES THE DOCK",
-  // the seven lifecycle pieces. seatrial was missing here for two releases:
+  // the nine lifecycle pieces. seatrial was missing here for two releases:
   // it shipped in v0.6.0 and the page never learned about it, so the flow strip
   // sold five steps for a six-step product. The literal list is what stops a
   // piece going quiet, and it can only do that for pieces somebody added to it.
@@ -83,6 +83,14 @@ const REQUIRED = [
   "replan",
   "seatrial",
   "reconcile",
+  // check and init joined in 0.16.0, and the heading's count is a claim like
+  // any other: pinning "Nine pieces" stops it going stale when a piece is added
+  // or dropped. "prevents nothing" is check's whole honesty caveat; without it
+  // the page could sell a post-hoc audit as enforcement and still go green.
+  "/drydock:check",
+  "/drydock:init",
+  "Nine pieces",
+  "prevents nothing",
 ];
 
 /** The site must never claim a benchmark it does not have. */
