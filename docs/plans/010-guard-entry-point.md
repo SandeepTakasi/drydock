@@ -404,6 +404,7 @@ skill and docs describe them, and 0.17.0 is cut locally and unpushed.
 | 2 | — (gate) | `audit-wave 1.1` reports five "Bash writes outside `owns`" and a dirty tree. **Every one is the pre-existing untracked `e2e/009-site-016-additions/` directory**: the files predate the wave by about 2.5 hours, and all five `detected` receipts are stamped on the wave's first Bash command (the orchestrator's staleness check plus `wave-start`, a read-only `git diff` followed by the arming), which wrote nothing there. | The Bash detector attributes to that first command whatever untracked state it has no earlier snapshot for. That is a false positive on pre-existing dirt, and the detector's ceiling list (`detect-bash-writes.mjs` ~40-58) does not name it. | All four task commits stay inside their task's `owns` (the audit's own table). The two FAIL lines are not wave writes, but the audit cannot tell them apart, and the receipts are permanent in `.drydock/enforcement.log`, so a re-audit stays FAIL on error 1 even after the directory is committed or moved. A human decision is required. `discovered-by-wavecheck` | 2026-10-07 |
 | 3 | T1.1.2 | The `check` skill's frontmatter `description:` still ends "Detects scope misses after the fact; prevents nothing.", while the body now offers opt-in prevention. | Reported by the executor as an observation. The task block did not name the description, and no forbidden item covers it. | The description is what the host shows when it chooses a skill, so it now understates the skill. This is inside T1.1.2's `owns`, so it can be repaired in a new wave with a new task id. | 2026-10-07 |
 | 4 | — (plan) | `lane: small` changed to `lane: full` after Wave 1.1 (D17). | `validate-plan` caps the small lane at one implementation wave, so the format contract's "targeted fix task appended" remedy for a BLOCK is impossible there. | The plan's ceremony is unchanged in practice (no review wave, no pressure test). The finding goes to reconcile: the small lane has no repair path. | 2026-10-07 |
+| 5 | T1.2.1 | The commit `cf81664` puts `Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>` on the **subject line**, where the brief asked for the Opus trailer on its own final line. | Executor error (Haiku 4.5, Mechanical tier). | Cosmetic only. Attribution is the manifest (`attribution: manifest`), which recorded T1.2.1 → `cf81664`. Not rewritten: rewriting a commit would invalidate the manifest entry, and a sealed record outweighs a tidy trailer. `discovered-by-wavecheck` | 2026-10-07 |
 
 ## Wavecheck reports
 
@@ -440,6 +441,20 @@ Deviations logged: 3 (2 discovered by wavecheck)
 The only change since the BLOCK is the override. **This is not a clean mechanical pass:** `audit-wave 1.1` still reports `FAIL (2)`, and both lines are the `e2e/009-site-016-additions/` paths that D16 accepts by name, signed by Sandeep Takasi, 2026-10-07. Every other check is as reported above: all four commits are inside `owns`, all four criteria exit 0, the forbidden audit is clean, and `enforcement active: 20 hook decision(s) recorded for wave 1.1 (0 denied)`.
 
 Deviations logged: 4 (2 discovered by wavecheck)
+
+### Wavecheck 1.2, PASS, 2026-10-07
+
+Execution: `fleet`, one `drydock:executor` (Haiku 4.5). The auditor did not write the diff. **The PASS is under the D16 override:** `audit-wave 1.2` reports `FAIL (1)`, and its only line is the dirty tree from the pre-existing `e2e/009-site-016-additions/`, which D16 accepts by name.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | Status `EXECUTING`; wave 1.1's last report is PASS (the D16 re-audit), and `wave-start 1.2` accepted it; `validate-plan --strict` PASS at `0b09c8d`. |
+| 2. Ownership audit | PASS (D16) | `\| T1.2.1 \| cf81664 \| drydock/skills/check/SKILL.md \| drydock/skills/check/SKILL.md \| none \|`. The audit printed `enforcement active: 1 hook decision(s) recorded for wave 1.2 (0 denied)` and `bash layer: 5 command(s) seen for wave 1.2, 5 with nothing outside owns, 0 write(s) detected outside it`. The detector did not re-report the e2e files once a snapshot existed, which supports Deviation 2's first-command explanation. |
+| 3. Forbidden audit | PASS | `git show cf81664` changes only line 3 (`description:`). Nothing below the frontmatter changed, and arming stays opt-in ("By default it detects scope misses after the fact and prevents nothing; an opt-in step arms the ownership hook"). |
+| 4. Acceptance audit | PASS | The auditor re-ran the criterion through `spawnSync(..., {shell: true})`: exit 0. |
+| 5. Deviation reconciliation | PASS (logged) | The executor reported no deviations. Deviation 5 was discovered by wavecheck. |
+
+Deviations logged: 5 (3 discovered by wavecheck)
 
 ## Progress log
 
