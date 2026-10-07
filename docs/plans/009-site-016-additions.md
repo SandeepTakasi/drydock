@@ -499,6 +499,39 @@ and `prove-failable` re-run after the edits (below).
 - **Forbidden:** any other class or markup change; editing `copy.ts`.
 - **Acceptance criterion:** `node -e "const c=require('child_process'),fs=require('fs');try{c.execSync('npx next build',{cwd:'site',stdio:'ignore'});c.execSync('node scripts/assert-copy.mjs',{cwd:'site',stdio:'ignore'})}catch(e){process.exit(1)}const s=fs.readFileSync('site/components/sections/Lifecycle.tsx','utf8');const d='site/out/_next/static/chunks';const css=fs.readdirSync(d).filter(f=>f.endsWith('.css')).map(f=>fs.readFileSync(d+'/'+f,'utf8')).join('');process.exit(s.includes('lg:last:col-span-1')&&!/[Ss]even/.test(s)&&css.includes('lg[:]last[:]col-span-1'.split('[:]').join(String.fromCharCode(92,58)))?0:1)"`
 
+### Wave 2.2 - Fixes for the Wave 2.R rejection
+
+> Added after approval (deviation 1). Retry 1 of the escalation policy's 2.
+> Repairs the review's major finding F1 and minors F2, F3, F4 and nit F6, all in
+> T2.1.1's two files (sequential handoff). Nit F5 is declined (deviation 4).
+
+#### T2.2.1 - Narrow the audit-corpus sentence, tighten the pins and the A10 note
+
+- **Description:** In `site/content/copy.ts` and `site/scripts/assert-copy.mjs`,
+  make exactly the replacements in the contract below.
+- **Files owned:** `site/content/copy.ts`, `site/scripts/assert-copy.mjs`
+- **Depends on:** T2.1.1
+- **Model / thinking:** Mechanical / off (Sonnet 5.5)   **Executor:** drydock:executor
+- **Context brief:** the Wave 2.R verdict below (F1-F6); `drydock/scripts/audit-corpus.mjs`
+  lines 1-13 (v3 plans only, i.e. 005 on); `.github/workflows/verify.yml` `on:`
+  (push to `main`, `pull_request`). CLAUDE.md "Honesty rule". No em dash in any
+  new string.
+- **Contract (complete; every string verbatim):**
+  - `wavecheck` detail: replace the sentence `"drydock/scripts/audit-corpus.mjs re-audits every sealed wave from a clean checkout, and this repository runs it in CI on every push."`
+    with `"drydock/scripts/audit-corpus.mjs re-audits every sealed wave of every plan from 005 on, and this repository runs it in CI, from a clean checkout, on every push to main and every pull request."` (F1)
+  - A10 `note`: replace `"then reported a pass once the probe was deleted."` with
+    `"then reported a pass once the probe was deleted on the task brief's instruction, which the skill itself forbids."` (F4)
+  - `assert-copy.mjs` `REQUIRED`: replace the literal `"prevents nothing"` with
+    `"It detects after the fact and prevents nothing."` (F3)
+  - `assert-copy.mjs` comment on the new pins: say `check` and `init` joined
+    **the page** in 0.16.0 (F6); say the `"Nine pieces"` pin fixes the
+    heading's text and does not count the cards (F2); say the `check` pin is the
+    card's whole sentence because the bare phrase also appears in the A10 note
+    (F3).
+- **Forbidden:** any other change to either file; adding a card-count
+  assertion (F2 is resolved by the comment); acting on F5; editing `docs/`.
+- **Acceptance criterion:** `node -e "const c=require('child_process'),fs=require('fs');try{c.execSync('npx next build',{cwd:'site',stdio:'ignore'});c.execSync('node scripts/assert-copy.mjs',{cwd:'site',stdio:'ignore'})}catch(e){process.exit(1)}const h=fs.readFileSync('site/out/index.html','utf8').replace(/<script[^>]*>[^]*?<[/]script>/g,'');const a=fs.readFileSync('site/scripts/assert-copy.mjs','utf8');process.exit(h.includes('of every plan from 005 on')&&h.includes('on every push to main and every pull request')&&!h.includes('CI on every push.')&&h.includes('which the skill itself forbids')&&a.includes('It detects after the fact and prevents nothing.')&&a.includes('joined the page in 0.16.0')?0:1)"`
+
 ### Wave 2.R - Quality review
 
 #### T2.R.1 - Fresh-context review of the page against the evidence
@@ -519,6 +552,10 @@ and `prove-failable` re-run after the edits (below).
 
 | # | Task | What deviated | Why | Impact | Recorded |
 |---|---|---|---|---|---|
+| 1 | T2.1.1 / Wave 2.2 | Wave 2.R REJECTED on F1: the contract's verbatim sentence "audit-corpus.mjs re-audits every sealed wave from a clean checkout, and this repository runs it in CI on every push" overclaims. The script re-audits only `format_version: 3` plans (005 on; 001-004 would fail 14 of 29 waves), and `verify.yml` runs on push to `main` and on pull requests, not every push. Wave 2.2 / T2.2.1 appended after approval as the repair, retry 1 of 2 | Planner error in the approved copy contract; the executor applied it verbatim, correctly | One sentence of approved copy changes, narrowed, before anything is pushed. The human sees the final wording at the Phase 2 gate | 2026-10-07 |
+| 2 | Wavecheck 2.1 | Check 3 called the CI sentence true on the evidence "`verify.yml:80` runs `audit-corpus.mjs` on push". It read `on: push` without its `branches: [main]` filter and did not test "every sealed wave" against the script's v3-only scope. **discovered-by-review** | The auditor checked that the claim had a mechanism, not the claim's quantifiers | The wavecheck 2.1 PASS stands on ownership and criteria. Its forbidden-audit sentence about the CI claim was wrong and is corrected by this entry, not by editing the sealed report | 2026-10-07 |
+| 3 | Wave 2.R | Ran unarmed: `wave-start 2.R` refuses, because "wave 2.R declares no owned files ... Arming an empty boundary would deny every write in the repo" | The reviewer is read-only and owns nothing; the refusal is correct | No enforcement receipt for 2.R. The reviewer was told not to write, and `git status` was clean after it ran | 2026-10-07 |
+| 4 | Wave 2.2 | F5 (nit, "every tracked or untracked file" vs the code's untracked-and-not-gitignored set) declined | The wording was set deliberately by pressure test P12, and a gitignored file is not one a user changed in scope | None on the claim's honesty; a later copy pass may tighten it | 2026-10-07 |
 
 ## Wavecheck reports
 
@@ -581,6 +618,37 @@ Deviations logged: 0 (0 discovered by wavecheck)
 | T2.1.2 | `9b6cb88` | `site/components/sections/Lifecycle.tsx` | `site/components/sections/Lifecycle.tsx` | none |
 
 Deviations logged: 0 (0 discovered by wavecheck)
+
+## Wave 2.R verdict, REJECTED, 2026-10-07
+
+A fresh-context Opus 5.5 reviewer (general-purpose, read-only, given the T2.R.1
+context brief) reviewed `9276d74..HEAD` and the built page. **REJECTED** on one
+major finding:
+
+1. **F1, MAJOR.** The audit-corpus sentence overclaims. It was dictated
+   verbatim by the contract. The script re-audits `format_version: 3` plans
+   only (`audit-corpus: PASS, 22 wave(s) in 5 plan(s)`, plans 005-009), while
+   plans 001-004 are the homepage's own and would fail 14 of 29 waves.
+   `verify.yml` triggers on push to `main` and on `pull_request`, not on every
+   push. The orchestrator re-verified both facts before accepting the finding.
+2. **F2, minor.** The `"Nine pieces"` comment claims the pin stops the count
+   going stale. Nothing counts the cards.
+3. **F3, minor.** `"prevents nothing"` appears twice on the page (the check card
+   and the A10 note), so deleting it from the card stays green.
+4. **F4, minor.** The A10 note omits that deleting the probe overrode the skill's
+   own "do not delete to make a FLAG go away".
+5. **F5, nit.** "Every tracked or untracked file" vs untracked-and-not-ignored.
+   Declined (deviation 4).
+6. **F6, nit.** "check and init joined in 0.16.0" reads as init shipping in
+   0.16.0. It shipped in 0.14.0.
+
+Verified clean: build, `assert-copy` (26 literals) and `assert-matrix` PASS; the
+A10 and A11 page statuses equal the compat cells, with tone `hold`; the
+`wave-start` lock claim holds (`drydock-audit.mjs:933-952`); the init, planwright
+and check details match the skills and the code; no token, cost or percentage
+figure and no em dash in the stripped page; `lg:last:col-span-1` is emitted
+inside `@media (min-width:64rem)`; nine `<li>` render; the flow strip, FAQ, hero
+and VERSION are untouched. Repair: Wave 2.2 (deviation 1), then a re-review.
 
 ## Progress log
 
