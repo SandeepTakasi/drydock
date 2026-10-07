@@ -582,6 +582,28 @@ Deviations logged: 5 (2 discovered by wavecheck)
 
 **Verdict: BLOCK.** Wave 1.R must not start. Plan status set to `BLOCKED`.
 
+### Wavecheck 1.3 (re-audit after T1.3.1r1) - PASS - 2026-10-07
+
+Re-run in full after the remediation (D18), not spot-checked on the one finding. `execution: fleet`: T1.3.1r1 was written by a spawned `drydock:executor` (Haiku 4.5); this audit is by the orchestrator, which wrote none of the diff.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | Waves 1.0-1.2 have PASS reports; D18 and the T1.3.1 → T1.3.1r1 supersession committed in `e43144f` before re-arming; `validate-plan` PASS (12 tasks, 5 waves) |
+| 2. Ownership audit | PASS | `audit-wave 1.3: PASS` (1 active task, 1 commit). `61ed102` (T1.3.1) and `2fe92cf` (T1.3.1r1) both touch `assert-copy.mjs`; T1.3.1 is struck through and SUPERSEDED, so the path has exactly one active owner in wave 1.3, and `61ed102` stands as history. 7 hook decisions recorded across the wave, so enforcement ran; no Bash write outside `owns`. Table and enforcement sentence below |
+| 3. Forbidden audit | PASS | `2fe92cf` adds three lines inside `REQUIRED_HOME` (one comment, the two literals) and nothing else; both literals still in `REQUIRED_EVIDENCE`; no `copy.ts` read. Re-checked on the combined file: lists now home 20, evidence 7, home = baseline 26 minus exactly the seven named plus `Deviations logged: 6 (3 discovered by wavecheck)`; the executor discriminator, over-claim (both pages), heading contract (both pages), relative-escape (both pages), motion and version checks are all present |
+| 4. Acceptance audit | PASS | T1.3.1r1 criterion re-run through `spawnSync(crit, {shell: true})` (cmd.exe): exit 0, which covers T1.3.1's own clauses (verify green, pin and excerpt mutations fail naming `pin`/`excerpt`) plus the two new mutations failing on home. Default mode: `assert-copy: PASS ... (home: 20 literals, evidence: 7 literals; 5x executor, 1 h1 per page, 1 excerpt (10 lines), 4 pins, motion contract, version matches plugin.json)`. `measure-reduced-motion.mjs` PASS |
+| 5. Deviation reconciliation | PASS | Deviation 5 logged and remediated by T1.3.1r1 per D18; T1.3.1r1 reported none and its diff shows none |
+
+### audit-wave 1.3, docs/plans/012-homepage-restructure.md
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.3.1r1 | `2fe92cf` | `site/scripts/assert-copy.mjs` | `site/scripts/assert-copy.mjs` | none |
+
+  note: enforcement active: 7 hook decision(s) recorded for wave 1.3 (0 denied)
+
+Deviations logged: 5 (2 discovered by wavecheck)
+
 ## Progress log
 
 | Date | Task | Result | Notes |
@@ -591,5 +613,6 @@ Deviations logged: 5 (2 discovered by wavecheck)
 | 2026-10-07 | T1.1.1-T1.1.6 | PASS | `7edc8af`, `e686060`, `ef0ee13`, `53d2a95`, `73a0ad2`, `f2c1f62`; wavecheck 1.1 PASS |
 | 2026-10-07 | T1.2.1 | PASS | `642363f`; wavecheck 1.2 PASS |
 | 2026-10-07 | T1.3.1 | BLOCK | `61ed102`; criterion exits 0 but wavecheck 1.3 BLOCK on deviation 5; status BLOCKED, awaiting a human decision |
+| 2026-10-07 | T1.3.1r1 | PASS | `2fe92cf`; D18 approved by Sandeep Takasi; wavecheck 1.3 re-audit PASS |
 
 ## Reconcile report
