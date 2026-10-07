@@ -382,6 +382,26 @@ Execution: `fleet`. Three `drydock:executor` subagents were spawned one at a tim
 
 Deviations logged: 3 (1 discovered by wavecheck)
 
+### Wavecheck 1.2, PASS, 2026-10-07
+
+Execution: `fleet`, one `drydock:executor` (Haiku 4.5). The auditor did not write the diff. This is a clean mechanical pass.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | Status `EXECUTING`; wave 1.1's last report is PASS, and `wave-start 1.2` accepted it; `validate-plan --strict` PASS at `6e4deeb`. |
+| 2. Ownership audit | PASS | `audit-wave 1.2: PASS (1 task(s), 1 commit(s), attribution: manifest)`, working tree clean. The snapshot was cleared before arming (D10), and 5 commands were seen with 0 writes outside `owns`. |
+| 3. Forbidden audit | PASS | `git show 5adf2eb` changes 4 lines inside the 0.17.1 entry only. The entry is a **byte-for-byte match** with the text pinned in T1.2.1's brief: the auditor extracted the pinned block and compared it with the CHANGELOG section, giving `exact match: true`. |
+| 4. Acceptance audit | PASS | The auditor re-ran the criterion through `spawnSync(..., {shell: true})`: exit 0. |
+| 5. Deviation reconciliation | PASS | The executor reported none, and the auditor found none. |
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.2.1 | `5adf2eb` | `drydock/CHANGELOG.md` | `drydock/CHANGELOG.md` | none |
+
+  note: enforcement active: 1 hook decision(s) recorded for wave 1.2 (0 denied)
+
+Deviations logged: 3 (1 discovered by wavecheck)
+
 ## Progress log
 
 | Date | Task | Result | Notes |
