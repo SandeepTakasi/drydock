@@ -1,7 +1,7 @@
 ---
 plan: 013-guard-beside-any-planner
 format_version: 3
-status: EXECUTING
+status: DONE
 isolation: none
 enforcement: required
 attribution: manifest
@@ -355,7 +355,7 @@ N/A: `lane: small` takes no adversarial pressure test (D2). The planner re-opene
 
 **Exit state:** `wave-start` refuses over a check boundary; the check skill and both docs carry the other-planner step; A12 exists and A10 is updated; the homepage Limits line states the opt-in prevention with its Bash ceiling; 0.18.0 is cut; every suite, `npm run verify` and `audit-corpus` PASS.
 
-**Phase gate:** wavecheck 1.1 PASS, the five plugin suites PASS, `cd site && npm run verify` PASS, `audit-corpus` PASS from a clean worktree, and the release approved by a named human before any push or install.
+**Phase gate: CLOSED, approved by Sandeep Takasi - 2026-10-07.** Criteria were wavecheck 1.1 PASS, the five plugin suites PASS, `cd site && npm run verify` PASS, `audit-corpus` PASS from a clean worktree, and the release approved by a named human before any push or install.
 
 ### Wave 1.1 - Refusal, skill step, recipe, evidence, page, release
 
@@ -475,7 +475,7 @@ N/A: `lane: small` takes no adversarial pressure test (D2). The planner re-opene
 | 1 | T1.1.1 | The case `wave-start still replaces a leftover plan-wave boundary` asserts `wave-start: armed` and that the old plan name `009-x` is gone, rather than that the file names this plan | Executor choice | Equivalent in effect: the boundary was rewritten by this arming. Suite 161/161 | executor report |
 | 2 | T1.1.3 | The commit trailer reads `Co-Authored-By: Claude Haiku 4.5` instead of the trailer the brief gave | The executor used its own model identity | None under `attribution: manifest`; the subject and owned files are as specified | executor report |
 | 3 | T1.1.5 | The comment above the new pins is the executor's own wording (the task gave its content, not its text), and the two pins now sit after `/drydock:init` in `REQUIRED_HOME` | The comment was not pinned | Comment reads as specified (A12, the Bash half must stay); order inside the list has no effect on the check | executor report |
-| 4 | T0 (plan defect) | The site A10 evidence row keeps its old `label`, `check skill runs in a live session (model-invoked, inside a plan wave)`, which its updated note now contradicts (slash command, unplanned work). T0's pinned spec said `id`, `label` and `tone` unchanged | Planner oversight when pinning the A10 site texts | A label narrower than its note: an understatement, not an over-claim. Carried to the Phase 1 gate as a one-line follow-up; `docs/compatibility.md`'s A10 property text is already correct | discovered-by-wavecheck |
+| 4 | T0 (plan defect) | The site A10 evidence row keeps its old `label`, `check skill runs in a live session (model-invoked, inside a plan wave)`, which its updated note now contradicts (slash command, unplanned work). T0's pinned spec said `id`, `label` and `tone` unchanged | Planner oversight when pinning the A10 site texts | A label narrower than its note: an understatement, not an over-claim. Fixed at the gate on the user's instruction, outside the sealed wave, as a `drydock:check`-audited one-line change in `a014d24`: the label now reads `check skill (scope audit without a plan) runs in a live session`, matching `docs/compatibility.md` | discovered-by-wavecheck |
 
 ## Wavecheck reports
 
@@ -510,5 +510,6 @@ Deviations logged: 4 (1 discovered by wavecheck)
 |---|---|---|---|
 | 2026-10-07 | T0 | PASS | Baseline, README row, live guard run (steps 1-6 as specified; slash command typed by the user), pinned texts written; status EXECUTING |
 | 2026-10-07 | T1.1.1-T1.1.6 | PASS | `3bd5178`, `78929d6`, `e91936b`, `577d07e`, `fa94c3b`, `e0847c1`; wavecheck 1.1 PASS |
+| 2026-10-07 | Phase 1 gate | CLOSED | Approved by Sandeep Takasi; deviation 4 fixed in `a014d24`; status DONE; pushed; installed 0.18.0 |
 
 ## Reconcile report
