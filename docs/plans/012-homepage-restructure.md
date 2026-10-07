@@ -1,7 +1,7 @@
 ---
 plan: 012-homepage-restructure
 format_version: 3
-status: EXECUTING
+status: DONE
 isolation: none
 enforcement: required
 attribution: manifest
@@ -310,7 +310,7 @@ grepping an export that cannot contain them yet.
 install, FAQ; `/drydock/evidence/` renders the full matrix; `npm run verify` and
 `measure-reduced-motion.mjs` pass; seatrial GO.
 
-**Phase gate:** `cd site && npm run verify` PASS, `cd site && node scripts/measure-reduced-motion.mjs` PASS, Wave 1.R APPROVED, seatrial GO, and the rendered page approved by a named human before any push.
+**Phase gate: CLOSED, approved by Sandeep Takasi - 2026-10-07.** Criteria were `cd site && npm run verify` PASS, `cd site && node scripts/measure-reduced-motion.mjs` PASS, Wave 1.R APPROVED, seatrial GO (re-run at `b0c5055`), and the rendered page approved by a named human before any push.
 
 ### Wave 1.0 - Contracts
 
@@ -814,5 +814,6 @@ Third fresh-context review (general-purpose agent, Opus 5.5, read-only), scoped 
 | 2026-10-07 | T1.6.1 | PASS | `9a4a18f`; wavecheck 1.6 PASS |
 | 2026-10-07 | T1.R.1 | APPROVED | Third review, of Waves 1.5-1.6; two non-blocking notes |
 | 2026-10-07 | Testing Gate | GO | Full seatrial re-run at `b0c5055`: TG1-TG5 PASS, TG6 PASS (failed as designed). Sheet in `.drydock/testing/012-homepage-restructure/verdict.md`. Phase 1 gate awaiting human approval |
+| 2026-10-07 | Phase 1 gate | CLOSED | Approved by Sandeep Takasi; status DONE; pushed |
 
 ## Reconcile report
