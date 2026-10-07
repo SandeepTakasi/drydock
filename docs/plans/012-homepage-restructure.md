@@ -192,6 +192,7 @@ _Filled by T0, 2026-10-07._
 | 17 | Pressure test by a spawned agent? | Done inline by the planner with fresh eyes (re-opened every claimed file) | planner | The session runs under a no-unrequested-agents rule; the skill permits the inline pass |
 | 18 | How is wavecheck 1.3's BLOCK (deviation 5) repaired? | A targeted fix task with a new id via the contract's replaced-task mechanism: `T1.3.1` struck through, `T1.3.1r1` added to wave 1.3, then a re-audit of wave 1.3. Not a new Wave 1.4, which the user first chose: `wave-start` will not arm any wave after one whose last verdict is BLOCK | user (Sandeep Takasi, 2026-10-07) | The tool's designed escape from a BLOCK is a re-audit PASS of the same wave; plan 004 Decision 10 is the precedent. Consumed by T1.3.1r1 |
 | 19 | How is the first Wave 1.R REJECTED (B1, B2) repaired? | Wave 1.4, new ids T1.4.1 (B2, `assert-copy.mjs`) and T1.4.2 (B1, evidence page and `copy.ts`), then a fresh Wave 1.R. Folded into T1.4.2 as exact text: the step 02 "file-tool writes" wording, the excerpt caption naming trimmed lines, deleting unrendered `hero.installLabel` and `lifecycle.flow` (deviation 4). Left for the human gate: deviation 3's whole-lines question, the evidence page's `Section` reveal starting at `opacity:0`, and the console 404 for `__next.evidence.__PAGE__.txt` | user (standing instruction for this run: "A review rejection is repaired in a new wave with new task ids") | Retry 1 of 2 under the escalation policy; a review wave takes no wavecheck, so `wave-start` arms 1.4 on 1.0-1.3's PASS reports |
+| 20 | How is the first seatrial NO-GO (TG3) repaired? | Waves 1.5 (T1.5.1 wraps refusal outputs; T1.5.2 wraps the hero excerpt and marks its badge) and 1.6 (T1.6.1 gates the badge, review F1), then a focused fresh review of the 1.5-1.6 diff and a full seatrial re-run. 1.6 is separate because its criterion needs T1.5.2's marker in the export | user (Sandeep Takasi, 2026-10-07: "fix TG3 plus items 2 and 6, then rerun seatrial") | A test-gate failure is repaired like a review rejection: new wave, new ids. Wrapping, not a styled scrollbar, because it also removes the clipped lines |
 
 ## Open questions
 
@@ -490,6 +491,43 @@ install, FAQ; `/drydock/evidence/` renders the full matrix; `npm run verify` and
 - **Forbidden:** changing `evidence.rows`, `evidence.provenance`, `hero.artifact.lines`, any `refusals` item, any `limits` item, or any other string; a second `<h1>`; hardcoding `/drydock`; editing any other file.
 - **Acceptance criterion:** `node -e "const c=require('child_process'),fs=require('fs');try{c.execSync('npx next build',{cwd:'site',stdio:'ignore'});c.execSync('npx tsc --noEmit',{cwd:'site',stdio:'ignore'});c.execSync('npx eslint app/evidence/page.tsx content/copy.ts',{cwd:'site',stdio:'ignore'})}catch(e){process.exit(1)}const raw=fs.readFileSync('site/out/evidence/index.html','utf8').replace(new RegExp('<script[^>]*>[^]*?</script>','g'),'');const a=raw.indexOf('<h1'),b=raw.indexOf('</h1>',a);const h1=raw.slice(raw.indexOf('>',a)+1,b);const s=fs.readFileSync('site/content/copy.ts','utf8');process.exit(a>-1&&raw.split('<h1').length===2&&raw.slice(a,raw.indexOf('>',a)).includes('text-display')&&raw.slice(Math.max(0,a-600),a).includes('max-w-6xl')&&h1.length>0&&raw.split(h1).length===2&&!raw.includes('04 / THE EVIDENCE')&&!s.includes('installLabel')&&!s.includes('flow: [')&&s.includes('denies file-tool writes outside its boundary')&&s.includes('with lines trimmed, never reworded')?0:1)"`
 
+### Wave 1.5 - Repair: seatrial TG3, excerpt scrollbar (deviation 8)
+
+> Repair of the first Testing Gate NO-GO (TG3) plus two human-gate items, by
+> the user's decision (D20). New wave, new task ids.
+
+#### T1.5.1 - Refusal outputs wrap instead of scrolling
+
+- **Description:** In `Refusals.tsx`, render each output `<pre>` with `whitespace-pre-wrap break-words` and drop the `overflow-x-auto` scroll box, so every pin is visible without sideways scrolling at 1280 and 375 (seatrial TG3).
+- **Files owned:** `site/components/sections/Refusals.tsx`
+- **Depends on:** T1.4.1, T1.4.2
+- **Model / thinking:** Mechanical / off (Haiku 4.5)   **Executor:** drydock:executor
+- **Context brief:** D10, D20; deviation 8; `site/components/sections/Refusals.tsx`; the TG3 row of `.drydock/testing/012-homepage-restructure/verdict.md` (three pins past the box edge at 1280x900).
+- **Forbidden:** changing `data-source`, `data-pin`, the `<pre>`'s text, or any other markup; a `motion` import; editing any other file.
+- **Acceptance criterion:** `node -e "const c=require('child_process'),fs=require('fs');try{c.execSync('npx next build',{cwd:'site',stdio:'ignore'});c.execSync('npx eslint components/sections/Refusals.tsx',{cwd:'site',stdio:'ignore'})}catch(e){process.exit(1)}const raw=fs.readFileSync('site/out/index.html','utf8').replace(new RegExp('<script[^>]*>[^]*?</script>','g'),'');const tags=raw.match(new RegExp('<pre data-source=[^>]*>','g'))||[];const src=fs.readFileSync('site/components/sections/Refusals.tsx','utf8');process.exit(tags.length===4&&tags.every(t=>t.includes('whitespace-pre-wrap')&&t.includes('break-words'))&&!src.includes('overflow-x-auto')?0:1)"`
+
+#### T1.5.2 - The hero excerpt wraps, and its badge names its report
+
+- **Description:** In `Hero.tsx`, render the excerpt `<pre>` with `whitespace-pre-wrap break-words` and drop the `overflow-x-auto` box (no light scrollbar, no clipped lines), and give the verdict badge `data-excerpt-verdict={hero.artifact.source}` so T1.6.1 can gate it (review F1).
+- **Files owned:** `site/components/sections/Hero.tsx`
+- **Depends on:** T1.4.1, T1.4.2
+- **Model / thinking:** Mechanical / off (Haiku 4.5)   **Executor:** drydock:executor
+- **Context brief:** D2, D6, D20; deviation 8; `site/components/sections/Hero.tsx`; the second Wave 1.R verdict's F1.
+- **Forbidden:** changing the `<span>` per line, `data-excerpt-of`, any text, the `<h1>`, the install lines; a `motion` import, `initial=` or `data-reveal`; editing any other file.
+- **Acceptance criterion:** `node -e "const c=require('child_process'),fs=require('fs');try{c.execSync('npx next build',{cwd:'site',stdio:'ignore'});c.execSync('npx eslint components/sections/Hero.tsx',{cwd:'site',stdio:'ignore'})}catch(e){process.exit(1)}const raw=fs.readFileSync('site/out/index.html','utf8').replace(new RegExp('<script[^>]*>[^]*?</script>','g'),'');const pre=(raw.match(new RegExp('<pre data-excerpt-of=[^>]*>'))||[''])[0];const src=fs.readFileSync('site/components/sections/Hero.tsx','utf8');process.exit(pre.includes('whitespace-pre-wrap')&&pre.includes('break-words')&&new RegExp('data-excerpt-verdict=.docs/plans/004-seatrial-e2e-gate.md.[^>]*>BLOCK<').test(raw)&&!src.includes('overflow-x-auto')&&!src.includes('motion/react')?0:1)"`
+
+### Wave 1.6 - Repair: the verdict badge is gated (deviation 8)
+
+#### T1.6.1 - assert-copy checks the excerpt's verdict badge against its report
+
+- **Description:** In `assert-copy.mjs`, require exactly one `data-excerpt-verdict` element on home; its value must equal a `data-excerpt-of` value on the page, and its decoded text must equal the verdict word (`PASS` or `BLOCK`, the first one) in that excerpt's bound `### ` report heading. Failure messages contain `excerpt`.
+- **Files owned:** `site/scripts/assert-copy.mjs`
+- **Depends on:** T1.5.2
+- **Model / thinking:** Standard / default (Sonnet 5.5)   **Executor:** drydock:executor
+- **Context brief:** D2, D20; deviation 8; `site/scripts/assert-copy.mjs` (the excerpt check from T1.4.1, which already locates the bound report heading); the built `site/out/index.html` badge markup.
+- **Forbidden:** weakening or deleting any existing check; reading `copy.ts`; a dependency; editing any other file.
+- **Acceptance criterion:** `node -e "const c=require('child_process'),fs=require('fs'),os=require('os'),p=require('path');try{c.execSync('npm run verify',{cwd:'site',stdio:'ignore'})}catch(e){process.exit(1)}const h=fs.readFileSync('site/out/index.html','utf8');const run=(n,body)=>{const f=p.join(os.tmpdir(),'dd012-r3-'+n+'.html');fs.writeFileSync(f,body);return c.spawnSync('node',['scripts/assert-copy.mjs',f],{cwd:'site',encoding:'utf8'})};const ok=run('ok',h);const flip=run('flip',h.replace(new RegExp('data-excerpt-verdict=[^>]*>BLOCK<','g'),m=>m.split('>BLOCK<').join('>PASS<')));const gone=run('gone',h.split('data-excerpt-verdict=').join('data-x='));process.exit(ok.status===0&&flip.status===1&&(flip.stderr||'').includes('excerpt')&&gone.status===1&&(gone.stderr||'').includes('excerpt')?0:1)"`
+
 ### Wave 1.R - Quality review
 
 #### T1.R.1 - Fresh-context review of the page against the evidence
@@ -500,7 +538,7 @@ install, FAQ; `/drydock/evidence/` renders the full matrix; `npm run verify` and
   paint, the SVG contracts hold, the new gate checks can fail. Record
   `## Wave 1.R verdict, APPROVED|REJECTED, <date>`.
 - **Files owned:** none (the verdict is written by the orchestrator)
-- **Depends on:** T1.4.1, T1.4.2
+- **Depends on:** T1.5.1, T1.6.1
 - **Model / thinking:** Judgment / extended (Opus 5.5)   **Executor:** general-purpose reviewer, fresh context
 - **Context brief:** `git diff <baseline SHA>..HEAD -- site/`; this plan's Requirement, Decision Log, task blocks and Testing Gate; CLAUDE.md "Honesty rule for site copy"; `docs/compatibility.md`.
 - **Acceptance criterion:** `node -e "const s=require('fs').readFileSync('docs/plans/012-homepage-restructure.md','utf8');process.exit(/^## Wave 1[.]R verdict, APPROVED/m.test(s)?0:1)"`
@@ -516,6 +554,7 @@ install, FAQ; `/drydock/evidence/` renders the full matrix; `npm run verify` and
 | 5 | T1.3.1 | `REQUIRED_HOME` drops `"outside the project directory are not enforced"` and `"Bash-mediated writes bypass file-tool hooks"`, which the sketch keeps on home (it removes exactly seven named literals, and these two are not among them). They appear only in `REQUIRED_EVIDENCE`, so home carries 18 pinned literals where the sketch specifies 20. The executor reported "deviations: none" | Unknown; both literals are also in `REQUIRED_EVIDENCE`, so the executor likely treated the list as a move rather than a copy | Weakens an existing check, which the task forbids: the home page's Limits section can lose both enforcement ceilings and `npm run verify` stays green. Unreported | discovered-by-wavecheck |
 | 6 | Wave 1.R | First review REJECTED with two blockers: B1, the evidence page header renders unstyled outside the container (`app/evidence/page.tsx`); B2, the excerpt check matches each line against the whole of plan 004, which also holds the PASS re-audit, so the hero's BLOCK row or verdict could read PASS with `npm run verify` green, and the source attributes were unconstrained | B1 was noted in wavecheck 1.1 as quality, not conformance; B2 sat inside T1.3.1's sketch, which asked only for a substring match | Repaired in Wave 1.4 (D19), a new wave with new task ids per CLAUDE.md; T1.R.1 now depends on T1.4.1 and T1.4.2 | Wave 1.R review |
 | 7 | T1.4.1 | Beyond the sketch: both path checks also reject any path containing `..`; a failed `docs/plans/` prefix does not skip the content checks (extra failure lines); a first line that is not a `### ` heading reports one failure and skips that excerpt's per-line checks | Executor hardening choices | Stricter only: every case still fails, and no passing case changed (the export passes with home 21 / evidence 7) | executor report |
+| 8 | Testing Gate | Seatrial NO-GO at `f3be934`: TG3 (blocker) failed, three of four refusal pins past the right edge of their `overflow-x-auto` boxes at 1280x900 | T1.1.3's sketch asked for an `overflow-x-auto` box so a long line never widens the page; at a two-column 1280 layout that hides the pin, which TG3 requires visible | Repaired in Waves 1.5-1.6 (D20) with two human-gate items folded in; T1.R.1 now depends on T1.5.1 and T1.6.1 | seatrial |
 
 ## Wavecheck reports
 
