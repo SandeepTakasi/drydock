@@ -41,9 +41,31 @@ export interface FaqItem {
   a: string;
 }
 
+/**
+ * One refusal, pasted from a real run. `source` is the repo-relative file that
+ * emits it and `pin` a static fragment of the message that must appear both in
+ * that file and in `output`. `output` is verbatim: whole lines may be dropped,
+ * characters in kept lines never altered.
+ */
+export interface Refusal {
+  title: string;
+  body: string;
+  command: string;
+  source: string;
+  pin: string;
+  output: string;
+}
+
 /** Section shells. Hero is exempt from SectionMeta and has no entry here. */
 export const meta: Record<
-  "problem" | "lifecycle" | "terminal" | "evidence" | "install" | "faq",
+  | "problem"
+  | "lifecycle"
+  | "refuses"
+  | "limits"
+  | "terminal"
+  | "evidence"
+  | "install"
+  | "faq",
   SectionMeta
 > = {
   problem: {
@@ -54,7 +76,17 @@ export const meta: Record<
   lifecycle: {
     id: "lifecycle",
     eyebrow: "02 / HOW IT WORKS",
-    heading: "Nine pieces, one contract",
+    heading: "Plan, run in waves, audit against the diff",
+  },
+  refuses: {
+    id: "refuses",
+    eyebrow: "03 / WHAT IT REFUSES",
+    heading: "Four refusals, from real runs",
+  },
+  limits: {
+    id: "limits",
+    eyebrow: "04 / LIMITS",
+    heading: "What it does not do",
   },
   terminal: {
     id: "terminal",
@@ -114,23 +146,55 @@ export const site = {
   repo: REPO,
 };
 
-/** Top-bar navigation. Every href is a section id rendered on this page. */
+/** Top-bar navigation. Home sections as `/#id`, the evidence page as a route. */
 export const nav: { href: string; label: string }[] = [
-  { href: "#problem", label: "Problem" },
-  { href: "#lifecycle", label: "How it works" },
-  { href: "#evidence", label: "Evidence" },
-  { href: "#install", label: "Install" },
+  { href: "/#lifecycle", label: "How it works" },
+  { href: "/#refuses", label: "What it refuses" },
+  { href: "/evidence", label: "Evidence" },
+  { href: "/#install", label: "Install" },
 ];
 
 export const hero = {
   kicker: "CLAUDE CODE PLUGIN",
   headline: "Drydock",
   promise:
-    "A plan that is checked against the diff: run in parallel by subagents, or alone by one session.",
+    "Agents drift: green tests, a clean review, and a diff that does things nobody asked for.",
   thesis: "NOTHING SAILS UNTIL IT LEAVES THE DOCK",
-  sub: "A plan document is the source of truth. Subagents run it in parallel waves with disjoint file ownership, or one session runs it in sequence and says so. Either way the gate audits the wave against the actual diff, never against what the executor reports.",
+  sub: "A plan document is the source of truth. Each wave is audited against the actual diff, never against what the executor reports.",
   badges: [`v${VERSION} · OPEN PILOT`, "MIT", "PLAN FORMAT v3"],
   ctaPrimary: "Install it",
+  installLabel: "Install in Claude Code",
+  /**
+   * Verbatim lines from plan 004's `### Wavecheck 1.1 — BLOCK — 2026-08-20`
+   * report. Each `text`, with `**` and backticks stripped and whitespace
+   * collapsed, is a substring of the plan file normalised the same way.
+   */
+  artifact: {
+    source: "docs/plans/004-seatrial-e2e-gate.md",
+    href: `${BLOB}/docs/plans/004-seatrial-e2e-gate.md`,
+    label: "drydock:wavecheck, plan 004",
+    verdict: "BLOCK",
+    lines: [
+      { text: "Wavecheck 1.1 — BLOCK — 2026-08-20", tone: "block" },
+      { text: "| 1. Plan integrity | PASS |", tone: "pass" },
+      { text: "| 2. Ownership audit | PASS |", tone: "pass" },
+      { text: "| 3. Forbidden audit | PASS |", tone: "pass" },
+      { text: "| 4. Acceptance audit | PASS |", tone: "pass" },
+      { text: "| 5. Deviation reconciliation | BLOCK |", tone: "block" },
+      {
+        text: "T1.1.5 invented a fourth verdict value PARTIAL that the format contract does not define",
+        tone: "dim",
+      },
+      {
+        text: "Nothing was fixed by this audit. An auditor who edits the code under audit is no auditor.",
+        tone: "dim",
+      },
+      { text: "Deviations logged: 6 (3 discovered by wavecheck)", tone: "dim" },
+      { text: "Verdict: BLOCK. Wave 1.2 must not start.", tone: "block" },
+    ] as TerminalLine[],
+    caption:
+      "An excerpt of a real wavecheck report, verbatim from plan 004: every acceptance criterion passed, and the gate still blocked a verdict value the contract does not define.",
+  },
   wave: {
     label: "WAVE 1.1",
     subLabel: "3 TASKS · DISJOINT OWNERSHIP",
@@ -298,7 +362,33 @@ export const terminal: {
   ],
 };
 
-export const lifecycle: { flow: string[]; loop: string; pieces: Piece[] } = {
+export const lifecycle: {
+  flow: string[];
+  loop: string;
+  steps: { index: string; title: string; body: string }[];
+  readmeHref: string;
+  readmeLinkText: string;
+  pieces: Piece[];
+} = {
+  steps: [
+    {
+      index: "01",
+      title: "Plan",
+      body: "planwright writes a plan document: phases, parallel waves, and atomic tasks that each own their files. A human approves it before anything runs.",
+    },
+    {
+      index: "02",
+      title: "Run in parallel waves",
+      body: "Subagents run each wave in parallel with disjoint file ownership, or one session runs it in sequence and says so. While a wave is armed, a hook denies writes outside its boundary.",
+    },
+    {
+      index: "03",
+      title: "Audit each wave against the diff",
+      body: "wavecheck audits the finished wave against the plan using the actual diff: ownership, forbidden lists, acceptance criteria, deviations. PASS or BLOCK, and no retries.",
+    },
+  ],
+  readmeHref: `${BLOB}/drydock/README.md`,
+  readmeLinkText: "Read the plugin README for every piece",
   flow: [
     "planwright",
     "human approves",
@@ -373,6 +463,85 @@ export const lifecycle: { flow: string[]; loop: string; pieces: Piece[] } = {
         "For work too small for a plan: state the scope in a few lines, do the work, and an audit afterwards flags every tracked or untracked file changed outside it and every criterion that fails. It detects after the fact and prevents nothing.",
     },
   ],
+};
+
+export const refusals: { lead: string; items: Refusal[] } = {
+  lead: "Four refusals, each pasted from a real run against a scratch fixture and traced to the file that prints it.",
+  items: [
+    // `node drydock/scripts/drydock-audit.mjs validate-plan plan.md` in a scratch
+    // dir; plan.md is a format_version 3 plan whose T1.0.1 and T1.0.2 (wave 1.0)
+    // both own `a.txt`. Dropped: the version line (absolute local path).
+    {
+      title: "Two tasks, one file",
+      body: "Before any agent is spawned, the validator rejects a plan whose same-wave tasks own the same file.",
+      command: "node drydock-audit.mjs validate-plan plan.md",
+      source: "drydock/scripts/drydock-audit.mjs", pin: "same-wave ownership must be disjoint",
+      output:
+        "validate-plan: FAIL (1), plan.md\n  - wave 1.0: `a.txt` is owned by both T1.0.1 and T1.0.2, same-wave ownership must be disjoint",
+    },
+    // `node drydock/scripts/drydock-audit.mjs audit-wave plan.md 1.0` in a scratch
+    // git repo: T1.0.1 owns `a.txt` but its commit also adds `stray.txt`; T1.0.2
+    // owns and commits `b.txt`; both recorded with task-close (attribution:
+    // manifest). Dropped: git CRLF warnings, the table, notes, the version line.
+    {
+      title: "A file nobody owned",
+      body: "After the wave, the audit reads each task commit from git and fails any task whose diff touched a file outside its owns, whatever the executor reported.",
+      command: "node drydock-audit.mjs audit-wave plan.md 1.0",
+      source: "drydock/scripts/drydock-audit.mjs", pin: "which is outside its",
+      output:
+        "audit-wave 1.0: FAIL (1), plan.md\n  - task T1.0.1: commit ab46abe changes `stray.txt`, which is outside its `owns` (`a.txt`)",
+    },
+    // `node drydock/hooks/enforce-owns.mjs` with CLAUDE_PROJECT_DIR set to a
+    // scratch dir holding .drydock/wave-owns.json =
+    // {"plan":"900-fixture","wave":"1.0","owns":["a.txt"]}, fed on stdin
+    // {"tool_name":"Write","cwd":<dir>,"tool_input":{"file_path":<dir>/b.txt,"content":"x"}}.
+    // Exit 2; `output` is the deny reason (systemMessage). b.txt was not written.
+    {
+      title: "A write outside the boundary",
+      body: "While a wave is armed, the hook denies a file-tool write to any path the wave does not own, and the file is left untouched.",
+      command: "Write b.txt (wave 1.0 owns a.txt)",
+      source: "drydock/hooks/enforce-owns.mjs", pin: "does not own",
+      output:
+        "Drydock ownership violation: 900-fixture wave 1.0 does not own b.txt.\nOwned by this wave: a.txt\nIf correct implementation needs this file, that is a deviation, report it rather than widening your own boundary. Stale? delete .drydock/wave-owns.json",
+    },
+    // `node drydock/scripts/drydock-audit.mjs wave-start plan.md 1.1` in a scratch
+    // git repo with plan.md committed: tasks T1.0.1, T1.0.2 (wave 1.0) and
+    // T1.1.1 (wave 1.1), and no wavecheck report at all. Nothing dropped.
+    {
+      title: "A skipped gate",
+      body: "The next wave cannot be armed while the one before it has no PASS wavecheck report.",
+      command: "node drydock-audit.mjs wave-start plan.md 1.1",
+      source: "drydock/scripts/drydock-audit.mjs", pin: "has no PASS wavecheck report",
+      output:
+        "wave-start: wave 1.0 has no PASS wavecheck report (none), so wave 1.1 cannot be armed.\n  Run drydock:wavecheck on wave 1.0 (after a BLOCK and a replan, a re-audit heading whose PASS supersedes the BLOCK), commit the report, then re-arm.",
+    },
+  ],
+};
+
+export const limits: { lead: string; items: string[]; evidenceLinkText: string } = {
+  lead: "What the mechanism cannot see, stated before you find it.",
+  items: [
+    "Two ceilings stand, both exercised rather than assumed: Bash-mediated writes bypass file-tool hooks entirely, and paths outside the project directory are not enforced. The wave audit is the backstop.",
+    "For work too small for a plan, the check skill audits scope afterwards. It detects after the fact and prevents nothing.",
+    "Gate compliance is measured, not asserted: 28 of 29 wave gates were invoked at their boundary across 5 pilot plans. Every session counted knew it was being observed, so read the figure as a ceiling, not a rate.",
+    "Human approval is an instruction the plan format states and a reader upholds. Nothing in the tooling stops a session writing status: APPROVED itself.",
+  ],
+  evidenceLinkText: "See the full evidence matrix",
+};
+
+export const evidencePage: {
+  title: string;
+  description: string;
+  heading: string;
+  lead: string;
+  homeLinkText: string;
+} = {
+  title: "Evidence: what Drydock has verified",
+  description:
+    "Every verification claim Drydock makes, with its status and date, kept in sync with docs/compatibility.md.",
+  heading: "What is verified, and what is not",
+  lead: "Each row mirrors docs/compatibility.md, the source of truth. A row that has not passed says so.",
+  homeLinkText: "Back to the homepage",
 };
 
 export const install: {
