@@ -522,10 +522,31 @@ and `prove-failable` re-run after the edits (below).
 
 ## Wavecheck reports
 
+### Wavecheck 1.1 - PASS - 2026-10-07
+
+`execution: fleet`: T1.1.1 ran in a spawned `drydock:executor` (Sonnet), so this
+audit is not self-authored. Wavecheck ran from the installed 0.16.0 skill.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `format_version: 3`, status `EXECUTING`, wave 1.1 is the first wave (no prior report required); `validate-plan` PASS at T0 |
+| 2. Ownership | PASS | `audit-wave 1.1: PASS, docs/plans/009-site-016-additions.md (1 task(s), 1 commit(s), attribution: manifest)`; table below. **enforcement active: 5 hook decision(s) recorded for wave 1.1 (0 denied)**; bash layer 7 command(s) seen, 0 write(s) detected outside `owns`. Working tree clean |
+| 3. Forbidden | PASS | `ca612bf` touches only `docs/compatibility.md` and `docs/verification-log.md`: nothing under `site/`, `check-probe.txt` and `.drydock/` not staged. Transcript shows the audit run exactly twice, both at the skill's Step 4 command. Status `OBSERVED FLAG THEN PASS` is what the two outputs show; no PASSED claim |
+| 4. Acceptance | PASS | T1.1.1 criterion run through `spawnSync(..., {shell: true})` (`cmd.exe`): exit 0 |
+| D13 reproduction | PASS | Re-ran `node drydock/scripts/drydock-audit.mjs check .drydock/check.md` after the commit: `check: PASS (2 file(s), 1 criteria)`, exit 0, identical to the recorded run-2 line. Subagent transcript `subagents/agent-ab1aed38e2d54f077.jsonl` contains a `Skill` tool_use with `"skill":"drydock:check"` and `Launching skill: drydock:check`, and both recorded outputs appear as Bash **tool results** (`FLAG outside scope: check-probe.txt` / `check: FLAG (1)` / `exit=1`, then `check: PASS (2 file(s), 1 criteria)` / `exit=0`), not as model-written text |
+| 5. Deviations | PASS | Executor reported none. Its notes (probe deleted with Bash `rm`, an owned file the brief said to delete; `${CLAUDE_PLUGIN_ROOT}` never appeared, the cache path was printed by Step 4) are within the brief, not deviations |
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.1.1 | `ca612bf` | `docs/compatibility.md`<br>`docs/verification-log.md` | `docs/verification-log.md`<br>`docs/compatibility.md`<br>`.drydock/check.md`<br>`check-probe.txt` | none |
+
+Deviations logged: 0 (0 discovered by wavecheck)
+
 ## Progress log
 
 | Date | Task | Result | Notes |
 |---|---|---|---|
 | 2026-10-07 | T0 | DONE | Baseline at `9276d74`; installed 0.16.0, no VERSION DRIFT; `verify.yml` green on `9276d74`; README row added; status EXECUTING; criterion exits 0; `assert-matrix` PASS |
+| 2026-10-07 | T1.1.1 | DONE | `ca612bf`; A10 `OBSERVED FLAG THEN PASS`; wavecheck 1.1 PASS, reproduction matched |
 
 ## Reconcile report
