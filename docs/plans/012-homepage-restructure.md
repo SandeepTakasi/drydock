@@ -686,6 +686,20 @@ Fresh-context review (general-purpose agent, Opus 5.5, read-only) of `git diff 1
 
 Remedy: Wave 1.4 (D19, deviation 6).
 
+## Wave 1.R verdict, APPROVED, 2026-10-07
+
+Second fresh-context review (general-purpose agent, Opus 5.5, read-only) of `15570df..e619e17`, after wavecheck 1.4 PASS: `npm run verify` re-run, 15 fixture-mode mutations, both pages served at `/drydock/` and driven with Playwright MCP at 1280x800.
+
+| # | Check | Result |
+|---|---|---|
+| 1 | B1, evidence header | PASS: header in the `max-w-6xl` container, `<h1>` at `text-display` aligned with the matrix; one `<h1>`; section eyebrow `THE MATRIX`, heading no longer repeats the `<h1>`; `04 / THE EVIDENCE` gone |
+| 2 | B2, excerpt and pin checks | PASS: all six of the first review's mutations exit 1; the reviewer's own (row reorder, duplicated line, PASS re-audit heading, another plan, `..` path, trimmed row 5, attribute removed) exit 1. **F1, non-blocking:** the figcaption verdict badge (`Hero.tsx` renders `artifact.verdict` outside the checked `<pre>`) can read PASS with the gate green |
+| 3 | Wave 1.4 copy | PASS: step 02 now matches A6; the caption's "lines trimmed, never reworded" is accurate (one rendered line joins two source lines, for the human gate); deleted keys unread |
+| 4 | Original checks | PASS: verify green (home 21, evidence 7); no inline `opacity:0` before the thesis band, install bottom at 661px of 800; one dashed `data-reveal` path, one `data-reveal-path` element; every internal href basePath'd, live navigation both ways |
+| 5 | Human-gate items (D19) | Not worse than described: deviation 3, the evidence `Section` reveal at `opacity:0`, one console 404 per evidence load |
+
+F1 is carried to the Phase 1 gate as a follow-up, not repaired here.
+
 ## Progress log
 
 | Date | Task | Result | Notes |
@@ -698,5 +712,6 @@ Remedy: Wave 1.4 (D19, deviation 6).
 | 2026-10-07 | T1.3.1r1 | PASS | `2fe92cf`; D18 approved by Sandeep Takasi; wavecheck 1.3 re-audit PASS |
 | 2026-10-07 | T1.R.1 | REJECTED | B1, B2 blocking; repair Wave 1.4 added (D19) |
 | 2026-10-07 | T1.4.1, T1.4.2 | PASS | `41ebcb0`, `3fb6701`; wavecheck 1.4 PASS |
+| 2026-10-07 | T1.R.1 | APPROVED | Second review; F1 (verdict badge unchecked) non-blocking, carried to the gate |
 
 ## Reconcile report
