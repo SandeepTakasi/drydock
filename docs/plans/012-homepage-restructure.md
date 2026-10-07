@@ -1,7 +1,7 @@
 ---
 plan: 012-homepage-restructure
 format_version: 3
-status: BLOCKED
+status: EXECUTING
 isolation: none
 enforcement: required
 attribution: manifest
