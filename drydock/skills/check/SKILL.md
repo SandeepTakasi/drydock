@@ -1,6 +1,6 @@
 ---
 name: check
-description: Lightweight scope check for small work that needs no plan and no waves. Record the current commit, write a short intent file (owned globs, optional forbidden globs, optional acceptance commands) to .drydock/check.md, do the work, then run drydock-audit.mjs check and report its output verbatim. Detects scope misses after the fact; prevents nothing. Use when the user says "drydock check", "check my scope", or wants a quick scope audit without a plan.
+description: Lightweight scope check for small work that needs no plan and no waves. Record the current commit, write a short intent file (owned globs, optional forbidden globs, optional acceptance commands) to .drydock/check.md, do the work, then run drydock-audit.mjs check and report its output verbatim. By default it detects scope misses after the fact and prevents nothing; an opt-in step arms the ownership hook so out-of-scope file edits are denied. Use when the user says "drydock check", "check my scope", or wants a quick scope audit without a plan.
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 
