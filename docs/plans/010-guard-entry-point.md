@@ -1,11 +1,11 @@
 ---
 plan: 010-guard-entry-point
 format_version: 3
-status: BLOCKED
+status: EXECUTING
 isolation: none
 enforcement: required
 attribution: manifest
-lane: small
+lane: full
 execution: fleet
 created: 2026-10-07
 approved_by: Sandeep Takasi
@@ -182,6 +182,8 @@ if `audit-wave` reports them, that is this pre-existing state, not a wave write.
 | D13 | Skill edit unexercised? | Shipped gated on mechanical criteria, stated as unproven in the CHANGELOG and at wavecheck | planner, CLAUDE.md | Sessions load the installed copy. Consumed by T1.1.2, T1.1.4. |
 | D14 | Which copy arms the plan's own wave? | The repo copy, `node drydock/scripts/drydock-audit.mjs` | planner | Same as plan 008 D15. `wave-start` is unchanged by this plan, so either copy gives the same boundary. |
 | D15 | The `arm` contract (complete rule body) | **Command:** `drydock-audit.mjs arm <intent.md>`. **Reads:** the intent file exactly as `check` does (`base`, `Files owned`). **Exit 3** (could not run), with `check`'s own messages: no `base:`, no owned globs, `base` not a commit. **Exit 1, nothing written**, in this order: (a) `.drydock/wave-owns.json` exists → `arm: refused, a boundary is already armed (plan <plan>, wave <wave>); close it with rm .drydock/wave-owns.json`; (b) any owned glob with `unbounded(g)` → `arm: refused, <glob> reaches every directory; name the directories instead`. **Exit 0:** ensures `.drydock/` is gitignored as `wave-start` does, writes `<root>/.drydock/wave-owns.json` as `{"plan": null, "wave": "check", "source": "arm", "base": "<base as written>", "owns": [<owned globs in intent order>]}` (2-space JSON, trailing newline), then prints `arm: armed <n> glob(s) from <intent path>` and `disarm with:  rm .drydock/wave-owns.json`. **`check` additions:** when `<root>/.drydock/wave-owns.json` exists, parses, and has `wave === "check"`: owns equal as sets → print `check: hook armed for this scope` before the verdict line; otherwise add the flag `FLAG armed boundary differs from intent` (counted in `check: FLAG (<n>)`). An absent file, an unparseable file, or any other `wave` changes nothing in `check`'s output | planner | Pinned because T1.1.2, T1.1.3 and T1.1.4 quote these strings in parallel with T1.1.1 writing them. Consumed by T1.1.1, T1.1.2, T1.1.3, T1.1.4. |
+| D16 | Wavecheck 1.1 BLOCK: how to proceed? | **Human override, signed by Sandeep Takasi on 2026-10-07.** Both `audit-wave` FAIL lines caused by the pre-existing untracked `e2e/009-site-016-additions/` (Deviations 1 and 2) are accepted as pre-existing state. The override covers those paths, and only those, in every `audit-wave` of this plan. Those files are left untouched. Deviation 3 is repaired in a new Wave 1.2 with a new task id | user | Every wave commit is inside `owns` and every criterion passes. The FAIL lines describe the detector's first-command attribution and the user's own uncommitted files, not anything a task wrote. |
+| D17 | A repair wave under `lane: small`? | Move the plan to `lane: full`. No `Wave x.R` and no pressure test are added; the ceremony stays small-lane in practice | planner, forced by the validator | `validate-plan` holds `lane: small` to one implementation wave, so the contract's own "targeted fix task appended" remedy cannot be expressed in the small lane at all. The finding is logged as Deviation 4. Consumed by T1.2.1. |
 
 ## Open questions
 
@@ -374,6 +376,26 @@ skill and docs describe them, and 0.17.0 is cut locally and unpushed.
   claim, CLAUDE.md honesty rule); pushing or tagging; any file outside `owns`.
 - **Acceptance criterion:** `node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('drydock/.claude-plugin/plugin.json','utf8')).version,c=fs.readFileSync('site/content/copy.ts','utf8'),r=fs.readFileSync('README.md','utf8'),l=fs.readFileSync('drydock/CHANGELOG.md','utf8');const h=(l.match(/^## .*$/m)||[''])[0];process.exit(p==='0.17.0'&&/const VERSION = .0[.]17[.]0.;/.test(c)&&r.includes('(v0.17.0)')&&!r.includes('(v0.16.0)')&&h.startsWith('## 0.17.0')&&l.includes('arm .drydock/check.md')&&l.includes('audit 154 to 159')?0:1)"`
 
+### Wave 1.2 - Repair: the check skill's description (Deviation 3)
+
+#### T1.2.1 - The check skill's description names the opt-in prevention
+
+- **Description:** Rewrite the `description:` frontmatter line of
+  `drydock/skills/check/SKILL.md` so that it no longer says the skill
+  "prevents nothing" without qualification. It should say the default audits
+  afterwards, and that prevention is available as an opt-in step that arms the
+  hook. Change nothing else in the file.
+- **Files owned:** `drydock/skills/check/SKILL.md`
+- **Depends on:** T1.1.2
+- **Model / thinking:** Mechanical / off (Haiku 4.5)   **Executor:** drydock:executor
+- **Context brief:** Deviation 3 and D3 of this plan; the file's frontmatter
+  and its "What check does not do" section, which already words this correctly;
+  the vocabulary case in `drydock/scripts/drydock-audit.test.mjs` (~1126):
+  never put a bare backticked lowercase word in the file.
+- **Forbidden:** any change below the frontmatter; making arming the default;
+  any file outside `owns`.
+- **Acceptance criterion:** `node -e "const s=require('fs').readFileSync('drydock/skills/check/SKILL.md','utf8');const d=(s.match(/^description:.*$/m)||[''])[0];let o='';try{o=require('child_process').execFileSync('node',['drydock/scripts/drydock-audit.test.mjs'],{encoding:'utf8',stdio:['ignore','pipe','ignore']})}catch(e){process.exit(1)}process.exit(d&&!/prevents nothing[.]/.test(d)&&/opt-in/i.test(d)&&/ok +. consumers name only vocabulary the format contract defines/.test(o)?0:1)"`
+
 ## Deviation Log
 
 | # | Task | What deviated | Why | Impact | Recorded |
@@ -381,6 +403,7 @@ skill and docs describe them, and 0.17.0 is cut locally and unpushed.
 | 1 | T0 | The Baseline says `e2e/009-site-016-additions/` held **three** specs. It held **five** (`tg1`-`tg5`, all dated 2026-10-07 08:33 IST, before this session). | The planner's `ls` was piped through `head -20` and truncated. | No file changed; the Baseline's count is wrong. The pre-existing state it describes is unchanged. `discovered-by-wavecheck` | 2026-10-07 |
 | 2 | — (gate) | `audit-wave 1.1` reports five "Bash writes outside `owns`" and a dirty tree. **Every one is the pre-existing untracked `e2e/009-site-016-additions/` directory**: the files predate the wave by about 2.5 hours, and all five `detected` receipts are stamped on the wave's first Bash command (the orchestrator's staleness check plus `wave-start`, a read-only `git diff` followed by the arming), which wrote nothing there. | The Bash detector attributes to that first command whatever untracked state it has no earlier snapshot for. That is a false positive on pre-existing dirt, and the detector's ceiling list (`detect-bash-writes.mjs` ~40-58) does not name it. | All four task commits stay inside their task's `owns` (the audit's own table). The two FAIL lines are not wave writes, but the audit cannot tell them apart, and the receipts are permanent in `.drydock/enforcement.log`, so a re-audit stays FAIL on error 1 even after the directory is committed or moved. A human decision is required. `discovered-by-wavecheck` | 2026-10-07 |
 | 3 | T1.1.2 | The `check` skill's frontmatter `description:` still ends "Detects scope misses after the fact; prevents nothing.", while the body now offers opt-in prevention. | Reported by the executor as an observation. The task block did not name the description, and no forbidden item covers it. | The description is what the host shows when it chooses a skill, so it now understates the skill. This is inside T1.1.2's `owns`, so it can be repaired in a new wave with a new task id. | 2026-10-07 |
+| 4 | — (plan) | `lane: small` changed to `lane: full` after Wave 1.1 (D17). | `validate-plan` caps the small lane at one implementation wave, so the format contract's "targeted fix task appended" remedy for a BLOCK is impossible there. | The plan's ceremony is unchanged in practice (no review wave, no pressure test). The finding goes to reconcile: the small lane has no repair path. | 2026-10-07 |
 
 ## Wavecheck reports
 
@@ -412,6 +435,12 @@ audit-wave 1.1: FAIL (2)
 
 Deviations logged: 3 (2 discovered by wavecheck)
 
+### Wavecheck 1.1 (re-audit under the D16 human override), PASS, 2026-10-07
+
+The only change since the BLOCK is the override. **This is not a clean mechanical pass:** `audit-wave 1.1` still reports `FAIL (2)`, and both lines are the `e2e/009-site-016-additions/` paths that D16 accepts by name, signed by Sandeep Takasi, 2026-10-07. Every other check is as reported above: all four commits are inside `owns`, all four criteria exit 0, the forbidden audit is clean, and `enforcement active: 20 hook decision(s) recorded for wave 1.1 (0 denied)`.
+
+Deviations logged: 4 (2 discovered by wavecheck)
+
 ## Progress log
 
 | Date | Task | Result | Notes |
@@ -419,5 +448,7 @@ Deviations logged: 3 (2 discovered by wavecheck)
 | 2026-10-07 | planning | DRAFT written | **Self-review:** `validate-plan --strict` PASS (5 tasks, 1 wave). `prove-failable` PASS, 5 of 5 fail at baseline, each run through `spawnSync(..., {shell: true})` (cmd.exe) with empty stderr, so none is a syntax error. Pass half: T1.1.3 and T1.1.4 exit 0 against scratch copies edited as their tasks would; T1.1.1 and T1.1.2 match the suite's `ok` lines and `N/N passed` summary, the shape plan 008's criteria passed with. No backslash in any criterion. |
 | 2026-10-07 | approval | APPROVED by Sandeep Takasi | Given in session ("approved, execute it"). |
 | 2026-10-07 | T0 | PASS | Baseline recorded at `d95b080`, index row added, status EXECUTING. |
+| 2026-10-07 | Wave 1.1 | T1.1.1-T1.1.4 DONE | `a795149`, `cc96426`, `0e4e3cd`, `28cbceb`; executors spawned one at a time. |
+| 2026-10-07 | Wavecheck 1.1 | BLOCK, then PASS under override | BLOCK on pre-existing untracked e2e specs (`713771d`); D16 override signed by Sandeep Takasi; D17 lane change; Wave 1.2 added. |
 
 ## Reconcile report
