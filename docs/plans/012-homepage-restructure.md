@@ -731,6 +731,28 @@ Deviations logged: 7 (2 discovered by wavecheck)
 
 Deviations logged: 9 (2 discovered by wavecheck)
 
+### Wavecheck 1.6 - PASS - 2026-10-07
+
+`execution: fleet`: T1.6.1 was written by a spawned `drydock:executor` (Sonnet 5.5); this audit is by the orchestrator, which wrote none of the diff.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `status: EXECUTING`; waves 1.0-1.5 have PASS reports (`fa433b1`) |
+| 2. Ownership audit | PASS | `audit-wave 1.6: PASS` (1 task, 1 commit, attribution: manifest); 2 hook decisions recorded, so enforcement ran; no Bash write outside `owns`. Table and enforcement sentence below |
+| 3. Forbidden audit | PASS | `9a4a18f` adds lines only (a `verdictOf` map filled from each bound heading, and the badge check); no existing check or message removed; no `copy.ts` read; no dependency |
+| 4. Acceptance audit | PASS | T1.6.1 criterion re-run through `spawnSync(crit, {shell: true})` (cmd.exe): exit 0 (badge flip fails naming `excerpt`; badge removed fails naming `excerpt`). T1.4.1's criterion re-run as a regression: exit 0 |
+| 5. Deviation reconciliation | PASS | The executor reported running the criterion from a temp file and leaving the PASS line unchanged (the sketch said "may"); neither departs from the task block, and the cmd.exe run above covers the first. Nothing to log |
+
+### audit-wave 1.6, docs/plans/012-homepage-restructure.md
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.6.1 | `9a4a18f` | `site/scripts/assert-copy.mjs` | `site/scripts/assert-copy.mjs` | none |
+
+  note: enforcement active: 2 hook decision(s) recorded for wave 1.6 (0 denied)
+
+Deviations logged: 9 (2 discovered by wavecheck)
+
 ## Wave 1.R verdict, REJECTED, 2026-10-07
 
 Fresh-context review (general-purpose agent, Opus 5.5, read-only) of `git diff 15570df..7801579 -- site/` and both built pages, served at `/drydock/` and driven with Playwright MCP, plus 15 fixture-mode mutations of `assert-copy.mjs`.
@@ -778,5 +800,6 @@ F1 is carried to the Phase 1 gate as a follow-up, not repaired here.
 | 2026-10-07 | T1.R.1 | APPROVED | Second review; F1 (verdict badge unchecked) non-blocking, carried to the gate |
 | 2026-10-07 | Testing Gate | NO-GO | Seatrial at `f3be934`: TG1, TG2, TG4, TG5 PASS; TG6 PASS (failed as designed); **TG3 FAIL (blocker)**: three of four refusal pins sit past the right edge of their scroll boxes at 1280x900. Sheet in `.drydock/testing/012-homepage-restructure/verdict.md`; specs in `e2e/012-homepage-restructure/`, GENERATED, NOT EXECUTED. Phase 1 gate not closed |
 | 2026-10-07 | T1.5.1, T1.5.2 | PASS | `39f6370`, `f630404`; wavecheck 1.5 PASS |
+| 2026-10-07 | T1.6.1 | PASS | `9a4a18f`; wavecheck 1.6 PASS |
 
 ## Reconcile report
