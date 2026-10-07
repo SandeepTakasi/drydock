@@ -1,7 +1,7 @@
 ---
 plan: 009-site-016-additions
 format_version: 3
-status: EXECUTING
+status: DONE
 isolation: none
 enforcement: required
 attribution: manifest
@@ -437,7 +437,7 @@ and `prove-failable` re-run after the edits (below).
 
 ## Phase 2: The page
 
-**Phase gate: OPEN, awaiting human approval of the rendered page (D17).** Mechanical half met 2026-10-07 at `706e5f4`: `cd site && npm run verify` exits 0 (`assert-copy: PASS ... 26 literals ... version matches plugin.json`, `assert-matrix: PASS — 12 matrix rows`); Wave 2.R APPROVED on re-review after repair Wave 2.2; seatrial **GO** (5/5, TG5 failed as designed; sheet at `.drydock/testing/009-site-016-additions/verdict.md`). No push before this line reads CLOSED.
+**Phase gate: CLOSED, approved by Sandeep Takasi - 2026-10-07.** Human approval of the rendered page (served at `http://localhost:5173/drydock/` from `706e5f4`'s export) given in session, by name and date per D17, before any push. Mechanical half met 2026-10-07 at `706e5f4`: `cd site && npm run verify` exits 0 (`assert-copy: PASS ... 26 literals ... version matches plugin.json`, `assert-matrix: PASS — 12 matrix rows`); Wave 2.R APPROVED on re-review after repair Wave 2.2; seatrial **GO** (5/5, TG5 failed as designed; sheet at `.drydock/testing/009-site-016-additions/verdict.md`). No push before this line reads CLOSED.
 
 ### Wave 2.1 - Copy and layout
 
