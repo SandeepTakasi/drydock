@@ -640,6 +640,26 @@ handoff: the staleness diff since baseline is T2.1.1's own `76376bf` only.
 
 Deviations logged: 0 (0 discovered by wavecheck)
 
+## Wave 2.R verdict, APPROVED, 2026-10-07 (re-review, after Wave 2.2)
+
+A second fresh-context Opus 5.5 reviewer (general-purpose, read-only, given the
+T2.R.1 brief and the first verdict) reviewed all of `9276d74..HEAD` and the built
+page. **APPROVED**: no blocker or major; F1-F4 and F6 fixed, and the fix wording
+measured true (`audit-corpus: PASS, 23 wave(s) in 5 plan(s)`, plans 005-009 are
+exactly the v3 plans; `verify.yml`'s `docs` job does a fresh `actions/checkout`
+and runs it on push to `main` and `pull_request`). Each of the four new pins was
+shown to fail when its literal is removed from a fixture copy. `git status` was
+clean after the review. Left as follow-ups, not repaired:
+
+1. **Minor.** "every plan from 005 on" is true but the page never explains plan
+   numbering, so a reader cannot see that the homepage's own plans (001-004) are
+   excluded. Later copy pass: "every plan in the current format (005 on)".
+2. **Nit.** The A10 note joins "check itself prevents nothing" to the unarmed
+   caveat with "because"; the two facts belong in separate sentences.
+3. **Nit, outside the diff.** The provenance line "across five plans"
+   (`copy.ts:261`) is stale: 001-006 and 009 all touch `site/`. It was forbidden
+   to this plan.
+
 ## Wave 2.R verdict, REJECTED, 2026-10-07
 
 A fresh-context Opus 5.5 reviewer (general-purpose, read-only, given the T2.R.1
@@ -682,5 +702,6 @@ and VERSION are untouched. Repair: Wave 2.2 (deviation 1), then a re-review.
 | 2026-10-07 | T2.1.2 | DONE | `9b6cb88`; `lg:last:col-span-1` emitted; wavecheck 2.1 PASS |
 | 2026-10-07 | T2.R.1 | REJECTED | F1 major (audit-corpus overclaim) plus minors; repair Wave 2.2 appended |
 | 2026-10-07 | T2.2.1 | DONE | `75a1b02`; F1-F4, F6 repaired; wavecheck 2.2 PASS |
+| 2026-10-07 | T2.R.1 | APPROVED | Re-review after Wave 2.2 (retry 1 of 2 used); one minor, two nits left as follow-ups |
 
 ## Reconcile report
