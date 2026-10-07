@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.17.0: 2026-10-07
+
+**`drydock-audit.mjs arm <intent.md>` arms the ownership hook without a plan.** It reads the same intent file `/drydock:check` writes (one source for the armed boundary and the audited scope) and writes `.drydock/wave-owns.json` as `{"plan": null, "wave": "check", "source": "arm", "base": ..., "owns": [...]}`. The wave id is the literal `"check"` because `audit-wave` counts a receipt with no plan toward every plan with the same wave id, and a plan's wave ids are numeric. Usage: `node "$DD/scripts/drydock-audit.mjs" arm .drydock/check.md`, then work, then `check .drydock/check.md`, then `rm .drydock/wave-owns.json` (there is no disarm subcommand).
+
+**Refusals (exit 1, nothing written):** `arm: refused, a boundary is already armed (plan <plan>, wave <wave>); close it with rm .drydock/wave-owns.json` (it never overwrites a plan wave), and `arm: refused, <glob> reaches every directory; name the directories instead` for any glob starting with `**` (root-only `*.md` is allowed).
+
+**`check` reports whether its scope was armed.** With a `"check"` boundary present it prints `check: hook armed for this scope` when the boundary matches the intent, and `FLAG armed boundary differs from intent` when it does not. With no such boundary its output is unchanged. It does not count hook receipts.
+
+**The `/drydock:check` skill offers arming as an opt-in step**, run only when the user asks for prevention; the default stays audit-only. The plugin README and QUICKSTART now open with this "just the guard" path.
+
+**Ceilings, stated plainly:** Bash writes are detected, not prevented, exactly as in a plan wave. `wave-start` does not yet refuse to overwrite a `"check"` boundary (a follow-up).
+
+**Unexercised, stated plainly.** The skill's new step has not been run by any session, because sessions load the installed plugin copy. It is gated only on mechanical criteria until a session on an installed 0.17.0 runs it. The `arm` subcommand itself is exercised by the suite, including a case where the real hook denies a write outside an `arm`-written boundary.
+
+Tests: audit 154 to 159, others unchanged.
+
 ## 0.16.0: 2026-10-07
 
 **`drydock-stats.mjs <plan.md> [--projects <dir>]` reports where a plan's tokens went.** It reads the host's session transcripts under `~/.claude/projects/<encoded repo>/` and splits one plan's tokens into three buckets: orchestration (main sessions whose text names the plan's slug), execution (`drydock:executor*` subagents whose own transcript names it), and other subagents. Usage lines repeat per API request with streaming partials that disagree, so it deduplicates globally on `requestId` and keeps the max of each field; first-line-wins was measured to undercount output by about 18%. Every session row names the other plans it mentions, and the output ends with the caveat that a session is counted whole: tokens, not cost. It reads only and writes nothing. `reconcile` now pastes its output under `### Token usage`.
