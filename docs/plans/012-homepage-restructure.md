@@ -190,6 +190,7 @@ _Filled by T0, 2026-10-07._
 | 15 | Loop section id? | Keeps `id="lifecycle"` | planner (assumed, flag if wrong) | Fewer moving anchors; nothing external links it |
 | 16 | Who writes the copy? | T1.0.1 drafts it; the human approves the wording at the phase gate | user | The gate is "approve the rendered page" |
 | 17 | Pressure test by a spawned agent? | Done inline by the planner with fresh eyes (re-opened every claimed file) | planner | The session runs under a no-unrequested-agents rule; the skill permits the inline pass |
+| 18 | How is wavecheck 1.3's BLOCK (deviation 5) repaired? | A targeted fix task with a new id via the contract's replaced-task mechanism: `T1.3.1` struck through, `T1.3.1r1` added to wave 1.3, then a re-audit of wave 1.3. Not a new Wave 1.4, which the user first chose: `wave-start` will not arm any wave after one whose last verdict is BLOCK | user (Sandeep Takasi, 2026-10-07) | The tool's designed escape from a BLOCK is a re-audit PASS of the same wave; plan 004 Decision 10 is the precedent. Consumed by T1.3.1r1 |
 
 ## Open questions
 
@@ -419,8 +420,9 @@ install, FAQ; `/drydock/evidence/` renders the full matrix; `npm run verify` and
 
 ### Wave 1.3 - The gate learns two pages
 
-#### T1.3.1 - assert-copy reads both pages and proves excerpts and pins
+#### ~~T1.3.1 - assert-copy reads both pages and proves excerpts and pins~~ - SUPERSEDED by T1.3.1r1
 
+- **Status:** SUPERSEDED (commit `61ed102` stands as history; its two-page split, excerpt check and pin check are kept, and its narrowed `REQUIRED_HOME` is deviation 5). Ownership of `site/scripts/assert-copy.mjs` transfers to `T1.3.1r1`, so the wave's active ownership sets stay disjoint (D18).
 - **Description:** Extend `assert-copy.mjs` to assert two pages with split
   literal lists, and to verify the hero excerpt and the refusal pins against
   the repo files they claim to come from.
@@ -439,6 +441,16 @@ install, FAQ; `/drydock/evidence/` renders the full matrix; `npm run verify` and
 - **Forbidden:** weakening or deleting any existing check; reading `copy.ts`; a dependency.
 - **Acceptance criterion:** `node -e "const c=require('child_process'),fs=require('fs'),os=require('os'),p=require('path');try{c.execSync('npm run verify',{cwd:'site',stdio:'ignore'})}catch(e){process.exit(1)}const h=fs.readFileSync('site/out/index.html','utf8');const run=(name,body)=>{const f=p.join(os.tmpdir(),name);fs.writeFileSync(f,body);return c.spawnSync('node',['scripts/assert-copy.mjs',f],{cwd:'site',encoding:'utf8'})};const r0=run('dd012-ok.html',h);const r1=run('dd012-pin.html',h.split('does not own').join('does-not-own'));const r2=run('dd012-exc.html',h.split('Deviation reconciliation').join('Deviation reconcilation'));process.exit(r0.status===0&&r1.status===1&&(r1.stderr||'').includes('pin')&&r2.status===1&&(r2.stderr||'').includes('excerpt')?0:1)"`
 
+#### T1.3.1r1 - REQUIRED_HOME keeps both enforcement ceilings
+
+- **Description:** Add `"outside the project directory are not enforced"` and `"Bash-mediated writes bypass file-tool hooks"` to `REQUIRED_HOME` in `assert-copy.mjs`, keeping them in `REQUIRED_EVIDENCE` too, so the home page carries the 20 literals T1.3.1's sketch specifies (deviation 5, D18).
+- **Files owned:** `site/scripts/assert-copy.mjs`
+- **Depends on:** T1.3.1
+- **Model / thinking:** Mechanical / off (Haiku 4.5)   **Executor:** drydock:executor
+- **Context brief:** D11, D18; deviation 5; T1.3.1's sketch (`REQUIRED_HOME` = the baseline list minus exactly seven named literals, plus one); `site/scripts/assert-copy.mjs` (the A6 comment above `"outside the project directory are not enforced"` in `REQUIRED_EVIDENCE` explains why it is pinned; a one-line comment on the home copies pointing at it is enough).
+- **Forbidden:** removing either literal from `REQUIRED_EVIDENCE`; changing any other literal, check or message; reading `copy.ts`; editing any other file.
+- **Acceptance criterion:** `node -e "const c=require('child_process'),fs=require('fs'),os=require('os'),p=require('path');try{c.execSync('npm run verify',{cwd:'site',stdio:'ignore'})}catch(e){process.exit(1)}const h=fs.readFileSync('site/out/index.html','utf8');const run=(name,body)=>{const f=p.join(os.tmpdir(),name);fs.writeFileSync(f,body);return c.spawnSync('node',['scripts/assert-copy.mjs',f],{cwd:'site',encoding:'utf8'})};const r0=run('dd012r-ok.html',h);const r1=run('dd012r-pin.html',h.split('does not own').join('does-not-own'));const r2=run('dd012r-exc.html',h.split('Deviation reconciliation').join('Deviation reconcilation'));const r3=run('dd012r-bash.html',h.split('Bash-mediated writes bypass file-tool hooks').join('Bash-mediated writes skip file-tool hooks'));const r4=run('dd012r-out.html',h.split('outside the project directory are not enforced').join('outside the project directory are unenforced'));const d=c.spawnSync('node',['scripts/assert-copy.mjs'],{cwd:'site',encoding:'utf8'});process.exit(r0.status===0&&r1.status===1&&(r1.stderr||'').includes('pin')&&r2.status===1&&(r2.stderr||'').includes('excerpt')&&r3.status===1&&r4.status===1&&d.status===0&&(d.stdout||'').includes('home: 20 literals')&&(d.stdout||'').includes('evidence: 7 literals')?0:1)"`
+
 ### Wave 1.R - Quality review
 
 #### T1.R.1 - Fresh-context review of the page against the evidence
@@ -449,7 +461,7 @@ install, FAQ; `/drydock/evidence/` renders the full matrix; `npm run verify` and
   paint, the SVG contracts hold, the new gate checks can fail. Record
   `## Wave 1.R verdict, APPROVED|REJECTED, <date>`.
 - **Files owned:** none (the verdict is written by the orchestrator)
-- **Depends on:** T1.3.1
+- **Depends on:** T1.3.1r1
 - **Model / thinking:** Judgment / extended (Opus 5.5)   **Executor:** general-purpose reviewer, fresh context
 - **Context brief:** `git diff <baseline SHA>..HEAD -- site/`; this plan's Requirement, Decision Log, task blocks and Testing Gate; CLAUDE.md "Honesty rule for site copy"; `docs/compatibility.md`.
 - **Acceptance criterion:** `node -e "const s=require('fs').readFileSync('docs/plans/012-homepage-restructure.md','utf8');process.exit(/^## Wave 1[.]R verdict, APPROVED/m.test(s)?0:1)"`
