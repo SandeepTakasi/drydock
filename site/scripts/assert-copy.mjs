@@ -94,13 +94,14 @@ const REQUIRED_HOME = [
   "outside the project directory are not enforced",
   "Bash-mediated writes bypass file-tool hooks",
   // check and init joined the page in 0.16.0 (init itself shipped in 0.14.0).
-  // The check pin is the card's whole sentence, because the bare phrase
-  // "prevents nothing" also appears in the A10 note and would pass without the
-  // card. It is check's honesty caveat; without it the page could sell a
-  // post-hoc audit as enforcement and still go green.
+  // The two sentence pins below pin check's ceiling now that A12 shows the
+  // opt-in guard denying file-tool edits. The Bash half must stay on the page
+  // beside it; without it the page could sell a guard that only covers file
+  // tools as full enforcement and still go green.
   "/drydock:check",
   "/drydock:init",
-  "It detects after the fact and prevents nothing.",
+  "file-tool edits outside that scope are denied",
+  "Bash writes are still only detected.",
 ];
 
 /** The site must never claim a benchmark it does not have. */

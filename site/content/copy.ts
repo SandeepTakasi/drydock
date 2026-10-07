@@ -104,7 +104,7 @@ export const meta: Record<
   },
 };
 
-const VERSION = "0.17.1";
+const VERSION = "0.18.0";
 
 /**
  * Docs live in the repo, not in the export — only `site/out` is deployed. So
@@ -304,7 +304,7 @@ export const evidence: {
         "check skill runs in a live session (model-invoked, inside a plan wave)",
       status: "OBSERVED FLAG THEN PASS",
       tone: "hold",
-      note: "2026-10-07. The audit flagged an untracked probe outside the owned globs, then reported a pass once the probe was deleted on the task brief's instruction, which the skill itself forbids. Not shown: the slash command, or check on unplanned, unarmed work, because this run sat inside an armed plan wave whose owned files included the probe, and check itself prevents nothing.",
+      note: "2026-10-07. Inside an armed plan wave the audit flagged an untracked probe, then passed once it was deleted. Later the same day the open gaps were shown: typed as the slash command on unplanned, unarmed work it flagged three files outside scope and stopped to ask, and model-invoked on unplanned site work it passed twice. Not shown: a repo other than this one, or a user who did not write the plugin.",
     },
     {
       id: "A11",
@@ -313,6 +313,13 @@ export const evidence: {
       status: "OBSERVED PARTIAL",
       tone: "hold",
       note: "2026-10-07. In Step 2 the skill ran the learnings call on two concrete paths and carried the hits it printed into its findings text. Not shown: Steps 3 to 6, since the run stopped after Step 2 on supplied interview answers and wrote no plan, nor the slash command or a real user.",
+    },
+    {
+      id: "A12",
+      label: "arm guard (ownership hook armed from a check intent file, no plan) fires in a live session",
+      status: "PASSED",
+      tone: "pass",
+      note: "2026-10-07, installed 0.17.1. With no plan wave armed, arm wrote a check boundary from an intent file owning one path. A Write outside it was denied by the live hook and the file stayed absent; an edit to the owned path was allowed; check reported the hook armed and passed; disarming let the same Write through. The ceiling was observed too: a Bash write landed while armed and check flagged it afterwards.",
     },
   ],
   provenance: "This page is not a brochure for something built elsewhere. The site was planned, executed in parallel waves and gated with Drydock itself, across five plans whose deviation logs are in the repo.",
@@ -462,7 +469,7 @@ export const limits: { lead: string; items: string[]; evidenceLinkText: string }
   lead: "Better you read these here than find them in your repo.",
   items: [
     "Two ceilings stand, both exercised rather than assumed: Bash-mediated writes bypass file-tool hooks entirely, and paths outside the project directory are not enforced. The wave audit is the backstop.",
-    "For work too small for a plan, the check skill audits scope afterwards. It detects after the fact and prevents nothing.",
+    "For work too small for a plan, the check skill audits scope afterwards. With the opt-in guard armed, file-tool edits outside that scope are denied; Bash writes are still only detected.",
     "Gate compliance is measured, not asserted: 28 of 29 wave gates were invoked at their boundary across 5 pilot plans. Every session counted knew it was being observed, so read the figure as a ceiling, not a rate.",
     "Human approval is an instruction the plan format states and a reader upholds. Nothing in the tooling stops a session writing status: APPROVED itself.",
     "It is an open pilot. Every figure on this site comes from pilot plans run in this repo; there are no field benchmarks yet.",
