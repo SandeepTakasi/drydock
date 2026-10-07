@@ -20,6 +20,7 @@ planwright ──► [human approves] ──► execute waves ──► wavechec
 | Piece | Kind | Invocation |
 |-------|------|-----------|
 | `planwright` | skill | model or `/drydock:planwright` |
+| `check` | skill | model or `/drydock:check` (small work, no plan) |
 | `executor` / `executor-isolated` | agents | spawned per task by the orchestrating session |
 | `wavecheck` | skill | named as a blocking gate inside every plan |
 | `seatrial` | skill | model, or `/drydock:seatrial` (after the final wave) |

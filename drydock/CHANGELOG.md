@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.16.0: 2026-10-07
+
+**`drydock-stats.mjs <plan.md> [--projects <dir>]` reports where a plan's tokens went.** It reads the host's session transcripts under `~/.claude/projects/<encoded repo>/` and splits one plan's tokens into three buckets: orchestration (main sessions whose text names the plan's slug), execution (`drydock:executor*` subagents whose own transcript names it), and other subagents. Usage lines repeat per API request with streaming partials that disagree, so it deduplicates globally on `requestId` and keeps the max of each field; first-line-wins was measured to undercount output by about 18%. Every session row names the other plans it mentions, and the output ends with the caveat that a session is counted whole: tokens, not cost. It reads only and writes nothing. `reconcile` now pastes its output under `### Token usage`.
+
+**`wave-start` refuses to arm a wave while an earlier implementation wave of the same plan lacks a PASS wavecheck report.** The last heading per wave wins; review waves and superseded tasks are exempt; after a BLOCK, a re-audit heading whose PASS supersedes it is the way through. Exercised live during plan 008: arming wave 1.3 before 1.2 had a report was refused with exit 1 and nothing written.
+
+**CI re-audits every sealed wave of every `format_version: 3` plan** through the new `drydock/scripts/audit-corpus.mjs`, the same command locally and in CI. The `docs` job now checks out full history (`fetch-depth: 0`) and the `plugin` job runs the stats suite. v2 plans (001-004) are excluded because they predate the attribution manifest and 14 of their 29 waves cannot re-audit. Measured from a clean clone with an empty `CLAUDE_CONFIG_DIR`: `audit-corpus: PASS, 18 wave(s) in 4 plan(s)`. Ceiling: a commit made after a sealed wave that no task claims is not seen.
+
+**`drydock-audit.mjs check <intent.md>` and the new `/drydock:check` skill cover small work with no plan.** State a scope in a short intent file (owned globs, optional forbidden globs, optional criterion commands), do the work, and the audit flags files changed outside scope or inside a forbidden glob (a rename counts as a delete plus an add) and criteria that fail. It detects after the fact and prevents nothing; it never arms the hook. Criteria run through the platform shell, cmd.exe on Windows and /bin/sh elsewhere.
+
+**`drydock-audit.mjs learnings [--plans-dir <dir>] <path>...` recalls past learnings for the files you are about to touch.** It prints the `CLAUDE.md` lines and past Deviation Log rows that name each path, full-path hits before basename-only hits. `planwright` now runs it once the files a plan will own are known.
+
+**Two defects found by plan 008's own quality review before release, fixed:** the `validate-config` usage line had lost its space, and two `check` test fixtures used `node -e process.exit(7)`, a syntax error under /bin/sh that would have failed every ubuntu CI leg (now `exit 7` and `exit 0`).
+
+**Unexercised, stated plainly.** The three skill changes (`check`, planwright's learnings step, reconcile's token step) have not been run by any session, because sessions load the installed plugin copy. They are gated only on mechanical criteria until a session on an installed 0.16.0 runs them.
+
+Tests: audit 139 to 154, enforce-owns unchanged at 42, detector unchanged at 21, resolver unchanged at 8, stats new at 8.
+
 ## 0.15.2: 2026-10-06
 
 **The resolver suite failed on every `windows-latest` runner, and the product code was fine.** 0.15.1's CI went red on `resolve-target.test.mjs` across Node 20, 22 and 24 on Windows, while passing on ubuntu and on the development machine. The two real-filesystem cases normalised their fixture with the JS `realpathSync`, while the module under test resolves through `realpathWithFallback`, which tries `realpathSync.native` first. Those two disagree about Windows 8.3 short names: JS keeps `REPRO8~2`, native expands it to the long directory name. A GitHub runner's temp path is `C:\Users\RUNNER~1\AppData\Local\Temp`, so the expectation and the result described the same directory by different names and could never match. Neither this machine's temp path nor ubuntu's has a short component, which is why three reviews and a green local suite missed it.
