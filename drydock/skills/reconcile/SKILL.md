@@ -103,6 +103,13 @@ diff against what is actually there>
    any planwright/executor feedback (cluster b/d) as bullet points they may
    fold into the skill files.
 
+6. **Token usage.** Part of assembling the report in step 5, and done before
+   it is appended: run `node ${CLAUDE_PLUGIN_ROOT}/scripts/drydock-stats.mjs <plan>`
+   and paste its output verbatim under a `### Token usage` heading in the
+   report, including the caveat line at the end. If it exits 1, record under
+   that same heading that no transcript was found; never omit the heading. Paste
+   the numbers and nothing else: propose no doc edits from them.
+
 ## Anti-goals
 
 - No retrospective prose ("the team did well"). Findings and diffs only.
