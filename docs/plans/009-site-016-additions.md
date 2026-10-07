@@ -619,6 +619,27 @@ Deviations logged: 0 (0 discovered by wavecheck)
 
 Deviations logged: 0 (0 discovered by wavecheck)
 
+### Wavecheck 2.2 - PASS - 2026-10-07
+
+`execution: fleet`: T2.2.1 ran in a spawned `drydock:executor` (Sonnet), so this
+audit is not self-authored. Wave 2.2 is the repair of the Wave 2.R rejection
+(deviation 1). It re-owns T2.1.1's files after that sealed wave, a sequential
+handoff: the staleness diff since baseline is T2.1.1's own `76376bf` only.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | Status `EXECUTING`; waves 1.1, 1.2 and 2.1 have PASS reports; `validate-plan` PASS (7 task(s), 5 wave(s)) after Wave 2.2 was appended |
+| 2. Ownership | PASS | `audit-wave 2.2: PASS, docs/plans/009-site-016-additions.md (1 task(s), 1 commit(s), attribution: manifest)`; table below. **enforcement active: 4 hook decision(s) recorded for wave 2.2 (0 denied)**; bash layer 3 command(s) seen, 0 write(s) detected outside `owns`. Working tree clean |
+| 3. Forbidden | PASS | Diff is exactly the contract's four changes: the wavecheck sentence, the A10 note, the pin literal and the pin comment. No card-count assertion, the check card's "tracked or untracked" is untouched (F5 declined), and no `docs/` edit |
+| 4. Acceptance | PASS | Criterion through `spawnSync(..., {shell: true})` (`cmd.exe`): exit 1 before the task (proved failable at `4a9edb5`), exit 0 after `75a1b02` |
+| 5. Deviations | PASS | None reported, none found |
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T2.2.1 | `75a1b02` | `site/content/copy.ts`<br>`site/scripts/assert-copy.mjs` | `site/content/copy.ts`<br>`site/scripts/assert-copy.mjs` | none |
+
+Deviations logged: 0 (0 discovered by wavecheck)
+
 ## Wave 2.R verdict, REJECTED, 2026-10-07
 
 A fresh-context Opus 5.5 reviewer (general-purpose, read-only, given the T2.R.1
@@ -659,5 +680,7 @@ and VERSION are untouched. Repair: Wave 2.2 (deviation 1), then a re-review.
 | 2026-10-07 | T1.2.1 | DONE | `f93aa6c`; A11 `OBSERVED PARTIAL`; wavecheck 1.2 PASS, reproduction matched |
 | 2026-10-07 | T2.1.1 | DONE | `76376bf`; copy contract applied, four pins added |
 | 2026-10-07 | T2.1.2 | DONE | `9b6cb88`; `lg:last:col-span-1` emitted; wavecheck 2.1 PASS |
+| 2026-10-07 | T2.R.1 | REJECTED | F1 major (audit-corpus overclaim) plus minors; repair Wave 2.2 appended |
+| 2026-10-07 | T2.2.1 | DONE | `75a1b02`; F1-F4, F6 repaired; wavecheck 2.2 PASS |
 
 ## Reconcile report
