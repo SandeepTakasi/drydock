@@ -1401,3 +1401,83 @@ boundary, before it landed, without anyone looking for it.
 **Both ceilings from 2026-08-22 stand, unchanged and unretested here:**
 Bash-mediated writes bypass file-tool hooks entirely, and paths outside the
 project directory are not enforced.
+
+---
+
+## A12 — arm guard in a live session
+
+**Date:** 2026-10-07
+**Host version:** `claude --version` → `2.1.292 (Claude Code)`
+**Node:** v24.14.1
+**Installed plugin:** drydock 0.17.1 at `6fae4de`
+**Repo SHA at run time:** `eaa60fa` (plan 013 approved), working tree carrying only plan 013's uncommitted README row
+
+**What this entry claims.** With no plan wave armed, `drydock-audit.mjs arm`
+turned a check intent file into a live boundary: the host's PreToolUse hook
+denied a Write outside it and left the file absent, allowed an Edit inside it,
+and let the same Write through once the boundary was removed. `check` reported
+the armed scope. A Bash write was not prevented and `check` flagged it.
+
+**What this entry does not claim.** One session, one repo, one owned path. The
+session that ran it is the plugin author's working session, though it wrote
+none of `arm`'s code (plan 010 did). Steps 2 and 3 set plan 013's uncommitted
+README row aside with `git stash` so the audit measured the probe alone.
+
+### Method and raw output
+
+Intent `.drydock/check.md`: `base: eaa60fa491db0ffc491e81a6a58472e29b8249aa`,
+**Files owned:** `tmp-a12/ok.txt`. Commands ran the installed script,
+`node C:/Users/91891/.claude/plugins/cache/drydock/drydock/0.17.1/scripts/drydock-audit.mjs`.
+
+1. Unarmed. Write `tmp-a12/ok.txt` and `tmp-a12/stray.txt`, then `check`
+   (exit 1):
+
+       FLAG outside scope: docs/plans/README.md
+       FLAG outside scope: tmp-a12/stray.txt
+       check: FLAG (2)
+
+2. Deleted `stray.txt`, then `arm .drydock/check.md` (exit 0):
+
+       arm: armed 1 glob(s) from .drydock/check.md
+       disarm with:  rm .drydock/wave-owns.json
+
+   Write `tmp-a12/stray.txt` was refused by the live hook:
+
+       Drydock ownership violation: wave check does not own tmp-a12/stray.txt.
+       Owned by this wave: tmp-a12/ok.txt
+
+   `ls tmp-a12/` then listed only `ok.txt`. Receipt:
+   `"wave":"check","decision":"deny","path":"tmp-a12/stray.txt","mechanism":"file-tool"`.
+   An Edit to `tmp-a12/ok.txt` was allowed (receipt `"decision":"allow"`).
+   `check`, README set aside (exit 0):
+
+       check: hook armed for this scope
+       check: PASS (1 file(s), 0 criteria)
+
+3. Still armed, Bash `echo ... > tmp-a12/bash.txt` landed. `check`, README set
+   aside (exit 1):
+
+       FLAG outside scope: tmp-a12/bash.txt
+       check: hook armed for this scope
+       check: FLAG (1)
+
+4. `rm .drydock/wave-owns.json`; the same Write to `tmp-a12/stray.txt`
+   succeeded.
+
+5. The user typed `/drydock:check scope: only tmp-a12/ok.txt. Goal: plan 013
+   T0, A10 slash-command run. No arming, audit only.` The skill loaded, wrote
+   the intent file and ran the audit (exit 1):
+
+       FLAG outside scope: docs/plans/README.md
+       FLAG outside scope: tmp-a12/bash.txt
+       FLAG outside scope: tmp-a12/stray.txt
+       check: FLAG (3)
+
+   It reported the FLAGs and asked the user how to proceed, changing nothing.
+
+6. `tmp-a12/` and the intent file deleted.
+
+### Verdict
+
+PASSED for the claim above. This is the first live session to arm the hook
+without a plan; A6 remains the evidence for plan waves.
