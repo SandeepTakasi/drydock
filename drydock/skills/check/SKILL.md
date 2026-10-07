@@ -49,6 +49,20 @@ The `.drydock/` directory is excluded from the changed set, so this file is
 never flagged itself. Confirm the owned globs with the user if the statement is
 ambiguous; do not guess wide.
 
+### If the work comes from another planner
+
+When another planning tool wrote the task (for example a Superpowers
+`writing-plans` task, or a ticket), read that task and copy every path it
+says it will create, modify or test into **Files owned**. A Superpowers task
+lists them under `**Files:**` as `Create:`, `Modify:` and `Test:` lines; drop
+any `:123-145` line range from a path. Do not write a parser or a script for
+this: the format belongs to the other tool and changes without notice, so
+read it each time.
+
+Show the user the list and wait for confirmation before Step 3. A path you
+missed is not prevented, but Step 5 flags it as outside scope, so the
+confirmation is the first net and the audit is the second.
+
 ## Step 3: arm the hook (optional, only when the user asks for prevention)
 
 Skip this step unless the user asks for prevention. Arming is never the default.
