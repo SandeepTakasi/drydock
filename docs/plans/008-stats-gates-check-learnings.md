@@ -1,7 +1,7 @@
 ---
 plan: 008-stats-gates-check-learnings
 format_version: 3
-status: EXECUTING
+status: DONE
 isolation: none
 enforcement: required
 attribution: manifest
@@ -649,6 +649,7 @@ confirmed to exist. Verdict APPROVED-WITH-FIXES; all twelve findings applied:
 | 7 | Wave 1.5 | Wave 1.5 / T1.5.1 added after approval; T1.R.1 now also depends on T1.5.1 | The re-review REJECTED on G1: two `check` fixtures used shell syntax that only cmd.exe accepts. Every wavecheck re-ran the criteria on Windows only, so none could see it. Retry 2 of 2 | One more Phase 1 wave. The lesson for this repo: CLAUDE.md warns about criteria that cross cmd.exe, and the same applies in reverse to test fixtures that `check` runs through `/bin/sh` in CI | 2026-10-07 |
 | 8 | T2.1.1 | The skill's copy of the intent-file contract spells the placeholders `<glob>` and `<command>` inside the backticks, where T1.2.1's contract has `glob` and `command`; its example criterion is `node --test` rather than `npm test` | The audit suite's vocabulary case rejects backticked lowercase words that `plan-format.md` does not define, and the first draft failed on `glob`, `command` and `npm test`. The field structure is otherwise verbatim | None on behaviour: `check` parses the intent file, never the skill. Reported by the executor | 2026-10-07 |
 | 9 | T2.1.3 | The token-usage step was added as reconcile step 6, stating it runs as part of step 5's report assembly and before step 5 appends it, rather than inserted before step 5 | Inserting it would renumber step 5, and the task forbids changing any other reconcile step | The step order on the page is not the execution order; the step says so in its first sentence. Reported by the executor | 2026-10-07 |
+| 10 | T2.2.1 | Only one of "both READMEs' status lines" was bumped; `drydock/README.md` got only the `check` component-table row | `drydock/README.md` has no status or version line; the task assumed one. The executor was told not to invent one | The plugin README carries no version, so nothing in it can drift. Its component table also lacks `init`, which is out of scope and left for reconcile | 2026-10-07 |
 
 ## Wavecheck reports
 
@@ -815,6 +816,31 @@ They are shipped, gated, and **unproven**.
 
 Deviations logged: 9 (2 discovered by wavecheck, 1 by review)
 
+### Wavecheck 2.2, PASS, 2026-10-07
+
+Executed `fleet` by one spawned `drydock:executor` (Sonnet 5.5), on the release
+approval recorded in the Phase 2 gate; audited by the orchestrating session,
+which wrote none of the diff.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | Status `EXECUTING`; waves 1.1-1.5 and 2.1 have PASS reports; Phase 2 gate signed by Sandeep Takasi, 2026-10-07, committed at `408abf3` before arming. Staleness: `git diff a72deeb..HEAD` over the five owned files was empty before arming |
+| 2. Ownership | PASS | Table below. Repo copy and installed 0.15.1 copy both `audit-wave 2.2: PASS, docs/plans/008-stats-gates-check-learnings.md (1 task(s), 1 commit(s), attribution: manifest)`. Working tree clean |
+| 2b. Enforcement ran | PASS | `enforcement active: 5 hook decision(s) recorded for wave 2.2 (0 denied)`. Bash layer: 8 commands, 0 writes outside `owns` |
+| 3. Forbidden | PASS | `copy.ts`: one line, `VERSION` `0.15.2` → `0.16.0`, nothing else. `docs/compatibility.md`: no change since `a72deeb`. No skill change claimed as exercised: the CHANGELOG's "Unexercised, stated plainly" paragraph says the three skill changes have not been run by any session. No token counts or overhead percentages in the release note (D4); its one percentage is the ~18% first-line-wins undercount, a measurement of the dedupe method taken from this plan's Findings. The auditor read the entry in full; every other claim traces to this plan's Findings, wavechecks or review verdicts |
+| 4. Acceptance | PASS | Criterion re-run by the auditor through cmd.exe: exit 0. Phase 2 gate's mechanical half re-measured on 0.16.0: `cd site && npm run verify` rc 0 (`assert-copy: PASS ... version matches plugin.json`, `assert-matrix: PASS`); audit 154/154, stats 8/8, enforce-owns 42, detect-bash-writes 21, resolve-target 8, all rc 0; the CHANGELOG's test line matches these counts |
+| 5. Deviations | PASS | The executor's report lists four items. One is a deviation, logged as 10. The other three conform to the brief: real test counts, no token numbers, D14 stated |
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T2.2.1 | `2fdeeaf` | `README.md`<br>`drydock/.claude-plugin/plugin.json`<br>`drydock/CHANGELOG.md`<br>`drydock/README.md`<br>`site/content/copy.ts` | `drydock/.claude-plugin/plugin.json`<br>`drydock/CHANGELOG.md`<br>`drydock/README.md`<br>`README.md`<br>`site/content/copy.ts` | none |
+
+**Unexercised (D14):** 0.16.0 is committed, not installed, and not pushed. The
+three skill changes from Wave 2.1 remain unproven until the release is
+installed and a fresh session invokes them.
+
+Deviations logged: 10 (2 discovered by wavecheck, 1 by review)
+
 ## Wave 1.R verdict, APPROVED, 2026-10-07 (second re-review, after Wave 1.5)
 
 A third fresh-context Opus 5.5 reviewer, read-only, told that both earlier
@@ -922,5 +948,7 @@ intents, deleted files and continuation-line criteria; `learnings` on nested
 | 2026-10-07 | Wave 2.1 | PASS | wavecheck 2.1, mechanical criteria only |
 | 2026-10-07 | Phase 2 gate | OPEN | mechanical half green; awaiting Sandeep Takasi's release approval before T2.2.1 |
 | 2026-10-07 | Phase 2 gate | CLOSED | 0.16.0 release approved by Sandeep Takasi, 2026-10-07 |
+| 2026-10-07 | T2.2.1 | DONE | `2fdeeaf`; 0.16.0 committed, not pushed or tagged |
+| 2026-10-07 | Wave 2.2 | PASS | wavecheck 2.2; gate mechanical half re-measured green on 0.16.0 |
 
 ## Reconcile report
