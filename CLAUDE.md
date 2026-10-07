@@ -233,11 +233,24 @@ work — plan 001's has 49 entries and most are still live constraints.
   v0.8.7 a sealed wave still re-audits: `audit-wave` recovers the task→commit
   lookup from the wavecheck report already pasted into the plan, and re-derives
   every file set from `git show`, so a recovered ownership verdict is exactly as
-  strong as the original. The enforcement receipt is **not** recoverable — a
+  strong as the original. **It reads only the LAST report for the wave, and only
+  rows in `audit-wave`'s own shape (`` | T1.1.1 | `a795149` | ``)**, so paste the
+  table verbatim into every report, a re-audit heading included. A reformatted
+  table or a table-less re-audit passes locally (the manifest is still there)
+  and FAILs CI. Prove it before pushing: `audit-corpus.mjs` from a detached
+  worktree with an empty `CLAUDE_CONFIG_DIR` (plan 010 deviation 6). The
+  enforcement receipt is **not** recoverable — a
   count in a report is a record that the hook ran, not a receipt of it — and the
   audit says so rather than claiming the hook never ran. Measured 2026-09-01:
   plan 005 went `RECONCILED` → re-audit `FAIL (7)` → (v0.8.7) `PASS` with both
   provenance downgrades stated.
+- **Start a wave from a tree with no untracked files.** The Bash detector has no
+  snapshot before the wave's first Bash command, so it reports every untracked
+  file already present as a write by that command, outside `owns`. The receipt
+  is permanent in `.drydock/enforcement.log`, so committing or moving the files
+  afterwards does not clear the FAIL; only a signed human override does. Commit,
+  stash or move them **before** `wave-start`. Measured 2026-10-07, plan 010
+  deviation 2; the detector's ceiling list does not name it yet.
 - **Per task: edit (file tool) → commit only owned files →
   `drydock-audit.mjs task-close <plan> <task-id>`.** Under
   `attribution: manifest` the commit subject is free; the manifest carries
@@ -254,7 +267,9 @@ work — plan 001's has 49 entries and most are still live constraints.
   one task are ambiguity, not last-wins, and would break the sealed wave's
   re-audit. A later wave may re-own the same files (sequential handoff). The
   contract's "targeted fix task appended" remedy needs no `/drydock:replan`;
-  log it as a deviation. Plans 004 and 006 both did this.
+  log it as a deviation. Plans 004 and 006 both did this. **Under `lane: small`
+  the repair wave fails `validate-plan`** (one implementation wave), so move the
+  plan to `lane: full` in the same commit and log that too; plan 010 did (D17).
 - **An executor cut off mid-task leaves real work uncommitted in its owned
   files, and parallel spawns share one fate.** A usage limit ended all three of
   plan 006's Wave 1.1 executors together. Before respawning, run `git status`
