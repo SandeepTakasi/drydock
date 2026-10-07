@@ -1,7 +1,7 @@
 ---
 plan: 011-stale-bash-snapshot
 format_version: 3
-status: EXECUTING
+status: DONE
 isolation: none
 enforcement: required
 attribution: manifest
@@ -233,7 +233,7 @@ and `prove-failable` were run instead (Progress log).
 **Exit state:** the detector never diffs against another arming's snapshot,
 CLAUDE.md no longer carries R2, and 0.17.1 is cut locally and unpushed.
 
-**Phase gate:** all five plugin suites exit 0 (audit 159/159, enforce-owns 42, detect-bash-writes 24, resolve-target 8, stats 8/8); `validate-plan` over the corpus as CI runs it exits 0; `audit-corpus` PASS from a clean worktree with an empty `CLAUDE_CONFIG_DIR`; `cd site && npm run verify` exits 0; human approval of the 0.17.1 release by Sandeep Takasi, named and dated, before any push.
+**Phase gate: CLOSED, approved by Sandeep Takasi - 2026-10-07.** Human release approval for 0.17.1 was given in session ("approve") before any push. Mechanical half measured at `0bf6188`: all five plugin suites exit 0 (audit 159/159, enforce-owns 42, detect-bash-writes 24, resolve-target 8, stats 8/8); `validate-plan` over the corpus as CI runs it exits 0; `audit-corpus` PASS, 27 waves in 7 plans, from a clean worktree with an empty `CLAUDE_CONFIG_DIR`; `cd site && npm run verify` exits 0. The hook change itself is unexercised in a live session (D12).
 
 ### Wave 1.1 - The keyed snapshot, the CLAUDE.md deletion, the release
 
@@ -412,6 +412,6 @@ Deviations logged: 3 (1 discovered by wavecheck)
 | 2026-10-07 | T0 | PASS | Baseline at `5e1fa6c`, index row added, status EXECUTING. |
 | 2026-10-07 | Wave 1.1 | T1.1.1-T1.1.3 DONE, wavecheck PASS | `6e57490`, `64b101c`, `3ce8886`. CHANGELOG repair added as Wave 1.2 (D14). |
 | 2026-10-07 | Wave 1.2 | T1.2.1 DONE, wavecheck PASS | `5adf2eb`. The entry matches the pinned text byte for byte. |
-| 2026-10-07 | Phase 1 gate, mechanical half | GREEN | audit 159/159, enforce-owns 42, detect-bash-writes 24, resolve-target 8, stats 8/8. `validate-plan` over the corpus: all PASS except 004's permanent, CI-excluded FAIL. `audit-corpus` from a clean worktree with an empty `CLAUDE_CONFIG_DIR`, as CI runs it: `PASS, 27 wave(s) in 7 plan(s)`. In the working copy it reports only plan 010 wave 1.1, from that wave's permanent false-positive receipts in the local `.drydock/enforcement.log`, which plan 010's D16 covers and CI never sees. `cd site && npm run verify` exit 0. Awaiting the human release signature. |
+| 2026-10-07 | Phase 1 gate, mechanical half | GREEN | audit 159/159, enforce-owns 42, detect-bash-writes 24, resolve-target 8, stats 8/8. `validate-plan` over the corpus: all PASS except 004's permanent, CI-excluded FAIL. `audit-corpus` from a clean worktree with an empty `CLAUDE_CONFIG_DIR`, as CI runs it: `PASS, 27 wave(s) in 7 plan(s)`. In the working copy it reports only plan 010 wave 1.1, from that wave's permanent false-positive receipts in the local `.drydock/enforcement.log`, which plan 010's D16 covers and CI never sees. `cd site && npm run verify` exit 0. Signed by Sandeep Takasi. |
 
 ## Reconcile report
