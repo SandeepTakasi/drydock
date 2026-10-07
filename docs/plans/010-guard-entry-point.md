@@ -1,7 +1,7 @@
 ---
 plan: 010-guard-entry-point
 format_version: 3
-status: EXECUTING
+status: DONE
 isolation: none
 enforcement: required
 attribution: manifest
@@ -255,7 +255,7 @@ in the Progress log.
 **Exit state:** `arm` and `check`'s arming report work in the repo copy, the
 skill and docs describe them, and 0.17.0 is cut locally and unpushed.
 
-**Phase gate:** all five plugin suites exit 0 (audit 159/159, enforce-owns 42, detect-bash-writes 21, resolve-target 8, stats 8/8); `validate-plan` over the corpus as CI runs it exits 0; `node drydock/scripts/audit-corpus.mjs` PASS; `cd site && npm run verify` exits 0; human approval of the 0.17.0 release by Sandeep Takasi, named and dated, before any push.
+**Phase gate: CLOSED, approved by Sandeep Takasi - 2026-10-07.** Human release approval for 0.17.0 was given in session ("approve") before any push. Mechanical half measured at `908a270`: all five plugin suites exit 0 (audit 159/159, enforce-owns 42, detect-bash-writes 21, resolve-target 8, stats 8/8); `validate-plan` over the corpus as CI runs it exits 0 (004's permanent FAIL excluded, as in CI); `audit-corpus` PASS, 25 waves in 6 plans, from a clean worktree as CI runs it (in the working copy, plan 010's waves report only the `e2e/009` paths D16 accepts); `cd site && npm run verify` exits 0. T1.1.2's and T1.2.1's skill text is unexercised (D13).
 
 ### Wave 1.1 - arm, the skill step, the docs, the release
 
@@ -486,6 +486,6 @@ Deviations logged: 6 (3 discovered by wavecheck)
 | 2026-10-07 | Wave 1.1 | T1.1.1-T1.1.4 DONE | `a795149`, `cc96426`, `0e4e3cd`, `28cbceb`; executors spawned one at a time. |
 | 2026-10-07 | Wavecheck 1.1 | BLOCK, then PASS under override | BLOCK on pre-existing untracked e2e specs (`713771d`); D16 override signed by Sandeep Takasi; D17 lane change; Wave 1.2 added. |
 | 2026-10-07 | Wave 1.2 | T1.2.1 DONE, wavecheck PASS (D16) | `cf81664`. |
-| 2026-10-07 | Phase 1 gate, mechanical half | GREEN | audit 159/159, enforce-owns 42, detect-bash-writes 21, resolve-target 8, stats 8/8. `validate-plan` over the corpus: all PASS except 004's permanent, CI-excluded FAIL. `cd site && npm run verify` exit 0 (`assert-copy: PASS`, version matches plugin.json; `assert-matrix: PASS`). `audit-corpus` from a clean worktree with an empty `CLAUDE_CONFIG_DIR`, as CI runs it: `PASS, 25 wave(s) in 6 plan(s)`. In the working copy it reports plan 010's two waves FAIL on the `e2e/009` paths D16 accepts. Awaiting the human release signature. |
+| 2026-10-07 | Phase 1 gate, mechanical half | GREEN | audit 159/159, enforce-owns 42, detect-bash-writes 21, resolve-target 8, stats 8/8. `validate-plan` over the corpus: all PASS except 004's permanent, CI-excluded FAIL. `cd site && npm run verify` exit 0 (`assert-copy: PASS`, version matches plugin.json; `assert-matrix: PASS`). `audit-corpus` from a clean worktree with an empty `CLAUDE_CONFIG_DIR`, as CI runs it: `PASS, 25 wave(s) in 6 plan(s)`. In the working copy it reports plan 010's two waves FAIL on the `e2e/009` paths D16 accepts. Signed by Sandeep Takasi. |
 
 ## Reconcile report
