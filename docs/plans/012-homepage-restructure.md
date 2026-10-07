@@ -713,5 +713,6 @@ F1 is carried to the Phase 1 gate as a follow-up, not repaired here.
 | 2026-10-07 | T1.R.1 | REJECTED | B1, B2 blocking; repair Wave 1.4 added (D19) |
 | 2026-10-07 | T1.4.1, T1.4.2 | PASS | `41ebcb0`, `3fb6701`; wavecheck 1.4 PASS |
 | 2026-10-07 | T1.R.1 | APPROVED | Second review; F1 (verdict badge unchecked) non-blocking, carried to the gate |
+| 2026-10-07 | Testing Gate | NO-GO | Seatrial at `f3be934`: TG1, TG2, TG4, TG5 PASS; TG6 PASS (failed as designed); **TG3 FAIL (blocker)**: three of four refusal pins sit past the right edge of their scroll boxes at 1280x900. Sheet in `.drydock/testing/012-homepage-restructure/verdict.md`; specs in `e2e/012-homepage-restructure/`, GENERATED, NOT EXECUTED. Phase 1 gate not closed |
 
 ## Reconcile report
