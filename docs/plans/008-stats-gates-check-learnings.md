@@ -542,7 +542,7 @@ confirmed to exist. Verdict APPROVED-WITH-FIXES; all twelve findings applied:
 
 ## Phase 2: Skills and release
 
-**Phase gate:** OPEN, awaiting human release approval by name and date (D5) before Wave 2.2 / T2.2.1 ships 0.16.0. Mechanical half measured 2026-10-07 at `a78e18b`: `cd site && npm run verify` exits 0 (`assert-copy: PASS`, `assert-matrix: PASS`); all plugin suites exit 0 (audit 154/154, stats 8/8, enforce-owns 42, detect-bash-writes 21, resolve-target 8); `audit-corpus: PASS, 18 wave(s) in 4 plan(s)`. Wave 2.1's three skill edits are unexercised (D14). Signed: _not yet_.
+**Phase gate:** CLOSED 2026-10-07. 0.16.0 release approved by Sandeep Takasi, 2026-10-07 (D5), given in the session after the mechanical half below; Wave 2.2 / T2.2.1 runs on that approval, and the mechanical half is re-measured after it in wavecheck 2.2. Mechanical half measured 2026-10-07 at `a78e18b`: `cd site && npm run verify` exits 0 (`assert-copy: PASS`, `assert-matrix: PASS`); all plugin suites exit 0 (audit 154/154, stats 8/8, enforce-owns 42, detect-bash-writes 21, resolve-target 8); `audit-corpus: PASS, 18 wave(s) in 4 plan(s)`. Wave 2.1's three skill edits are unexercised (D14). Signed: Sandeep Takasi, 2026-10-07.
 
 ### Wave 2.1 - Skill text
 
@@ -921,5 +921,6 @@ intents, deleted files and continuation-line criteria; `learnings` on nested
 | 2026-10-07 | T2.1.3 | DONE | `f449722`; unexercised (D14) |
 | 2026-10-07 | Wave 2.1 | PASS | wavecheck 2.1, mechanical criteria only |
 | 2026-10-07 | Phase 2 gate | OPEN | mechanical half green; awaiting Sandeep Takasi's release approval before T2.2.1 |
+| 2026-10-07 | Phase 2 gate | CLOSED | 0.16.0 release approved by Sandeep Takasi, 2026-10-07 |
 
 ## Reconcile report
