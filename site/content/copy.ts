@@ -88,8 +88,8 @@ export const meta: Record<
   },
   evidence: {
     id: "evidence",
-    eyebrow: "04 / THE EVIDENCE",
-    heading: "What is verified, and what is not",
+    eyebrow: "THE MATRIX",
+    heading: "Every row, with its status and date",
   },
   install: {
     id: "install",
@@ -156,7 +156,6 @@ export const hero = {
   sub: "A plan document is the source of truth. Each wave is audited against the actual diff, never against what the executor reports.",
   badges: [`v${VERSION} · OPEN PILOT`, "MIT", "PLAN FORMAT v3"],
   ctaPrimary: "Install it",
-  installLabel: "Install in Claude Code",
   /**
    * Verbatim lines from plan 004's `### Wavecheck 1.1 — BLOCK — 2026-08-20`
    * report. Each `text`, with `**` and backticks stripped and whitespace
@@ -186,7 +185,7 @@ export const hero = {
       { text: "Verdict: BLOCK. Wave 1.2 must not start.", tone: "block" },
     ] as TerminalLine[],
     caption:
-      "An excerpt of a real wavecheck report, verbatim from plan 004: every acceptance criterion passed, and the gate still blocked a verdict value the contract does not define.",
+      "An excerpt of a real wavecheck report, verbatim from plan 004 with lines trimmed, never reworded: every acceptance criterion passed, and the gate still blocked a verdict value the contract does not define.",
   },
   wave: {
     label: "WAVE 1.1",
@@ -321,7 +320,6 @@ export const evidence: {
 };
 
 export const lifecycle: {
-  flow: string[];
   loop: string;
   steps: { index: string; title: string; body: string }[];
   readmeHref: string;
@@ -337,7 +335,7 @@ export const lifecycle: {
     {
       index: "02",
       title: "Run in parallel waves",
-      body: "Subagents run each wave in parallel with disjoint file ownership, or one session runs it in sequence and says so. While a wave is armed, a hook denies writes outside its boundary.",
+      body: "Subagents run each wave in parallel with disjoint file ownership, or one session runs it in sequence and says so. While a wave is armed, a hook denies file-tool writes outside its boundary.",
     },
     {
       index: "03",
@@ -347,14 +345,6 @@ export const lifecycle: {
   ],
   readmeHref: `${BLOB}/drydock/README.md`,
   readmeLinkText: "Read the plugin README for every piece",
-  flow: [
-    "planwright",
-    "human approves",
-    "execute waves",
-    "wavecheck",
-    "seatrial",
-    "reconcile",
-  ],
   loop: "on BLOCK, drift, or NO-GO: /drydock:replan or a human decision. No retries.",
   pieces: [
     {
