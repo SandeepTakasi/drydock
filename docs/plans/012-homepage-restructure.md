@@ -514,6 +514,28 @@ Deviations logged: 3 (1 discovered by wavecheck)
 
 Deviations logged: 4 (1 discovered by wavecheck)
 
+### Wavecheck 1.2 - PASS - 2026-10-07
+
+`execution: fleet`: T1.2.1 was written by a spawned `drydock:executor` (Sonnet 5.5); this audit is by the orchestrator, which wrote none of the diff.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `status: EXECUTING`; wave 1.2 exists; waves 1.0 and 1.1 have PASS reports (`0099d11`). Staleness: the only commit on the owned paths since `15570df` is T1.0.1's `3bb4c78`, a handoff |
+| 2. Ownership audit | PASS | `audit-wave 1.2: PASS` (1 task, 1 commit, attribution: manifest); 1 hook decision recorded, so enforcement ran; the `Terminal.tsx` deletion went through `git rm` (Bash) and is inside `owns`; no Bash write outside it. Table and enforcement sentence below |
+| 3. Forbidden audit | PASS | `git diff 3bb4c78..642363f -- site/content/copy.ts` adds no line; its five hunks remove `Piece.detail`, `meta.terminal` and its key, the `terminal` export (lines 330-365, which follow `evidence` and are not inside it) and the nine `detail` strings. No `evidence.*`, `hero.*`, `refusals` or `limits` line changed. `Evidence.tsx` exists; `page.tsx` adds no section beyond the seven named |
+| 4. Acceptance audit | PASS | T1.2.1 criterion re-run through `spawnSync(crit, {shell: true})` (cmd.exe): exit 0 (build, `tsc --noEmit`, `eslint .`, section order problem < lifecycle < refuses < limits < install < faq, no `id="evidence"`/`id="terminal"`, 4 `data-pin=`, Terminal.tsx gone). `npm run verify` not run: red by design until T1.3.1 (D12) |
+| 5. Deviation reconciliation | PASS | Executor reported none. Its observation that `meta.evidence` still reads `04 / THE EVIDENCE`, duplicating limits' `04`, concerns a string T1.2.1 was forbidden to touch and that the evidence page may render; carried to Wave 1.R, not a conformance finding |
+
+### audit-wave 1.2, docs/plans/012-homepage-restructure.md
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.2.1 | `642363f` | `site/app/page.tsx`<br>`site/components/sections/Terminal.tsx`<br>`site/content/copy.ts` | `site/app/page.tsx`<br>`site/components/sections/Terminal.tsx`<br>`site/content/copy.ts` | none |
+
+  note: enforcement active: 1 hook decision(s) recorded for wave 1.2 (0 denied)
+
+Deviations logged: 4 (1 discovered by wavecheck)
+
 ## Progress log
 
 | Date | Task | Result | Notes |
@@ -521,5 +543,6 @@ Deviations logged: 4 (1 discovered by wavecheck)
 | 2026-10-07 | T0 | PASS | Baseline filled, README row added, status EXECUTING |
 | 2026-10-07 | T1.0.1 | PASS | `3bb4c78`; wavecheck 1.0 PASS |
 | 2026-10-07 | T1.1.1-T1.1.6 | PASS | `7edc8af`, `e686060`, `ef0ee13`, `53d2a95`, `73a0ad2`, `f2c1f62`; wavecheck 1.1 PASS |
+| 2026-10-07 | T1.2.1 | PASS | `642363f`; wavecheck 1.2 PASS |
 
 ## Reconcile report
