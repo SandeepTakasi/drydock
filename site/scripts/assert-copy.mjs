@@ -239,6 +239,7 @@ const readRepo = (rel, what) => {
 const flat = (s) => s.replace(/\*\*|`/g, "").replace(/\s+/g, " ").trim();
 
 let excerptLines = 0;
+const verdictOf = new Map();
 const excerpts = elementsWith("data-excerpt-of");
 for (const { open, body } of excerpts) {
   const p = attr(open, "data-excerpt-of");
@@ -270,6 +271,20 @@ for (const { open, body } of excerpts) {
       continue;
     }
     pos = j + line.length;
+  }
+  verdictOf.set(p, lines[0].match(/\b(PASS|BLOCK)\b/)?.[1]);
+}
+// The figcaption badge sits outside the checked <pre>: bind it to the report too.
+const badges = elementsWith("data-excerpt-verdict");
+if (badges.length !== 1) {
+  fail(`excerpt: expected exactly 1 data-excerpt-verdict element, found ${badges.length}`);
+} else {
+  const bp = attr(badges[0].open, "data-excerpt-verdict");
+  const text = decode(inner(badges[0].body)).trim();
+  if (!verdictOf.has(bp)) {
+    fail(`excerpt: data-excerpt-verdict ${JSON.stringify(bp)} matches no data-excerpt-of`);
+  } else if (text !== verdictOf.get(bp)) {
+    fail(`excerpt: verdict badge reads ${JSON.stringify(text)} but the bound report heading says ${JSON.stringify(verdictOf.get(bp))}`);
   }
 }
 if (excerpts.length < 1 || excerptLines < 1) {
