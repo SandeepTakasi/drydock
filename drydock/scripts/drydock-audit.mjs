@@ -949,6 +949,19 @@ function waveStart(planPath, wave) {
     }
   }
 
+  // A CHECK BOUNDARY IS NOT OURS TO ERASE. `arm` writes `wave: "check"` to the
+  // same file this function writes unconditionally below, so arming a wave
+  // silently dropped a guard someone had armed (plan 010's deferred hazard).
+  // `arm` refuses the mirror case. A leftover plan-wave boundary is still replaced.
+  const armed = readJSON(join(root, ".drydock", "wave-owns.json"));
+  if (armed?.wave === "check") {
+    console.error(
+      `wave-start: refused, a check boundary is armed (arm, base ${armed.base ?? "?"}); ` +
+        `close it with rm .drydock/wave-owns.json, then re-run wave-start`
+    );
+    process.exit(1);
+  }
+
   // `.drydock/` holds the armed boundary, the enforcement receipts and the
   // attribution manifest. The docs said it "is gitignored", which was true of
   // THIS repo only: in a fresh host repo the first `audit-wave` failed on the

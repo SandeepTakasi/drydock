@@ -1823,6 +1823,27 @@ cases.push(
     git(dir, ["add", "-A"]); git(dir, ["commit", "-q", "-m", "plan"]);
     return cli(dir, ["wave-start", "plan.md", "1.0"]);
   }, (out) => out.includes("audit it with:") && out.includes(CLI)],
+
+  ["wave-start refuses to overwrite a check boundary", () => {
+    const dir = bareRepo("ws-check-armed");
+    git(dir, ["add", "-A"]); git(dir, ["commit", "-q", "-m", "plan"]);
+    mkdirSync(join(dir, ".drydock"), { recursive: true });
+    const f = join(dir, ".drydock", "wave-owns.json");
+    const body = '{"plan":null,"wave":"check","source":"arm","base":"abc1234","owns":["x.txt"]}';
+    writeFileSync(f, body);
+    const out = cli(dir, ["wave-start", "plan.md", "1.0"]);
+    return `${out}\nSAME:${readFileSync(f, "utf8") === body}`;
+  }, (out) => out.includes("wave-start: refused, a check boundary is armed (arm, base abc1234)") && out.includes("SAME:true") && !out.includes("wave-start: armed")],
+
+  ["wave-start still replaces a leftover plan-wave boundary", () => {
+    const dir = bareRepo("ws-leftover");
+    git(dir, ["add", "-A"]); git(dir, ["commit", "-q", "-m", "plan"]);
+    mkdirSync(join(dir, ".drydock"), { recursive: true });
+    const f = join(dir, ".drydock", "wave-owns.json");
+    writeFileSync(f, '{"plan":"009-x","wave":"1.1","owns":["a.txt"]}');
+    const out = cli(dir, ["wave-start", "plan.md", "1.0"]);
+    return `${out}\nFILE:${readFileSync(f, "utf8")}`;
+  }, (out) => out.includes("wave-start: armed") && !out.includes("009-x")],
 );
 
 // --------------------------------------------------------------------------
