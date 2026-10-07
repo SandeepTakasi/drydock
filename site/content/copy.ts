@@ -301,7 +301,7 @@ export const evidence: {
     {
       id: "A10",
       label:
-        "check skill runs in a live session (model-invoked, inside a plan wave)",
+        "check skill (scope audit without a plan) runs in a live session",
       status: "OBSERVED FLAG THEN PASS",
       tone: "hold",
       note: "2026-10-07. Inside an armed plan wave the audit flagged an untracked probe, then passed once it was deleted. Later the same day the open gaps were shown: typed as the slash command on unplanned, unarmed work it flagged three files outside scope and stopped to ask, and model-invoked on unplanned site work it passed twice. Not shown: a repo other than this one, or a user who did not write the plugin.",
