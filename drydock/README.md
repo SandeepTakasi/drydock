@@ -25,6 +25,16 @@ rm .drydock/wave-owns.json                                    # disarm
 Ceilings: Bash writes are detected rather than prevented, and catch-all globs
 (anything starting with `**`) are refused, so name the directories.
 
+### With another planner
+
+Keep your planner. Before its task runs, `/drydock:check` reads that task (for
+example a Superpowers `writing-plans` task and its `**Files:**` block),
+proposes the owned list for you to confirm, and can arm it. Afterwards `check`
+audits the diff against the same list. Nothing parses the other tool's
+format: the skill reads it each time, and the audit flags any path it missed.
+Bash writes are detected, not prevented. New in 0.18.0 and not yet run by a
+live session.
+
 ## The lifecycle
 
 ```
