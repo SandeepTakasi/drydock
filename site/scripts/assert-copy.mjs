@@ -1,7 +1,7 @@
 /**
  * Copy + contract assertions for the static export. Node built-ins only.
  *
- *   node scripts/assert-copy.mjs                # asserts out/index.html + section files
+ *   node scripts/assert-copy.mjs                # asserts out/index.html + out/evidence/index.html + section files
  *   node scripts/assert-copy.mjs some/file.html # copy assertions only (fixture mode)
  *
  * Exits 1 with one line per failure naming exactly what was missing or forbidden.
@@ -74,6 +74,8 @@ const REQUIRED_HOME = [
   // wrong.
   "Node 20.17 or newer",
   "Deviations logged: 6 (3 discovered by wavecheck)",
+  // Plan 012 D2: the hero excerpt must carry the row where the gate BLOCKed.
+  "5. Deviation reconciliation | BLOCK",
   "drift",
   "one-file change",
   "NOTHING SAILS UNTIL IT LEAVES THE DOCK",
@@ -242,13 +244,32 @@ for (const { open, body } of excerpts) {
   const p = attr(open, "data-excerpt-of");
   const src = readRepo(p, "excerpt");
   if (src === undefined) continue;
+  if (!p.startsWith("docs/plans/") || p.includes("..")) {
+    fail(`excerpt: data-excerpt-of must be a docs/plans/ path, got ${JSON.stringify(p)}`);
+  }
   const source = flat(src);
-  for (const m of body.matchAll(/<span\b[^>]*>([\s\S]*?)<\/span>/g)) {
-    const line = flat(inner(m[1]));
-    excerptLines++;
-    if (!source.includes(line)) {
-      fail(`excerpt: line ${JSON.stringify(line)} is not in ${p}`);
+  const lines = [...body.matchAll(/<span\b[^>]*>([\s\S]*?)<\/span>/g)].map((m) => flat(inner(m[1])));
+  excerptLines += lines.length;
+  if (lines.length < 6) fail(`excerpt: expected >= 6 lines, found ${lines.length} in ${p}`);
+  if (lines.some((l) => l === "")) fail(`excerpt: an empty line in the excerpt of ${p}`);
+  // Bind to ONE report: the first line must head a `### ` section, and every
+  // line must be found in order inside that section only. Matching against the
+  // whole file let a PASS re-audit of the same wave vouch for a BLOCK excerpt.
+  const at = lines[0] ? source.indexOf(`### ${lines[0]}`) : -1;
+  if (at === -1) {
+    fail(`excerpt: first line ${JSON.stringify(lines[0])} is not a "### " report heading in ${p}`);
+    continue;
+  }
+  const next = source.indexOf("### ", at + 4);
+  const report = source.slice(at, next === -1 ? undefined : next);
+  let pos = 4;
+  for (const line of lines) {
+    const j = line === "" ? -1 : report.indexOf(line, pos);
+    if (j === -1) {
+      fail(`excerpt: line ${JSON.stringify(line)} is not in order inside the report ${JSON.stringify(lines[0])} of ${p}`);
+      continue;
     }
+    pos = j + line.length;
   }
 }
 if (excerpts.length < 1 || excerptLines < 1) {
@@ -262,6 +283,9 @@ for (const { open, body } of pins) {
   if (!s || !x) {
     fail(`pin: element has data-pin without data-source (or vice versa): ${open}`);
     continue;
+  }
+  if (!s.startsWith("drydock/") || s.includes("..")) {
+    fail(`pin: data-source must be a drydock/ path, got ${JSON.stringify(s)}`);
   }
   const src = readRepo(s, "pin");
   if (src !== undefined && !src.includes(x)) fail(`pin: ${JSON.stringify(x)} is not in ${s}`);
