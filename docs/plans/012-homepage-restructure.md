@@ -458,13 +458,39 @@ install, FAQ; `/drydock/evidence/` renders the full matrix; `npm run verify` and
 
 | # | Task | What deviated | Why | Impact | Recorded |
 |---|---|---|---|---|---|
+| 1 | T1.0.1 | `hero` has no explicit type, so `hero.artifact.source` and `verdict` infer as `string`, not the literal types the sketch shows; `lines` is cast `as TerminalLine[]` | Executor kept `hero` inferred like the rest of the object | None: consumers read the values, and the literal is pinned by T1.1.1's and T1.3.1's checks | executor report |
+| 2 | T1.0.1 | Refusal 3's `output` is the hook's `systemMessage` | The hook emits no separate `permissionDecisionReason`; the systemMessage is its deny reason | None: pin `does not own` is in both the source and the output | executor report |
+| 3 | T1.0.1 | Hero excerpt lines 2-6 are the first two cells of the plan 004 table rows (the Evidence cell is cut), line 7 starts mid-sentence inside row 5's Evidence cell, and line 10 omits that line's trailing `Plan status set to BLOCKED.` | Fits 10 lines in the hero; each line still passes this plan's operational test (normalised substring of the plan 004 file, Execution policies, D2) | Characters are verbatim but not every kept line is a whole source line. Not blocking under the plan's mechanical definition; flagged for the human at the Phase 1 gate (D16), who may require whole lines | discovered-by-wavecheck |
 
 ## Wavecheck reports
+
+### Wavecheck 1.0 - PASS - 2026-10-07
+
+`execution: fleet`: T1.0.1 was written by a spawned `drydock:executor` (Opus 5.5); this audit is by the orchestrator, which did not write the diff.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `status: EXECUTING` (set in `160e92b` before `wave-start`); wave 1.0 exists; no prior wave; `validate-plan` PASS, no VERSION DRIFT (0.17.1) |
+| 2. Ownership audit | PASS | `audit-wave 1.0: PASS` (1 task, 1 commit, attribution: manifest). Table and enforcement sentence pasted verbatim below. Hook decisions were recorded, so enforcement ran; no Bash write landed outside `owns` |
+| 3. Forbidden audit | PASS | `git diff 15570df..3bb4c78`: no `evidence.rows` or `evidence.provenance` hunk; `terminal`, `meta.terminal`, `Piece.detail` and the nine `detail` strings still present; the only added em dashes are the verbatim excerpt line `Wavecheck 1.1 — BLOCK — 2026-08-20` and a comment quoting it; no local path or username in any `output`; limits claims trace to compatibility.md A3 (28 of 29, 5 pilot plans, ceiling) and to evidence-row notes already on the page; only `copy.ts` changed |
+| 4. Acceptance audit | PASS | T1.0.1 criterion re-run through `spawnSync(crit, {shell: true})` (cmd.exe): exit 0. Wave 1.0 extra check: all 10 `hero.artifact.lines[].text`, `**` and backticks stripped and whitespace collapsed, are substrings of `docs/plans/004-seatrial-e2e-gate.md` normalised the same way (10 of 10) |
+| 5. Deviation reconciliation | PASS | Executor reported 2 deviations, logged as 1 and 2. One discovered here, logged as 3 (excerpt lines are verbatim fragments, not whole lines), non-blocking under the plan's operational definition and carried to the human gate |
+
+### audit-wave 1.0, docs/plans/012-homepage-restructure.md
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.0.1 | `3bb4c78` | `site/content/copy.ts` | `site/content/copy.ts` | none |
+
+  note: enforcement active: 4 hook decision(s) recorded for wave 1.0 (0 denied)
+
+Deviations logged: 3 (1 discovered by wavecheck)
 
 ## Progress log
 
 | Date | Task | Result | Notes |
 |---|---|---|---|
 | 2026-10-07 | T0 | PASS | Baseline filled, README row added, status EXECUTING |
+| 2026-10-07 | T1.0.1 | PASS | `3bb4c78`; wavecheck 1.0 PASS |
 
 ## Reconcile report
