@@ -562,6 +562,26 @@ audit is not self-authored. Wavecheck ran from the installed 0.16.0 skill.
 
 Deviations logged: 0 (0 discovered by wavecheck)
 
+### Wavecheck 2.1 - PASS - 2026-10-07
+
+`execution: fleet`: T2.1.1 and T2.1.2 each ran in a spawned `drydock:executor`
+(Sonnet), one at a time, so this audit is not self-authored.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | Status `EXECUTING`; waves 1.1 and 1.2 have PASS reports; Phase 1 gate CLOSED. Staleness diff of the wave's owned files against `9276d74` was empty before arming |
+| 2. Ownership | PASS | `audit-wave 2.1: PASS, docs/plans/009-site-016-additions.md (2 task(s), 2 commit(s), attribution: manifest)`; table below. **enforcement active: 11 hook decision(s) recorded for wave 2.1 (0 denied)**; bash layer 9 command(s) seen, 0 write(s) detected outside `owns`. Working tree clean |
+| 3. Forbidden | PASS | T2.1.1's `copy.ts` hunks are exactly the contract's: the heading, the `init` and `check` pieces, the planwright and wavecheck sentences, and the A10 and A11 rows. The flow strip, FAQ, hero and VERSION are untouched, with no token, cost or percentage figure, no reconcile token step, and no `docs/` edit. The new rows' status equals the compat cells (`OBSERVED FLAG THEN PASS`, `OBSERVED PARTIAL`, already plain and uppercase), and the tone is `hold` because neither status is PASSED. No em dash in any new string. T2.1.2 changes only the header comment and adds `lg:last:col-span-1` to the `<li>`. The CI sentence holds: `verify.yml:80` runs `node drydock/scripts/audit-corpus.mjs` on push, and `verify.yml` was green on `9276d74` (Baseline) |
+| 4. Acceptance | PASS | Both criteria run through `spawnSync(..., {shell: true})` (`cmd.exe`): T2.1.1 exit 0 (6.6 s), T2.1.2 exit 0 (5.4 s). Emitted rule per executor and criterion: `.lg\:last\:col-span-1:last-child{grid-column:span 1/span 1}` inside the `lg` media block |
+| 5. Deviations | PASS | None reported, none found. For 2.R: the new `assert-copy.mjs` comment says "check and init joined in 0.16.0". `init` shipped in 0.14.0 and joined the *page* in 0.16.0, so the comment is ambiguous. It is a code comment, not page copy, and is in scope for the review rather than a conformance miss |
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T2.1.1 | `76376bf` | `site/content/copy.ts`<br>`site/scripts/assert-copy.mjs` | `site/content/copy.ts`<br>`site/scripts/assert-copy.mjs` | none |
+| T2.1.2 | `9b6cb88` | `site/components/sections/Lifecycle.tsx` | `site/components/sections/Lifecycle.tsx` | none |
+
+Deviations logged: 0 (0 discovered by wavecheck)
+
 ## Progress log
 
 | Date | Task | Result | Notes |
@@ -569,5 +589,7 @@ Deviations logged: 0 (0 discovered by wavecheck)
 | 2026-10-07 | T0 | DONE | Baseline at `9276d74`; installed 0.16.0, no VERSION DRIFT; `verify.yml` green on `9276d74`; README row added; status EXECUTING; criterion exits 0; `assert-matrix` PASS |
 | 2026-10-07 | T1.1.1 | DONE | `ca612bf`; A10 `OBSERVED FLAG THEN PASS`; wavecheck 1.1 PASS, reproduction matched |
 | 2026-10-07 | T1.2.1 | DONE | `f93aa6c`; A11 `OBSERVED PARTIAL`; wavecheck 1.2 PASS, reproduction matched |
+| 2026-10-07 | T2.1.1 | DONE | `76376bf`; copy contract applied, four pins added |
+| 2026-10-07 | T2.1.2 | DONE | `9b6cb88`; `lg:last:col-span-1` emitted; wavecheck 2.1 PASS |
 
 ## Reconcile report
