@@ -785,6 +785,17 @@ Second fresh-context review (general-purpose agent, Opus 5.5, read-only) of `155
 
 F1 is carried to the Phase 1 gate as a follow-up, not repaired here.
 
+## Wave 1.R verdict, APPROVED, 2026-10-07 (review of repair Waves 1.5-1.6)
+
+Third fresh-context review (general-purpose agent, Opus 5.5, read-only), scoped to `git diff e619e17..b81166f -- site/` (`39f6370`, `f630404`, `9a4a18f`) after the first seatrial NO-GO (D20). `npm run verify` green; measured live with Playwright MCP at 1280x800, 1280x900 and 375x812.
+
+| # | Check | Result |
+|---|---|---|
+| 1 | Refusal outputs wrap | PASS: all four pins fully inside their boxes at 1280 and 375; every `<pre>` and wrapper has `scrollWidth == clientWidth`; widest `documentElement.scrollWidth` 360 at 375; `data-source`, `data-pin` and text unchanged |
+| 2 | Hero excerpt | PASS: wraps, no scrollbar, no clipping; 10 spans and `data-excerpt-of` unchanged; install bottoms 661 and 690 at 1280x800; h1 opacity 1 at `load` |
+| 3 | Badge gate | PASS: 16 mutations; flip, removal, duplicate, wrong path, empty attribute, lowercase, empty text, `BLOCK PASS`, script-only, comment-only and single-quoted all exit 1 naming `excerpt`; three variants that still render BLOCK exit 0; diff purely additive |
+| 4 | Other | Non-blocking: the badge text is decoded twice (`decode(inner(...))`), so a literal `&amp;#66;LOCK` would read as BLOCK; `Hero.tsx` writes `hero.artifact.source` beside the destructured `artifact.source` (as the task specified). TG5's expected text still says outputs "scroll inside their own boxes"; its measurable step still holds |
+
 ## Progress log
 
 | Date | Task | Result | Notes |
@@ -801,5 +812,6 @@ F1 is carried to the Phase 1 gate as a follow-up, not repaired here.
 | 2026-10-07 | Testing Gate | NO-GO | Seatrial at `f3be934`: TG1, TG2, TG4, TG5 PASS; TG6 PASS (failed as designed); **TG3 FAIL (blocker)**: three of four refusal pins sit past the right edge of their scroll boxes at 1280x900. Sheet in `.drydock/testing/012-homepage-restructure/verdict.md`; specs in `e2e/012-homepage-restructure/`, GENERATED, NOT EXECUTED. Phase 1 gate not closed |
 | 2026-10-07 | T1.5.1, T1.5.2 | PASS | `39f6370`, `f630404`; wavecheck 1.5 PASS |
 | 2026-10-07 | T1.6.1 | PASS | `9a4a18f`; wavecheck 1.6 PASS |
+| 2026-10-07 | T1.R.1 | APPROVED | Third review, of Waves 1.5-1.6; two non-blocking notes |
 
 ## Reconcile report
