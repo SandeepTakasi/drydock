@@ -485,5 +485,7 @@ Deviations logged: 6 (3 discovered by wavecheck)
 | 2026-10-07 | T0 | PASS | Baseline recorded at `d95b080`, index row added, status EXECUTING. |
 | 2026-10-07 | Wave 1.1 | T1.1.1-T1.1.4 DONE | `a795149`, `cc96426`, `0e4e3cd`, `28cbceb`; executors spawned one at a time. |
 | 2026-10-07 | Wavecheck 1.1 | BLOCK, then PASS under override | BLOCK on pre-existing untracked e2e specs (`713771d`); D16 override signed by Sandeep Takasi; D17 lane change; Wave 1.2 added. |
+| 2026-10-07 | Wave 1.2 | T1.2.1 DONE, wavecheck PASS (D16) | `cf81664`. |
+| 2026-10-07 | Phase 1 gate, mechanical half | GREEN | audit 159/159, enforce-owns 42, detect-bash-writes 21, resolve-target 8, stats 8/8. `validate-plan` over the corpus: all PASS except 004's permanent, CI-excluded FAIL. `cd site && npm run verify` exit 0 (`assert-copy: PASS`, version matches plugin.json; `assert-matrix: PASS`). `audit-corpus` from a clean worktree with an empty `CLAUDE_CONFIG_DIR`, as CI runs it: `PASS, 25 wave(s) in 6 plan(s)`. In the working copy it reports plan 010's two waves FAIL on the `e2e/009` paths D16 accepts. Awaiting the human release signature. |
 
 ## Reconcile report
