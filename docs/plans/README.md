@@ -18,7 +18,7 @@ would have lost.
 | [009-site-016-additions](009-site-016-additions.md) | The homepage learns 0.16.0's `check`, learnings step, wave lock and CI re-audit, claiming only what ran | DONE |
 | [010-guard-entry-point](010-guard-entry-point.md) | `arm`: the ownership hook armed from a `check` intent file, no plan needed; docs lead with it (v0.17.0) | RECONCILED |
 | [011-stale-bash-snapshot](011-stale-bash-snapshot.md) | The Bash detector's snapshot is bound to the arming that wrote it, so a stale one is never diffed (v0.17.1) | RECONCILED |
-| [012-homepage-restructure](012-homepage-restructure.md) | The homepage leads with the drift problem, quotes a real BLOCK and four real refusals, and moves the evidence matrix to its own page | EXECUTING |
+| [012-homepage-restructure](012-homepage-restructure.md) | The homepage leads with the drift problem, quotes a real BLOCK and four real refusals, and moves the evidence matrix to its own page | BLOCKED |
 
 Plan 001 also has a [field case study](../case-study-001-homepage.md) written
 against it, including the parts that reflect badly on the tool.

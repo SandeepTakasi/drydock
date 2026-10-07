@@ -1,7 +1,7 @@
 ---
 plan: 012-homepage-restructure
 format_version: 3
-status: EXECUTING
+status: BLOCKED
 isolation: none
 enforcement: required
 attribution: manifest
@@ -462,6 +462,7 @@ install, FAQ; `/drydock/evidence/` renders the full matrix; `npm run verify` and
 | 2 | T1.0.1 | Refusal 3's `output` is the hook's `systemMessage` | The hook emits no separate `permissionDecisionReason`; the systemMessage is its deny reason | None: pin `does not own` is in both the source and the output | executor report |
 | 3 | T1.0.1 | Hero excerpt lines 2-6 are the first two cells of the plan 004 table rows (the Evidence cell is cut), line 7 starts mid-sentence inside row 5's Evidence cell, and line 10 omits that line's trailing `Plan status set to BLOCKED.` | Fits 10 lines in the hero; each line still passes this plan's operational test (normalised substring of the plan 004 file, Execution policies, D2) | Characters are verbatim but not every kept line is a whole source line. Not blocking under the plan's mechanical definition; flagged for the human at the Phase 1 gate (D16), who may require whole lines | discovered-by-wavecheck |
 | 4 | T1.1.2 | `lifecycle.flow` is no longer rendered by `Lifecycle.tsx`, and T1.2.1's removal list does not name it, so it stays in `copy.ts` as unrendered copy | The task's description lists steps, diagram and the nine-name list; the flow strip has no place in it | Dead copy only; no pinned literal lives in it (checked against `assert-copy.mjs` REQUIRED). Left for the review or a follow-up rather than widening T1.2.1 | executor report |
+| 5 | T1.3.1 | `REQUIRED_HOME` drops `"outside the project directory are not enforced"` and `"Bash-mediated writes bypass file-tool hooks"`, which the sketch keeps on home (it removes exactly seven named literals, and these two are not among them). They appear only in `REQUIRED_EVIDENCE`, so home carries 18 pinned literals where the sketch specifies 20. The executor reported "deviations: none" | Unknown; both literals are also in `REQUIRED_EVIDENCE`, so the executor likely treated the list as a move rather than a copy | Weakens an existing check, which the task forbids: the home page's Limits section can lose both enforcement ceilings and `npm run verify` stays green. Unreported | discovered-by-wavecheck |
 
 ## Wavecheck reports
 
@@ -536,6 +537,39 @@ Deviations logged: 4 (1 discovered by wavecheck)
 
 Deviations logged: 4 (1 discovered by wavecheck)
 
+### Wavecheck 1.3 - BLOCK - 2026-10-07
+
+`execution: fleet`: T1.3.1 was written by a spawned `drydock:executor` (Sonnet 5.5); this audit is by the orchestrator, which wrote none of the diff.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `status: EXECUTING`; wave 1.3 exists; waves 1.0-1.2 have PASS reports (`2fcffe4`). Staleness: no commit touched `assert-copy.mjs` since `15570df` before this wave |
+| 2. Ownership audit | PASS | `audit-wave 1.3: PASS` (1 task, 1 commit, attribution: manifest); 6 hook decisions recorded, so enforcement ran; no Bash write outside `owns`. Table and enforcement sentence below |
+| 3. Forbidden audit | **BLOCK** | Forbidden: "weakening or deleting any existing check". Literal lists extracted from `15570df` and `61ed102` (comments stripped): old `REQUIRED` 26, new `REQUIRED_HOME` 18, `REQUIRED_EVIDENCE` 7. Removed from home: the seven the sketch names, plus `outside the project directory are not enforced` and `Bash-mediated writes bypass file-tool hooks`, which the sketch keeps. Both still render on home (Limits) but are no longer required there. Other checks (executor discriminator, over-claim, heading contract, relative escape, motion, version) were moved into per-page form, not dropped; not reading `copy.ts`; no dependency |
+| 4. Acceptance audit | PASS | T1.3.1 criterion re-run through `spawnSync(crit, {shell: true})` (cmd.exe): exit 0. `npm run verify` green; pin mutation exits 1 naming `pin`; excerpt mutation exits 1 naming `excerpt`. The criterion does not count home's literals, which is why it passes over check 3's finding |
+| 5. Deviation reconciliation | **BLOCK** | The executor reported "deviations: none". The narrowed `REQUIRED_HOME` is an unreported deviation, logged here as 5, `discovered-by-wavecheck` |
+
+**Which task, which file, what is wrong.** `T1.3.1`, `site/scripts/assert-copy.mjs`: `REQUIRED_HOME` omits two enforcement-ceiling literals the sketch keeps on the home page, so the home page can drop both ceilings with `npm run verify` green.
+
+**Minimal remediation options (no executor retries: an unreported deviation is a contract breach, not a quality miss):**
+- **(a) Targeted fix task in a new wave, new task id** (e.g. Wave 1.4, `T1.4.1`, owning `site/scripts/assert-copy.mjs`): add the two literals back to `REQUIRED_HOME`, leaving them in `REQUIRED_EVIDENCE` too; criterion: T1.3.1's plus a count of 20 home literals. Wave 1.R would then follow wavecheck 1.4.
+- **(b) `/drydock:replan`** if the human prefers the two ceilings pinned on one page only, which changes D11.
+- **(c) Human decision.**
+
+Nothing was fixed by this audit. An auditor who edits the code under audit is no auditor.
+
+### audit-wave 1.3, docs/plans/012-homepage-restructure.md
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.3.1 | `61ed102` | `site/scripts/assert-copy.mjs` | `site/scripts/assert-copy.mjs` | none |
+
+  note: enforcement active: 6 hook decision(s) recorded for wave 1.3 (0 denied)
+
+Deviations logged: 5 (2 discovered by wavecheck)
+
+**Verdict: BLOCK.** Wave 1.R must not start. Plan status set to `BLOCKED`.
+
 ## Progress log
 
 | Date | Task | Result | Notes |
@@ -544,5 +578,6 @@ Deviations logged: 4 (1 discovered by wavecheck)
 | 2026-10-07 | T1.0.1 | PASS | `3bb4c78`; wavecheck 1.0 PASS |
 | 2026-10-07 | T1.1.1-T1.1.6 | PASS | `7edc8af`, `e686060`, `ef0ee13`, `53d2a95`, `73a0ad2`, `f2c1f62`; wavecheck 1.1 PASS |
 | 2026-10-07 | T1.2.1 | PASS | `642363f`; wavecheck 1.2 PASS |
+| 2026-10-07 | T1.3.1 | BLOCK | `61ed102`; criterion exits 0 but wavecheck 1.3 BLOCK on deviation 5; status BLOCKED, awaiting a human decision |
 
 ## Reconcile report
