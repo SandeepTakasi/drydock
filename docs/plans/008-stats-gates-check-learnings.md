@@ -1,7 +1,7 @@
 ---
 plan: 008-stats-gates-check-learnings
 format_version: 3
-status: DONE
+status: RECONCILED
 isolation: none
 enforcement: required
 attribution: manifest
@@ -282,7 +282,7 @@ confirmed to exist. Verdict APPROVED-WITH-FIXES; all twelve findings applied:
 
 ## Phase 1: Mechanics
 
-**Phase gate:** CLOSED 2026-10-07. All four plugin suites exit 0 (audit 154/154, enforce-owns 42, detect-bash-writes 21, resolve-target 8); `node drydock/scripts/drydock-stats.test.mjs` exits 0 (8/8); `validate-plan` over the corpus as CI runs it exits 0; and Wave 1.R APPROVED on its second re-review, after two repair waves (1.4, 1.5).
+**Phase gate: CLOSED, approved by the Wave 1.R second re-review - 2026-10-07.** Conditions met: all four plugin suites exit 0 (audit 154/154, enforce-owns 42, detect-bash-writes 21, resolve-target 8); `node drydock/scripts/drydock-stats.test.mjs` exits 0 (8/8); `validate-plan` over the corpus as CI runs it exits 0; and Wave 1.R APPROVED on its second re-review, after two repair waves (1.4, 1.5).
 
 ### Wave 1.1 - The wave-order lock, the stats script, the CI re-audit
 
@@ -542,7 +542,7 @@ confirmed to exist. Verdict APPROVED-WITH-FIXES; all twelve findings applied:
 
 ## Phase 2: Skills and release
 
-**Phase gate:** CLOSED 2026-10-07. 0.16.0 release approved by Sandeep Takasi, 2026-10-07 (D5), given in the session after the mechanical half below; Wave 2.2 / T2.2.1 runs on that approval, and the mechanical half is re-measured after it in wavecheck 2.2. Mechanical half measured 2026-10-07 at `a78e18b`: `cd site && npm run verify` exits 0 (`assert-copy: PASS`, `assert-matrix: PASS`); all plugin suites exit 0 (audit 154/154, stats 8/8, enforce-owns 42, detect-bash-writes 21, resolve-target 8); `audit-corpus: PASS, 18 wave(s) in 4 plan(s)`. Wave 2.1's three skill edits are unexercised (D14). Signed: Sandeep Takasi, 2026-10-07.
+**Phase gate: CLOSED, approved by Sandeep Takasi - 2026-10-07.** Human release approval for 0.16.0 given in session, recorded by name and date per D5, after the mechanical half below; Wave 2.2 / T2.2.1 ran on that approval, and wavecheck 2.2 re-measured the mechanical half green on 0.16.0. Mechanical half measured 2026-10-07 at `a78e18b`: `cd site && npm run verify` exits 0 (`assert-copy: PASS`, `assert-matrix: PASS`); all plugin suites exit 0 (audit 154/154, stats 8/8, enforce-owns 42, detect-bash-writes 21, resolve-target 8); `audit-corpus: PASS, 18 wave(s) in 4 plan(s)`. Wave 2.1's three skill edits are unexercised (D14). Signed: Sandeep Takasi, 2026-10-07.
 
 ### Wave 2.1 - Skill text
 
@@ -952,3 +952,226 @@ intents, deleted files and continuation-line criteria; `learnings` on nested
 | 2026-10-07 | Wave 2.2 | PASS | wavecheck 2.2; gate mechanical half re-measured green on 0.16.0 |
 
 ## Reconcile report
+
+Reconciled 2026-10-07 by the orchestrating session, running the installed 0.15.1
+`drydock:reconcile`. The token-usage step was done by hand, because 0.16.0's
+reconcile step (T2.1.3) is not installed (D14). Preconditions: all 7
+implementation waves have a PASS report (1.1-1.5, 2.1, 2.2). Testing Gate is
+`N/A`. Both phase gates read `CLOSED, approved by ... - 2026-10-07`: Phase 1 by
+the Wave 1.R second re-review, Phase 2 by Sandeep Takasi. Both gate lines were
+first written as `CLOSED 2026-10-07. ...`, which the `GATE_CLOSED` parser does
+not match. They were rewritten in place into the contract's form before this
+report (R4).
+
+### Token usage
+
+`node drydock/scripts/drydock-stats.mjs docs/plans/008-stats-gates-check-learnings.md`, exit 0, run 2026-10-07 at `eb3de86`, verbatim:
+
+```
+bucket          input       cache_create  cache_read    output      total
+orchestration   324         651271        28268061      177964      29097620
+execution       174         635232        6037294       31255       6703955
+other subagents 174         546084        8453542       1180        9000980
+overhead: 85.0% (orchestration + other subagents) of 44802555 tokens across 3 session(s)
+1aac9bc1-d21a-44dd-b777-f532b4ec179e  5693193  also mentions: 001-drydock-homepage, 002-design-system-modernisation, 003-hero-revamp, 004-seatrial-e2e-gate, 005-small-lane-and-solo-mode, 006-external-review-repairs, 007-deferred-hardening
+1f56646e-7d50-467b-a2b2-00becf967b19  22663939  also mentions: 001-drydock-homepage, 002-design-system-modernisation, 003-hero-revamp, 004-seatrial-e2e-gate, 005-small-lane-and-solo-mode, 006-external-review-repairs, 007-deferred-hardening
+ae371a2b-c6a5-494d-b781-02a35c879bcd  740488  also mentions: 001-drydock-homepage, 002-design-system-modernisation, 003-hero-revamp, 004-seatrial-e2e-gate, 005-small-lane-and-solo-mode, 006-external-review-repairs, 007-deferred-hardening
+a session that mentions 008-stats-gates-check-learnings is counted whole, including unrelated work in it; tokens, not cost
+```
+
+**The output column is a lower bound, and badly so (measured during this
+reconcile, assumption D8 failed in part).** Host transcripts record each
+request's `usage` as it stood when the stream started, and the final count is
+often never written. In the third Wave 1.R reviewer's transcript, the last three
+requests carry `output_tokens` of 5, 7 and 26 on assistant messages of
+3,778-5,562 characters, with `stop_reason` empty on every line. Its whole file
+sums to 196 output tokens over 22 requests, for a review whose final verdict
+alone ran to thousands. D8's keep-the-max cannot recover a value that was never
+recorded. Input and cache counts are fixed at stream start and are believed
+sound. They are 99% of every bucket here, so the overhead percentage moves
+little, but every output figure above is wrong, and this report must not be
+read as an output count.
+
+Two more readings. First, every session row "also mentions" plans 001-007,
+because each of these sessions read `docs/plans/README.md`, so that column
+carries no signal for this plan (D7 held as designed, uninformative in
+practice). Second, "other subagents" here are the three Wave 1.R reviewers plus
+two planning-time reviewers, which is review overhead, not orchestration.
+
+### Deviation synthesis
+
+| Cluster | Deviations | Produces |
+|---|---|---|
+| (a) An assumption was false | 2 (finding counted 14 sealed waves, really 12: the `1.R` waves have no wavecheck); 10 (`drydock/README.md` has no status line); D8 in part (above) | R5, R7 |
+| (b) Instructions were ambiguous or self-defeating | 1 (T0's criterion matched its own text); 8 (the brief said to copy the contract verbatim, but the vocabulary case rejects its placeholder words); 9 (forbidding edits to other steps made "place the step where the report is assembled" impossible without renumbering) | planwright feedback below; R3 |
+| (c) The codebase drifted mid-execution | none. Waves 1.2, 1.3 and 1.4 had non-empty staleness, and each time it came only from the wave's own dependency chain | R6 |
+| (d) Executor overreach | 4 (T1.2.1 damaged a neighbouring usage line and did not name it); 3 (an unspecified overlap rule; reasonable and reported) | executor feedback below |
+| (e) Orchestrator error (new) | 5 (wavecheck reports paraphrased the enforcement sentence, so CI would have failed from a clean clone); the gate-line format (R4); every gate ran on Windows only, so G1 (a `/bin/sh` syntax error in fixtures) passed three wavechecks | R1, R2, R4 |
+
+### Assumption postmortem
+
+| Id | Verdict | Evidence |
+|---|---|---|
+| D1 lane full | held | Three tasks needed `drydock-audit.mjs` and could not share a wave; two repair waves later re-owned it in sequence |
+| D2 fleet, one at a time | held | 11 executors, each committed and `task-close`d before the next; zero ownership findings in 7 waves |
+| D3 check does not arm | held (subcommand); never-exercised (skill) | Live `check` run in wavecheck 1.2 flagged 3 out-of-scope files and a failing criterion. The skill has never been invoked |
+| D4 numbers only here | held | The CHANGELOG carries no token figure (wavecheck 2.2) |
+| D5 0.16.0, human gate | held | Signed by Sandeep Takasi before T2.2.1 |
+| D6 own script | held | `drydock-stats.mjs` reads only the projects dir and the plan |
+| D7 attribution rule | held as designed; weak in practice | "also mentions" lists 001-007 for every session (see Token usage) |
+| D8 global dedupe, max | **failed in part** | Dedupe is correct; max cannot recover output never written. The output column undercounts severely (R5) |
+| D9 CI re-audits v3 only | held, after deviation 5 | A clean clone passes 19 waves in 4 plans. Plan 008's own waves passed only once the reports quoted the audit sentence |
+| D10 learnings by grep | held (subcommand); never-exercised (planwright step) | Executor's real run agreed with an independent awk/grep count: 1 row + 2 lines |
+| D11 earlier-wave rule | held, exercised live | `wave-start ... 1.3` refused before 1.2 had a report; every later wave armed only after its predecessors passed |
+| D12 review in Phase 1 only | held | Phase 1 review found 3 must-fixes (F1, F2, G1) that all wavechecks passed. That argues for keeping it there, not for adding one to Phase 2 |
+| D13 Testing Gate N/A | held | No interactive surface changed; `assert-copy` asserted the version |
+| D14 skill edits unexercised | held | Stated in every wavecheck and in the CHANGELOG. Still true: 0.16.0 is not installed |
+| D15 repo copy arms waves | held | The lock ran from Wave 1.2 on; the installed copy's `audit-wave` agreed in every wave |
+| Finding "existing wave-start tests arm 1.0 only" | held | The lock left them passing |
+| Finding "sealed waves re-audit from a clean checkout" | held for 005-007; failed for 008 until deviation 5 | F1 |
+| Finding "usage lines repeat; later is always larger" | held but insufficient | True of the lines present; the final value is often absent |
+| Finding "git diff --name-only hides renames" | held | The `--no-renames` case is failable (the executor dropped the flag; 147/148) |
+| Finding "the vocabulary case polices skill files" | held | It fired on T2.1.1's first draft (deviation 8) |
+
+### New knowledge
+
+- From a clean checkout, the enforcement receipt survives only as the audit's
+  literal sentence in the report. Its counts are not recoverable from prose.
+- `check` criteria, like plan criteria, cross two shells in CI. A fixture that
+  passes on cmd.exe can be a syntax error under dash.
+- On Windows, `spawnSync(..., {shell: true})` takes its shell from `%ComSpec%`.
+  Pointing it at Git's `sh.exe` **from PowerShell** routes every criterion
+  through a POSIX sh. The same assignment from Git Bash had no effect, which was
+  measured by the pre-fix suite still passing. This is a shell stand-in for the
+  ubuntu leg, not a Linux run; WSL here has dash but no Node.
+- `plan-status` reads the last `Wave x.R verdict` heading in document order.
+  This repo writes verdicts newest first, so plans 007 and 008 both print "no
+  APPROVED verdict recorded" over an APPROVED review.
+
+### Proposals
+
+#### Proposal R1 | target: CLAUDE.md | kind: addition
+Finding: Wavecheck reports that paraphrased the audit's enforcement note failed `audit-corpus` from a clean clone, 3 of 15 waves (deviation 5, Wave 1.R F1).
+Confidence: high
+```diff
+   Measured 2026-09-01, plan 005 deviation 2. Widening `owns`
+   to include the plan file is the wrong fix and is what the denial message says
+   not to do — it is the mixture behind plan 004's deviation 13.
++- **Paste the audit's `enforcement active: N hook decision(s) recorded for
++  wave X (N denied)` sentence into every wavecheck report verbatim.** Without
++  `.drydock/`, as in CI, `audit-wave` recovers the enforcement receipt only from
++  that literal sentence. Plan 008's reports paraphrased it ("Enforcement ran: 8
++  hook decisions") and `audit-corpus` failed 3 of 15 waves from a clean clone
++  while passing locally. Prove a report from `git clone` plus an empty
++  `CLAUDE_CONFIG_DIR`, never from the working checkout. Plan 008 deviation 5.
+```
+
+#### Proposal R2 | target: CLAUDE.md | kind: addition
+Finding: Two `check` fixtures used `node -e process.exit(7)`, which exits 7 under cmd.exe and 2 under `/bin/sh`. Every Windows-only gate passed it, and the review found it (deviation 7, G1).
+Confidence: high
+```diff
+   quoting layer. A criterion that runs a test suite should pass
+   `stdio: ['ignore','pipe','ignore']` and wrap it in `try/catch`, so the
+   suite's failure text never reaches the criterion's own stderr. Measured
+   2026-09-20, plan 006.
++  **The same holds in reverse on CI's ubuntu legs, where `shell: true` is
++  dash:** an unquoted `(` is a syntax error that exits 2, so a criterion or test
++  fixture written as `node -e process.exit(7)` passes here and fails there. Use
++  `exit 7`, or quote the script. To try a suite under sh locally, set
++  `$env:ComSpec` to Git's `sh.exe` **in PowerShell**; Node reads it for
++  `shell: true`. Set from Git Bash, it silently has no effect. Plan 008, G1.
+```
+
+#### Proposal R3 | target: CLAUDE.md | kind: addition
+Finding: T0's criterion rejected any `_pending_` in the plan, and the plan contains the word in its own text, so it could fail but never pass (deviation 1).
+Confidence: high
+```diff
+   suite's failure text never reaches the criterion's own stderr. Measured
+   2026-09-20, plan 006.
++  A criterion that greps the plan file greps itself too: test a shape only the
++  target can have (`/[|] _pending_ [|]/`, a table cell), not a bare word the
++  plan also uses in prose. Plan 008 deviation 1.
+```
+(If R2 is also applied, put this after R2's lines.)
+
+#### Proposal R4 | target: CLAUDE.md | kind: addition
+Finding: Both plan 008 gate lines were written `CLOSED 2026-10-07. ... approved by ...`, which `GATE_CLOSED` (`drydock-audit.mjs` ~692) does not match, so reconcile would have read them as unsigned.
+Confidence: high
+```diff
+   `OPEN`/`CLOSED` status line reads as two gates, and the declaration, which
+   still says "human approval" with no signature, stays unsigned forever.
++  The closed form is exact: `**Phase gate: CLOSED, approved by <name> -
++  <date>.**`. The parser requires `CLOSED,` immediately followed by `approved
++  by`, so `CLOSED 2026-10-07. Release approved by ...` reads as unsigned.
+```
+
+#### Proposal R5 | target: CLAUDE.md | kind: addition
+Finding: Host transcripts record usage at stream start, so `drydock-stats`'s output column undercounts severely; a reviewer's file sums to 196 output tokens for thousands written (D8 failed in part).
+Confidence: high
+```diff
++- **`drydock-stats` output tokens are a lower bound, not a count.** Host
++  transcripts write each request's `usage` as it stood when the stream started.
++  `output_tokens` of 5-26 sit on 3.7-5.6k-character messages with an empty
++  `stop_reason`, and the final value is often never written, so keep-the-max
++  dedupe cannot recover it. Input and cache columns are fixed at stream start.
++  Quote the overhead percentage; never quote the output column as a count.
++  Measured 2026-10-07, plan 008 reconcile.
+```
+(Placement: CLAUDE.md "Toolchain facts". Fixing the script, for example by reading final usage from another source, if one exists, is a code change for a later plan, not a doc edit.)
+
+#### Proposal R6 | target: CLAUDE.md | kind: addition
+Finding: Waves 1.2-1.4 showed non-empty staleness caused only by their own dependency chain; the plan's rule ("update the baseline SHA") would have redefined the Wave 1.R review diff (cluster c, none).
+Confidence: medium
+```diff
++- **Staleness from a wave's own declared dependencies is a handoff, not
++  drift.** When `git diff <baseline>..HEAD` over a wave's owned files lists only
++  commits of the tasks it depends on, re-locate the anchors its brief names,
++  give the executor current line numbers, and keep the baseline SHA: the
++  phase's review diff is defined against it. Plan 008, waves 1.2-1.4.
+```
+
+#### Proposal R7 | target: docs/architecture.md | kind: addition
+Finding: Plan 008 added two gates the Gates table does not list: `audit-corpus.mjs` in CI, and the `wave-start` earlier-wave lock (D9, D11).
+Confidence: high
+```diff
+ | `drydock-audit.mjs plan-status` | frontmatter `status:` contradicting what the wavecheck reports actually recorded — a plan reading `EXECUTING` after every wave passed, or `DONE` over a `BLOCK` | whether a gate was *skipped*: a retroactively written report is a heading like any other |
++| `drydock-audit.mjs wave-start` (0.16.0) | arming a wave while an earlier implementation wave of the same plan has no PASS wavecheck report; refuses, writes nothing | a report written but wrong; review (`x.R`) waves, which are exempt; a target wave with no tasks |
++| `drydock/scripts/audit-corpus.mjs` (CI `docs` job, 0.16.0) | every sealed wave of every `format_version: 3` plan re-audited from a clean full-history checkout | v2 plans (001-004), excluded; a commit after a sealed wave that no task claims |
+ | `.github/workflows/verify.yml` | the plugin's own tests (audit + hook) and the honesty matrix, on every push and PR, with no `paths` filter | anything needing a site build — that stays in `deploy.yml` |
+```
+
+#### Question Q1 (low confidence, not a diff)
+`plan-status` reads the last `Wave x.R verdict` heading in document order, while
+plans 007 and 008 write verdicts newest first, so both print a false "no
+APPROVED verdict recorded". Should the convention change (append verdicts in
+chronological order), or should the tool take the latest-dated verdict? The
+second is a code change for a later plan. The first is a CLAUDE.md line.
+
+### Feedback for planwright (clusters b)
+
+- A criterion that greps the plan must not be able to match the plan's own
+  text. Planwright could check that each criterion's literals do not occur
+  elsewhere in the plan (deviation 1).
+- When a brief says "copy verbatim" into a skill file, check the text against
+  the vocabulary case first; placeholders like `glob` and `command` fail it
+  (deviation 8).
+- "Forbidden: changing any other step" combined with "place it where X happens"
+  forces an out-of-order step. Say whether renumbering is allowed (deviation 9).
+- Verify each file a release task edits actually has the line it is told to
+  bump (deviation 10).
+- Findings that count things should name the counting rule; "14 sealed waves"
+  included review waves that never get a wavecheck (deviation 2).
+
+### Feedback for the executor contract (cluster d)
+
+- Report every removed line by content, not by count. T1.2.1's report said
+  nothing about the one line it damaged; `--numstat` showed `-1` and only the
+  auditor's reading named it (deviation 4).
+
+### Not done, stated
+
+- 0.16.0 is committed at `2fdeeaf`, **not pushed, not tagged, not installed**.
+  So the three skill changes remain unexercised (D14), and CI has not run on
+  this plan. The `ComSpec` emulation and clean-clone runs are the nearest local
+  evidence.
+- Proposals R1-R7 and Q1 are unapplied.
