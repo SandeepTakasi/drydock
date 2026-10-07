@@ -556,6 +556,7 @@ install, FAQ; `/drydock/evidence/` renders the full matrix; `npm run verify` and
 | 7 | T1.4.1 | Beyond the sketch: both path checks also reject any path containing `..`; a failed `docs/plans/` prefix does not skip the content checks (extra failure lines); a first line that is not a `### ` heading reports one failure and skips that excerpt's per-line checks | Executor hardening choices | Stricter only: every case still fails, and no passing case changed (the export passes with home 21 / evidence 7) | executor report |
 | 8 | Testing Gate | Seatrial NO-GO at `f3be934`: TG3 (blocker) failed, three of four refusal pins past the right edge of their `overflow-x-auto` boxes at 1280x900 | T1.1.3's sketch asked for an `overflow-x-auto` box so a long line never widens the page; at a two-column 1280 layout that hides the pin, which TG3 requires visible | Repaired in Waves 1.5-1.6 (D20) with two human-gate items folded in; T1.R.1 now depends on T1.5.1 and T1.6.1 | seatrial |
 | 9 | T1.5.1 | Also removed `overflow-x-auto` from the command line `<p>` and added `break-words` to it, beyond the sketch's wrapper `<div>` | The criterion requires no `overflow-x-auto` anywhere in the file, which the planner wrote without noticing the second use: a criterion defect, not an executor one | Command lines now wrap too, which TG3 and TG5 favour; no text or attribute changed | executor report |
+| 10 | Orchestrator | Every wavecheck report pasted the audit's own `### audit-wave <w>, ...` heading line above its table. `sealedRecord` ends a report body at the next `#{1,3} ` heading, so from a clean checkout (no `.drydock/`) it read none of the rows or the `enforcement active` sentence, and `audit-corpus` FAILed waves 1.0-1.6 on `enforcement: required` | The heading is part of the audit's printed output, and "paste verbatim" was applied to it too | Found by the pre-push `audit-corpus` run from a detached worktree with an empty `CLAUDE_CONFIG_DIR` (CLAUDE.md). The eight heading lines became plain text; rows and sentences untouched; re-run: `audit-corpus: PASS, 34 wave(s) in 8 plan(s)`. Proposed CLAUDE.md note for reconcile: paste the audit's rows and sentence, never its `###` heading | pre-push check |
 
 ## Wavecheck reports
 
@@ -571,7 +572,7 @@ install, FAQ; `/drydock/evidence/` renders the full matrix; `npm run verify` and
 | 4. Acceptance audit | PASS | T1.0.1 criterion re-run through `spawnSync(crit, {shell: true})` (cmd.exe): exit 0. Wave 1.0 extra check: all 10 `hero.artifact.lines[].text`, `**` and backticks stripped and whitespace collapsed, are substrings of `docs/plans/004-seatrial-e2e-gate.md` normalised the same way (10 of 10) |
 | 5. Deviation reconciliation | PASS | Executor reported 2 deviations, logged as 1 and 2. One discovered here, logged as 3 (excerpt lines are verbatim fragments, not whole lines), non-blocking under the plan's operational definition and carried to the human gate |
 
-### audit-wave 1.0, docs/plans/012-homepage-restructure.md
+`audit-wave 1.0, docs/plans/012-homepage-restructure.md`, table verbatim:
 
 | Task | Commit | Files changed | Owns | Outside owns |
 |------|--------|---------------|------|--------------|
@@ -593,7 +594,7 @@ Deviations logged: 3 (1 discovered by wavecheck)
 | 4. Acceptance audit | PASS | All six criteria re-run through `spawnSync(crit, {shell: true})` (cmd.exe): T1.1.1 0, T1.1.2 0, T1.1.3 0, T1.1.4 0, T1.1.5 0, T1.1.6 0. Extra: `measure-reduced-motion.mjs` PASS (waterline "10px, 8px", hull opacity 1 dasharray none, invisibleText=0), so C1/M1 survive the move. `npm run verify` not run: red by design until T1.3.1 (D12) |
 | 5. Deviation reconciliation | PASS | One reported deviation-shaped observation logged as 4. T1.1.2's mid-task criterion failure on a comment containing `piece.detail` was fixed before its commit, inside its own file: not a deviation. Note for Wave 1.R, not a conformance finding: T1.1.5's evidence page renders its `<h1>`, lead and home link as unstyled markup outside any container |
 
-### audit-wave 1.1, docs/plans/012-homepage-restructure.md
+`audit-wave 1.1, docs/plans/012-homepage-restructure.md`, table verbatim:
 
 | Task | Commit | Files changed | Owns | Outside owns |
 |------|--------|---------------|------|--------------|
@@ -620,7 +621,7 @@ Deviations logged: 4 (1 discovered by wavecheck)
 | 4. Acceptance audit | PASS | T1.2.1 criterion re-run through `spawnSync(crit, {shell: true})` (cmd.exe): exit 0 (build, `tsc --noEmit`, `eslint .`, section order problem < lifecycle < refuses < limits < install < faq, no `id="evidence"`/`id="terminal"`, 4 `data-pin=`, Terminal.tsx gone). `npm run verify` not run: red by design until T1.3.1 (D12) |
 | 5. Deviation reconciliation | PASS | Executor reported none. Its observation that `meta.evidence` still reads `04 / THE EVIDENCE`, duplicating limits' `04`, concerns a string T1.2.1 was forbidden to touch and that the evidence page may render; carried to Wave 1.R, not a conformance finding |
 
-### audit-wave 1.2, docs/plans/012-homepage-restructure.md
+`audit-wave 1.2, docs/plans/012-homepage-restructure.md`, table verbatim:
 
 | Task | Commit | Files changed | Owns | Outside owns |
 |------|--------|---------------|------|--------------|
@@ -651,7 +652,7 @@ Deviations logged: 4 (1 discovered by wavecheck)
 
 Nothing was fixed by this audit. An auditor who edits the code under audit is no auditor.
 
-### audit-wave 1.3, docs/plans/012-homepage-restructure.md
+`audit-wave 1.3, docs/plans/012-homepage-restructure.md`, table verbatim:
 
 | Task | Commit | Files changed | Owns | Outside owns |
 |------|--------|---------------|------|--------------|
@@ -675,7 +676,7 @@ Re-run in full after the remediation (D18), not spot-checked on the one finding.
 | 4. Acceptance audit | PASS | T1.3.1r1 criterion re-run through `spawnSync(crit, {shell: true})` (cmd.exe): exit 0, which covers T1.3.1's own clauses (verify green, pin and excerpt mutations fail naming `pin`/`excerpt`) plus the two new mutations failing on home. Default mode: `assert-copy: PASS ... (home: 20 literals, evidence: 7 literals; 5x executor, 1 h1 per page, 1 excerpt (10 lines), 4 pins, motion contract, version matches plugin.json)`. `measure-reduced-motion.mjs` PASS |
 | 5. Deviation reconciliation | PASS | Deviation 5 logged and remediated by T1.3.1r1 per D18; T1.3.1r1 reported none and its diff shows none |
 
-### audit-wave 1.3, docs/plans/012-homepage-restructure.md
+`audit-wave 1.3, docs/plans/012-homepage-restructure.md`, table verbatim:
 
 | Task | Commit | Files changed | Owns | Outside owns |
 |------|--------|---------------|------|--------------|
@@ -697,7 +698,7 @@ Deviations logged: 5 (2 discovered by wavecheck)
 | 4. Acceptance audit | PASS | Both criteria re-run through `spawnSync(crit, {shell: true})` (cmd.exe): T1.4.1 0, T1.4.2 0 (this also settles the cmd.exe round-trip T1.4.1's executor left unverified). `npm run verify` green: `assert-copy: PASS ... (home: 21 literals, evidence: 7 literals; 5x executor, 1 h1 per page, 1 excerpt (10 lines), 4 pins, motion contract, version matches plugin.json)`, `assert-matrix: PASS`. `measure-reduced-motion.mjs` PASS |
 | 5. Deviation reconciliation | PASS | T1.4.1 reported deviations beyond the sketch, logged as 7. T1.4.2 reported none and its diff shows none |
 
-### audit-wave 1.4, docs/plans/012-homepage-restructure.md
+`audit-wave 1.4, docs/plans/012-homepage-restructure.md`, table verbatim:
 
 | Task | Commit | Files changed | Owns | Outside owns |
 |------|--------|---------------|------|--------------|
@@ -720,7 +721,7 @@ Deviations logged: 7 (2 discovered by wavecheck)
 | 4. Acceptance audit | PASS | Both criteria re-run through `spawnSync(crit, {shell: true})` (cmd.exe): T1.5.1 0, T1.5.2 0. `npm run verify` green (home 21, evidence 7, 1 excerpt of 10 lines, 4 pins); `measure-reduced-motion.mjs` PASS |
 | 5. Deviation reconciliation | PASS | T1.5.1 reported one deviation, logged as 9. T1.5.2 reported none and its diff shows none. Note: `39f6370`'s subject line carries a `Co-Authored-By` trailer inline; harmless under `attribution: manifest` |
 
-### audit-wave 1.5, docs/plans/012-homepage-restructure.md
+`audit-wave 1.5, docs/plans/012-homepage-restructure.md`, table verbatim:
 
 | Task | Commit | Files changed | Owns | Outside owns |
 |------|--------|---------------|------|--------------|
@@ -743,7 +744,7 @@ Deviations logged: 9 (2 discovered by wavecheck)
 | 4. Acceptance audit | PASS | T1.6.1 criterion re-run through `spawnSync(crit, {shell: true})` (cmd.exe): exit 0 (badge flip fails naming `excerpt`; badge removed fails naming `excerpt`). T1.4.1's criterion re-run as a regression: exit 0 |
 | 5. Deviation reconciliation | PASS | The executor reported running the criterion from a temp file and leaving the PASS line unchanged (the sketch said "may"); neither departs from the task block, and the cmd.exe run above covers the first. Nothing to log |
 
-### audit-wave 1.6, docs/plans/012-homepage-restructure.md
+`audit-wave 1.6, docs/plans/012-homepage-restructure.md`, table verbatim:
 
 | Task | Commit | Files changed | Owns | Outside owns |
 |------|--------|---------------|------|--------------|
