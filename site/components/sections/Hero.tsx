@@ -82,14 +82,14 @@ export default function Hero() {
         <figure className="min-w-0 border border-line bg-surface">
           <figcaption className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 font-mono text-mark uppercase">
             <span className="text-ink-dim">{artifact.label}</span>
-            <span className="border border-block px-2 py-1 text-block">
+            <span className="border border-block px-2 py-1 text-block" data-excerpt-verdict={hero.artifact.source}>
               {artifact.verdict}
             </span>
           </figcaption>
-          <div className="overflow-x-auto px-4 py-5">
+          <div className="px-4 py-5">
             <pre
               data-excerpt-of={artifact.source}
-              className="font-mono text-note whitespace-pre"
+              className="font-mono text-note whitespace-pre-wrap break-words"
             >
               {artifact.lines.map((line) => (
                 <span
