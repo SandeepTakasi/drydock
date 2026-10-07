@@ -673,6 +673,85 @@ verification: per-session availability is a property of the environment, and
 
 ---
 
+## A11 — planwright's learnings step in a live session
+
+**Date:** 2026-10-07
+**Host version:** `claude --version` → `2.1.292 (Claude Code)`
+**Node:** v24.14.1
+**Repo SHA at run time:** `a99237c`, clean tree at start
+
+**What this entry claims.** The installed 0.16.0 `drydock:planwright` skill
+loaded through the Skill tool, and in its Step 2 ran
+`drydock-audit.mjs learnings` on concrete file paths and turned the output into
+Findings & constraints text. Output shown below is verbatim.
+
+**What this entry does not claim.** This is a partial run, by design:
+
+1. The run stopped after Step 2. No plan file was written; Steps 3 to 6 (clarify,
+   waves, models, plan artifact, `validate-plan`, pressure test) did not run and
+   are unexercised.
+2. It was model-invoked through the Skill tool inside a subagent and inside an
+   armed plan wave, not typed as a slash command.
+3. The interview answers were supplied by the task brief, not by a user. Supplied
+   inputs, mapped to the skill's questions: ceremony section ("offer to just do
+   the work", change touches under 5 files) answered "a plan IS wanted"; lane
+   `small`; execution `solo`; UI/API surface "none" (so no Testing Gate
+   interview); testing "as in `drydock/scripts/drydock-audit.test.mjs`"; tracker
+   "none"; human gate "none". No `drydock.config.yaml` exists, so Step 1 did not
+   skip any question on a profile's authority.
+4. The request was: "Plan a fix so `drydock-audit.mjs plan-status` reads the most
+   recent `Wave x.R verdict` heading instead of the last one in document order
+   (plan 008 reconcile, Q1)."
+
+`${CLAUDE_PLUGIN_ROOT}` did not appear in the skill text; the installed cache
+path printed in Step 2 was used as printed.
+
+### Command the skill ran
+
+Files the plan would own were `drydock/scripts/drydock-audit.mjs` and
+`drydock/scripts/drydock-audit.test.mjs`.
+
+```
+node C:/Users/91891/.claude/plugins/cache/drydock/drydock/0.16.0/scripts/drydock-audit.mjs learnings drydock/scripts/drydock-audit.mjs drydock/scripts/drydock-audit.test.mjs
+```
+
+### Raw output
+
+```
+## drydock/scripts/drydock-audit.mjs
+basename only:
+CLAUDE.md:113  update drydock@drydock`**, then restart. `drydock-audit.mjs` now stamps its
+CLAUDE.md:242  `drydock-audit.mjs task-close <plan> <task-id>`.** Under
+docs/plans/004-seatrial-e2e-gate.md:1108  | 15 | T2.1.1 / T2.1.2 | **Wave 2.1 declares two tasks that cannot run in parallel: `T2.1.2` **Depends on:** `T2.1.1`, and both sit under `### Wave 2.1 — Run the gate`.** Spec generation consumes the 
+## drydock/scripts/drydock-audit.test.mjs
+(none)
+```
+
+### Findings & constraints text the skill produced from it
+
+- Learnings: all three hits for `drydock-audit.mjs` are basename-only matches, no
+  full-path hits. CLAUDE.md:113 (version drift: bump the plugin version when the
+  script changes, because `drydock-audit.mjs` compares versions) applies: a fix
+  to the script must ship with a version bump, and the installed copy is what
+  sessions run. CLAUDE.md:242 (`task-close`) applies to execution mechanics only.
+  The plan 004 row (Wave 2.1 same-wave dependency) does not apply to this change.
+  `drydock-audit.test.mjs` had no learnings (`(none)`).
+- Exploration: `REVIEW_VERDICT_RE` and `derivePlanState` in `drydock-audit.mjs`
+  (around lines 699 to 730) record review verdicts with
+  `reviewsApproved.set(r[1], r[2])` per matching line, so the last matching
+  heading in document order wins. The comment above the regex says so on purpose
+  ("Last one wins"). The fix is confined to that function plus a test case in
+  `drydock-audit.test.mjs` (the `plan-status` cases around line 584 onward).
+  Under 5 files, so the skill's advice is that a plan is below the useful
+  boundary; the supplied answer said a plan is wanted anyway, lane `small`.
+
+### Verdict
+
+OBSERVED PARTIAL: Step 2's `learnings` call ran and its output fed the
+Findings text. Nothing past Step 2 was exercised.
+
+---
+
 ## A10 — check skill in a live session
 
 **Date:** 2026-10-07
