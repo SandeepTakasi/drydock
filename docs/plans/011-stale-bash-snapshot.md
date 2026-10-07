@@ -5,7 +5,7 @@ status: EXECUTING
 isolation: none
 enforcement: required
 attribution: manifest
-lane: small
+lane: full
 execution: fleet
 created: 2026-10-07
 approved_by: Sandeep Takasi
@@ -171,6 +171,7 @@ No pre-existing failure is excluded. The working tree is clean apart from this p
 | D11 | Testing Gate? | N/A | planner | See § Testing Gate. |
 | D12 | Live proof? | None in this session; the suite exercises the hook process end to end | planner, CLAUDE.md | Hooks load from the installed plugin. A session on an installed 0.17.1 is the first live run. |
 | D13 | Which copy arms? | The repo copy | planner | `wave-start` is unchanged by this plan. |
+| D14 | T1.1.3's CHANGELOG entry is conformant but inaccurate (Deviation 2). Repair? | A new Wave 1.2, task T1.2.1, replaces the 0.17.1 entry with text fixed verbatim in its block. The plan moves to `lane: full` (CLAUDE.md, plan 010 R3) and adds no review wave | planner, under the user's approval of this plan | The documented remedy for a rejected task: a new wave with a new id, no replan. Pinning the full text leaves the Mechanical tier nothing to paraphrase. Consumed by T1.2.1. |
 
 ## Open questions
 
@@ -318,12 +319,68 @@ CLAUDE.md no longer carries R2, and 0.17.1 is cut locally and unpushed.
   tagging; any file outside `owns`.
 - **Acceptance criterion:** `node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('drydock/.claude-plugin/plugin.json','utf8')).version,c=fs.readFileSync('site/content/copy.ts','utf8'),r=fs.readFileSync('README.md','utf8'),l=fs.readFileSync('drydock/CHANGELOG.md','utf8');const h=(l.match(/^## .*$/m)||[''])[0];process.exit(p==='0.17.1'&&/const VERSION = .0[.]17[.]1.;/.test(c)&&r.includes('(v0.17.1)')&&!r.includes('(v0.17.0)')&&h.startsWith('## 0.17.1')&&l.includes('snapshot from an earlier arming discarded')&&l.includes('detect-bash-writes 21 to 24')?0:1)"`
 
+### Wave 1.2 - Repair: the 0.17.1 CHANGELOG entry (Deviation 2)
+
+#### T1.2.1 - Replace the 0.17.1 CHANGELOG entry with the pinned text
+
+- **Description:** In `drydock/CHANGELOG.md`, replace everything from the line
+  `## 0.17.1: 2026-10-07` up to, but not including, the line
+  `## 0.17.0: 2026-10-07` with exactly the text in the brief below, followed
+  by one blank line. Change nothing else.
+- **Files owned:** `drydock/CHANGELOG.md`
+- **Depends on:** T1.1.3
+- **Model / thinking:** Mechanical / off (Haiku 4.5)   **Executor:** drydock:executor
+- **Context brief:** D14 and Deviation 2 of this plan. The replacement text is
+  exactly the following eleven lines, five paragraphs plus the heading:
+
+  ```
+  ## 0.17.1: 2026-10-07
+
+  **The Bash write detector diffed against a snapshot from an earlier wave.** `detect-bash-writes.mjs` compares the working tree after each Bash command with `.drydock/bash-tree.json`, the snapshot the previous command left. Closing a wave removes `.drydock/wave-owns.json` but leaves that snapshot behind, so the next armed wave's first command was diffed against the previous wave's tree, and everything that changed in between was reported as that command's writes outside `owns`. Measured: plan 010's first Bash command logged five `detected` receipts and no `seeded` one, all for plan 009 seatrial specs written after plan 009's last wave closed.
+
+  **The snapshot is now bound to the arming that wrote it.** It is stored as `{ "armed": "<key>", "paths": { ... } }`, where the key is `<plan>|<wave>|<mtimeNs of .drydock/wave-owns.json>`; the mtime makes re-arming the same wave a new arming too. A snapshot with another key is discarded and re-seeded with the receipt `snapshot from an earlier arming discarded, snapshot seeded, nothing to diff against`. One in any other shape, the old flat object included, is treated as missing (`first Bash command of the wave, snapshot seeded, nothing to diff against`). Neither case diffs anything. The cost is the existing ceiling: the first Bash command after any arming goes undiffed.
+
+  **Plan 010 named the wrong cause.** It blamed a missing snapshot on a wave's first command, and after 0.17.0 CLAUDE.md gained a workaround note ("start a wave from a tree with no untracked files") on that basis. The detector already handled a missing snapshot; the defect was a stale one. The note is deleted.
+
+  **Unexercised, stated plainly.** Hooks load from the installed plugin, so no live session has run this fix. Three new suite cases spawn the real hook process against a stale, a re-armed and an old-shaped snapshot; a session on an installed 0.17.1 is the first live run.
+
+  Tests: detect-bash-writes 21 to 24, others unchanged.
+  ```
+- **Forbidden:** any change outside the 0.17.1 entry; paraphrasing the pinned
+  text; any file outside `owns`.
+- **Acceptance criterion:** `node -e "const l=require('fs').readFileSync('drydock/CHANGELOG.md','utf8');const a=l.indexOf('## 0.17.1: 2026-10-07'),b=l.indexOf('## 0.17.0: 2026-10-07');const s=a>=0&&b>a?l.slice(a,b):'';process.exit(s.includes('The Bash write detector diffed against a snapshot from an earlier wave.')&&s.includes('The snapshot is now bound to the arming that wrote it.')&&s.includes('snapshot from an earlier arming discarded, snapshot seeded, nothing to diff against')&&s.includes('a session on an installed 0.17.1 is the first live run.')&&s.includes('Tests: detect-bash-writes 21 to 24, others unchanged.')&&!s.includes('ownership hook snapshots')&&!s.includes('or not at all')&&!s.includes('T0 baseline')&&l.indexOf('## 0.17.1')===l.search(/^## /m)?0:1)"`
+
 ## Deviation Log
 
 | # | Task | What deviated | Why | Impact | Recorded |
 |---|---|---|---|---|---|
+| 1 | T1.1.2 | Commit `64b101c` carries `Co-Authored-By: Claude Haiku 4.5` where the brief asked for the Opus trailer. The trailer is on its own line this time. | The executor reported it as a deliberate choice: it is the actual author. | Cosmetic. Attribution is the manifest (T1.1.2 → `64b101c`). Not rewritten. | 2026-10-07 |
+| 2 | T1.1.3 | The 0.17.1 CHANGELOG entry passes its criterion but makes false statements. It calls the detector "the ownership hook". It says the snapshot exists "to detect writes in the first command of every wave", which is backwards. It has a garbled sentence ("…or not at all…, and neither re-seeded the snapshot"). It labels the fix "(plan 011 T0 baseline)". | The criterion checked only the required literals. The brief described the content but did not pin it, and the Mechanical tier paraphrased a causal explanation. | It would have shipped false release notes. Repaired by T1.2.1 in Wave 1.2 (D14). `discovered-by-wavecheck` | 2026-10-07 |
+| 3 | — (plan) | `lane: small` changed to `lane: full` to add the repair wave (D14). | `validate-plan` caps the small lane at one implementation wave (CLAUDE.md, plan 010 R3). | No review wave or pressure test was added. | 2026-10-07 |
 
 ## Wavecheck reports
+
+### Wavecheck 1.1, PASS, 2026-10-07
+
+Execution: `fleet`. Three `drydock:executor` subagents were spawned one at a time (Sonnet 5.5, Haiku 4.5 ×2). The auditor did not write the diffs. This is a clean mechanical pass: the tree is clean and no override is in play.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `format_version: 3`, status `EXECUTING`, wave 1.1 exists, no prior implementation wave; `validate-plan --strict` PASS at `b9abbba`. |
+| 2. Ownership audit | PASS | Installed 0.16.0 `audit-wave 1.1`: `PASS (3 task(s), 3 commit(s), attribution: manifest)`, working tree clean. The table follows verbatim. The stale snapshot was deleted before arming (D10). The wave's first detector receipt was `first Bash command of the wave, snapshot seeded, nothing to diff against`, and 16 commands were seen with 0 writes detected outside `owns`. That is the live confirmation of plan 011's diagnosis. |
+| 3. Forbidden audit | PASS | T1.1.1: no `mechanism`, `task:`, `owns:` or `process.exit` line changed in the hook diff. The new test lines contain no `shell`, `/bin/sh`, `execSync(` or `spawnSync(`. The diff never touches `drydock-audit.mjs` or `enforce-owns.mjs` (ownership table). T1.1.2: `CLAUDE.md` shows 7 deletions and 0 insertions. T1.1.3: one line changes in each of `copy.ts`, the root README and `plugin.json`. |
+| 4. Acceptance audit | PASS | The auditor re-ran each criterion through `spawnSync(..., {shell: true})`: T1.1.1 exit 0 (`detect-bash-writes: PASS, 24 cases`), T1.1.2 exit 0, T1.1.3 exit 0. |
+| 5. Deviation reconciliation | PASS (logged) | Deviation 1 comes from T1.1.2's report. Deviation 2 was discovered by wavecheck while reading the CHANGELOG hunk: it is a quality defect the criterion cannot see, and it does not breach conformance. Repair is D14 / Wave 1.2. |
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.1.1 | `6e57490` | `drydock/hooks/detect-bash-writes.mjs`<br>`drydock/hooks/detect-bash-writes.test.mjs` | `drydock/hooks/detect-bash-writes.mjs`<br>`drydock/hooks/detect-bash-writes.test.mjs` | none |
+| T1.1.2 | `64b101c` | `CLAUDE.md` | `CLAUDE.md` | none |
+| T1.1.3 | `3ce8886` | `README.md`<br>`drydock/.claude-plugin/plugin.json`<br>`drydock/CHANGELOG.md`<br>`site/content/copy.ts` | `drydock/.claude-plugin/plugin.json`<br>`drydock/CHANGELOG.md`<br>`site/content/copy.ts`<br>`README.md` | none |
+
+  note: enforcement active: 11 hook decision(s) recorded for wave 1.1 (0 denied)
+
+Deviations logged: 3 (1 discovered by wavecheck)
 
 ## Progress log
 
@@ -333,5 +390,6 @@ CLAUDE.md no longer carries R2, and 0.17.1 is cut locally and unpushed.
 | 2026-10-07 | approval | APPROVED by Sandeep Takasi | Given in session ("approved, execute it"). |
 | 2026-10-07 | D8 | plan 009 specs committed | `5e1fa6c`. |
 | 2026-10-07 | T0 | PASS | Baseline at `5e1fa6c`, index row added, status EXECUTING. |
+| 2026-10-07 | Wave 1.1 | T1.1.1-T1.1.3 DONE, wavecheck PASS | `6e57490`, `64b101c`, `3ce8886`. CHANGELOG repair added as Wave 1.2 (D14). |
 
 ## Reconcile report
