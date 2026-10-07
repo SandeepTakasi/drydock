@@ -88,6 +88,9 @@ const REQUIRED_HOME = [
   "replan",
   "seatrial",
   "reconcile",
+  // See A6 comment above these same literals in REQUIRED_EVIDENCE.
+  "outside the project directory are not enforced",
+  "Bash-mediated writes bypass file-tool hooks",
   // check and init joined the page in 0.16.0 (init itself shipped in 0.14.0).
   // The check pin is the card's whole sentence, because the bare phrase
   // "prevents nothing" also appears in the A10 note and would pass without the
