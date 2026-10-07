@@ -555,6 +555,7 @@ install, FAQ; `/drydock/evidence/` renders the full matrix; `npm run verify` and
 | 6 | Wave 1.R | First review REJECTED with two blockers: B1, the evidence page header renders unstyled outside the container (`app/evidence/page.tsx`); B2, the excerpt check matches each line against the whole of plan 004, which also holds the PASS re-audit, so the hero's BLOCK row or verdict could read PASS with `npm run verify` green, and the source attributes were unconstrained | B1 was noted in wavecheck 1.1 as quality, not conformance; B2 sat inside T1.3.1's sketch, which asked only for a substring match | Repaired in Wave 1.4 (D19), a new wave with new task ids per CLAUDE.md; T1.R.1 now depends on T1.4.1 and T1.4.2 | Wave 1.R review |
 | 7 | T1.4.1 | Beyond the sketch: both path checks also reject any path containing `..`; a failed `docs/plans/` prefix does not skip the content checks (extra failure lines); a first line that is not a `### ` heading reports one failure and skips that excerpt's per-line checks | Executor hardening choices | Stricter only: every case still fails, and no passing case changed (the export passes with home 21 / evidence 7) | executor report |
 | 8 | Testing Gate | Seatrial NO-GO at `f3be934`: TG3 (blocker) failed, three of four refusal pins past the right edge of their `overflow-x-auto` boxes at 1280x900 | T1.1.3's sketch asked for an `overflow-x-auto` box so a long line never widens the page; at a two-column 1280 layout that hides the pin, which TG3 requires visible | Repaired in Waves 1.5-1.6 (D20) with two human-gate items folded in; T1.R.1 now depends on T1.5.1 and T1.6.1 | seatrial |
+| 9 | T1.5.1 | Also removed `overflow-x-auto` from the command line `<p>` and added `break-words` to it, beyond the sketch's wrapper `<div>` | The criterion requires no `overflow-x-auto` anywhere in the file, which the planner wrote without noticing the second use: a criterion defect, not an executor one | Command lines now wrap too, which TG3 and TG5 favour; no text or attribute changed | executor report |
 
 ## Wavecheck reports
 
@@ -707,6 +708,29 @@ Deviations logged: 5 (2 discovered by wavecheck)
 
 Deviations logged: 7 (2 discovered by wavecheck)
 
+### Wavecheck 1.5 - PASS - 2026-10-07
+
+`execution: fleet`: T1.5.1 and T1.5.2 were written by spawned `drydock:executor` agents (Haiku 4.5), one at a time; this audit is by the orchestrator, which wrote none of the diff.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `status: EXECUTING`; waves 1.5-1.6 and D20 committed in `7e8184b` before `wave-start`; waves 1.0-1.4 have PASS reports. Staleness: the only commits on the owned files since `15570df` are this plan's own |
+| 2. Ownership audit | PASS | `audit-wave 1.5: PASS` (2 tasks, 2 commits, attribution: manifest); 7 hook decisions recorded, so enforcement ran; no Bash write outside `owns`. Table and enforcement sentence below |
+| 3. Forbidden audit | PASS | T1.5.1 (`39f6370`): `data-source`, `data-pin` and the `<pre>` text unchanged; the `<pre>` gains `whitespace-pre-wrap break-words`, its wrapper loses `overflow-x-auto`; the command line `<p>` also loses `overflow-x-auto` and gains `break-words` (deviation 9); header comment updated. T1.5.2 (`f630404`): three changed lines only: the badge gains `data-excerpt-verdict`, the wrapper loses `overflow-x-auto`, the `<pre>`'s `whitespace-pre` becomes `whitespace-pre-wrap break-words`; spans, `data-excerpt-of`, text, `<h1>` and install lines untouched; no motion |
+| 4. Acceptance audit | PASS | Both criteria re-run through `spawnSync(crit, {shell: true})` (cmd.exe): T1.5.1 0, T1.5.2 0. `npm run verify` green (home 21, evidence 7, 1 excerpt of 10 lines, 4 pins); `measure-reduced-motion.mjs` PASS |
+| 5. Deviation reconciliation | PASS | T1.5.1 reported one deviation, logged as 9. T1.5.2 reported none and its diff shows none. Note: `39f6370`'s subject line carries a `Co-Authored-By` trailer inline; harmless under `attribution: manifest` |
+
+### audit-wave 1.5, docs/plans/012-homepage-restructure.md
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.5.1 | `39f6370` | `site/components/sections/Refusals.tsx` | `site/components/sections/Refusals.tsx` | none |
+| T1.5.2 | `f630404` | `site/components/sections/Hero.tsx` | `site/components/sections/Hero.tsx` | none |
+
+  note: enforcement active: 7 hook decision(s) recorded for wave 1.5 (0 denied)
+
+Deviations logged: 9 (2 discovered by wavecheck)
+
 ## Wave 1.R verdict, REJECTED, 2026-10-07
 
 Fresh-context review (general-purpose agent, Opus 5.5, read-only) of `git diff 15570df..7801579 -- site/` and both built pages, served at `/drydock/` and driven with Playwright MCP, plus 15 fixture-mode mutations of `assert-copy.mjs`.
@@ -753,5 +777,6 @@ F1 is carried to the Phase 1 gate as a follow-up, not repaired here.
 | 2026-10-07 | T1.4.1, T1.4.2 | PASS | `41ebcb0`, `3fb6701`; wavecheck 1.4 PASS |
 | 2026-10-07 | T1.R.1 | APPROVED | Second review; F1 (verdict badge unchecked) non-blocking, carried to the gate |
 | 2026-10-07 | Testing Gate | NO-GO | Seatrial at `f3be934`: TG1, TG2, TG4, TG5 PASS; TG6 PASS (failed as designed); **TG3 FAIL (blocker)**: three of four refusal pins sit past the right edge of their scroll boxes at 1280x900. Sheet in `.drydock/testing/012-homepage-restructure/verdict.md`; specs in `e2e/012-homepage-restructure/`, GENERATED, NOT EXECUTED. Phase 1 gate not closed |
+| 2026-10-07 | T1.5.1, T1.5.2 | PASS | `39f6370`, `f630404`; wavecheck 1.5 PASS |
 
 ## Reconcile report
