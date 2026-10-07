@@ -5,12 +5,9 @@ const TARGET = 'http://127.0.0.1:5173/drydock/';
 test.use({ video: 'retain-on-failure', viewport: { width: 1280, height: 900 } });
 
 // TG3 (blocker): four refusals, each pin visible in its output block.
-// Live run 2026-10-07 at f3be934: FAIL. Four items render and each <pre>
-// contains its pin, but three pins lie past the right edge of their
-// overflow-x-auto box (visible only after scrolling the box sideways):
-// "same-wave ownership must be disjoint" 611-896 vs box 136-608,
-// "which is outside its" 1108-1267 vs 673-1144, "does not own" 548-643 vs
-// 136-608. Only "has no PASS wavecheck report" is fully in view.
+// Live run 2026-10-07 at f3be934: FAIL, three pins past the right edge of
+// their overflow-x-auto boxes. Repaired in Wave 1.5 (outputs wrap). Re-run at
+// b0c5055: PASS, every client rect of every pin inside its box.
 const PINS = [
   'same-wave ownership must be disjoint',
   'which is outside its',

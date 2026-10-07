@@ -813,5 +813,6 @@ Third fresh-context review (general-purpose agent, Opus 5.5, read-only), scoped 
 | 2026-10-07 | T1.5.1, T1.5.2 | PASS | `39f6370`, `f630404`; wavecheck 1.5 PASS |
 | 2026-10-07 | T1.6.1 | PASS | `9a4a18f`; wavecheck 1.6 PASS |
 | 2026-10-07 | T1.R.1 | APPROVED | Third review, of Waves 1.5-1.6; two non-blocking notes |
+| 2026-10-07 | Testing Gate | GO | Full seatrial re-run at `b0c5055`: TG1-TG5 PASS, TG6 PASS (failed as designed). Sheet in `.drydock/testing/012-homepage-restructure/verdict.md`. Phase 1 gate awaiting human approval |
 
 ## Reconcile report
