@@ -14,7 +14,7 @@
  */
 
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync, existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -1899,6 +1899,62 @@ cases.push(
     const r = spawnSync(NODE, [CLI, "check", intent(dir, "deadbeef", ["a.txt"])], { cwd: dir, encoding: "utf8" });
     return `EXIT:${r.status}\n${r.stdout}${r.stderr}`;
   }, (out) => out.includes("EXIT:3") && out.includes("does not resolve")],
+);
+
+// --------------------------------------------------------------------------
+// `arm <intent.md>` (plan 010 D15): the check intent file becomes a hook
+// boundary, so the armed scope and the audited scope come from one file.
+
+const OWNS_FILE = (dir) => join(dir, ".drydock", "wave-owns.json");
+const HOOK = fileURLToPath(new URL("../hooks/enforce-owns.mjs", import.meta.url));
+const hookRun = (dir, file) => spawnSync(NODE, [HOOK], {
+  input: JSON.stringify({ tool_name: "Write", cwd: dir, tool_input: { file_path: join(dir, file), content: "x" } }),
+  env: { ...process.env, CLAUDE_PROJECT_DIR: dir }, encoding: "utf8",
+}).status;
+
+cases.push(
+  ["arm writes a check boundary from the intent file", () => {
+    const [dir, base] = checkRepo("arm-ok");
+    const r = spawnSync(NODE, [CLI, "arm", intent(dir, base, ["a.txt", "docs/**"])], { cwd: dir, encoding: "utf8" });
+    const text = readFileSync(OWNS_FILE(dir), "utf8");
+    const want = JSON.stringify({ plan: null, wave: "check", source: "arm", base, owns: ["a.txt", "docs/**"] }, null, 2) + "\n";
+    return `EXIT:${r.status}\n${text === want ? "SAME" : text}\n${r.stdout}`;
+  }, (out) => out.includes("EXIT:0") && out.includes("SAME") && out.includes("arm: armed 2 glob(s) from") && out.includes("rm .drydock/wave-owns.json")],
+
+  ["arm refuses a glob that reaches every directory", () => {
+    const [dir, base] = checkRepo("arm-glob");
+    const r = spawnSync(NODE, [CLI, "arm", intent(dir, base, ["a.txt", "**/*.ts"])], { cwd: dir, encoding: "utf8" });
+    return `EXIT:${r.status}\n${existsSync(OWNS_FILE(dir)) ? "WRITTEN" : "NONE"}\n${r.stderr}${r.stdout}`;
+  }, (out) => out.includes("EXIT:1") && out.includes("NONE") && out.includes("arm: refused, **/*.ts reaches every directory")],
+
+  ["arm refuses while a boundary is already armed", () => {
+    const [dir, base] = checkRepo("arm-twice");
+    mkdirSync(join(dir, ".drydock"));
+    const pre = '{"plan":"009-x","wave":"1.1","owns":["a.txt"]}';
+    writeFileSync(OWNS_FILE(dir), pre);
+    const r = spawnSync(NODE, [CLI, "arm", intent(dir, base, ["b.txt"])], { cwd: dir, encoding: "utf8" });
+    return `EXIT:${r.status}\n${readFileSync(OWNS_FILE(dir), "utf8") === pre ? "SAME" : "CHANGED"}\n${r.stderr}${r.stdout}`;
+  }, (out) => out.includes("EXIT:1") && out.includes("SAME") && out.includes("plan 009-x, wave 1.1")],
+
+  ["check flags an armed boundary that differs from the intent", () => {
+    const [dir, base] = checkRepo("arm-drift");
+    const f = intent(dir, base, ["a.txt"]);
+    spawnSync(NODE, [CLI, "arm", f], { cwd: dir, encoding: "utf8" });
+    const j = JSON.parse(readFileSync(OWNS_FILE(dir), "utf8"));
+    j.owns = ["a.txt", "b.txt"];
+    writeFileSync(OWNS_FILE(dir), JSON.stringify(j));
+    const same = checkRepo("arm-same");
+    spawnSync(NODE, [CLI, "arm", intent(same[0], same[1], ["a.txt"])], { cwd: same[0], encoding: "utf8" });
+    const ok = cli(same[0], ["check", intent(same[0], same[1], ["a.txt"])]);
+    return `${cli(dir, ["check", f])}\n--\n${ok}`;
+  }, (out) => out.includes("FLAG armed boundary differs from intent") && out.includes("check: FLAG (1)")
+    && out.includes("check: hook armed for this scope")],
+
+  ["the hook enforces a boundary written by arm", () => {
+    const [dir, base] = checkRepo("arm-hook");
+    spawnSync(NODE, [CLI, "arm", intent(dir, base, ["a.txt"])], { cwd: dir, encoding: "utf8" });
+    return `b:${hookRun(dir, "b.txt")} a:${hookRun(dir, "a.txt")}`;
+  }, (out) => out === "b:2 a:0"],
 );
 
 // --------------------------------------------------------------------------

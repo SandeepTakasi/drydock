@@ -953,12 +953,7 @@ function waveStart(planPath, wave) {
   // attribution manifest. The docs said it "is gitignored", which was true of
   // THIS repo only: in a fresh host repo the first `audit-wave` failed on the
   // tool's own state files, on a wave that had done nothing wrong.
-  const ignorePath = join(root, ".gitignore");
-  const ignored = existsSync(ignorePath) ? readFileSync(ignorePath, "utf8") : "";
-  if (!/^\.drydock\/?\s*$/m.test(ignored)) {
-    writeFileSync(ignorePath, (ignored && !ignored.endsWith("\n") ? ignored + "\n" : ignored) + "# Drydock wave state, receipts and attribution\n.drydock/\n");
-    console.log(`wave-start: added \`.drydock/\` to ${ignorePath}, its state files are not part of your history`);
-  }
+  ensureDrydockIgnored(root, "wave-start");
 
   // PER-TASK MAP, alongside the flattened union. `validate-plan` rejects a plan
   // whose same-wave tasks own overlapping paths, and this function preflights
@@ -2092,13 +2087,17 @@ function validateConfig(path) {
 // ----------------------------------------------------------------- check ----
 //
 // `check <intent.md>`: the diff since `base` against a declared scope. Writes
-// nothing, arms nothing (plan 008 D3: audit afterwards only).
+// nothing and arms nothing. Arming is a separate, opt-in command, `arm`
+// (plan 010 D3), so the default stays audit-afterwards-only (plan 008 D3).
 //
 // --no-renames: default rename detection reports a move as only its NEW path,
 // hiding the deletion of the old one. -z: non-ASCII names are otherwise
 // octal-escaped and match no glob. Output is read raw, not through `git()`,
 // which trims.
-function check(intentPath) {
+
+// Shared by `check` and `arm` (plan 010 D4) so the armed boundary and the
+// audited scope are parsed by one function and cannot disagree.
+function readIntent(intentPath) {
   const lines = readFileSync(intentPath, "utf8").split(/\r?\n/);
   const base = /^base:\s*(\S+)\s*$/m.exec(lines.slice(0, lines.indexOf("---", 1) + 1).join("\n"))?.[1];
   const field = (name) => {
@@ -2115,13 +2114,58 @@ function check(intentPath) {
   const criteria = field("Acceptance criterion");
   if (!base) throw new Error(`${intentPath}: no base: in the frontmatter`);
   if (!owned.length) throw new Error(`${intentPath}: no backticked globs under **Files owned:**`);
+  return { base, owned, forbidden, criteria };
+}
 
+// `.drydock/` holds state files that must not show up as changes in the host
+// repo. Shared by `wave-start` and `arm`; the message keeps its caller's name.
+function ensureDrydockIgnored(root, who) {
+  const ignorePath = join(root, ".gitignore");
+  const ignored = existsSync(ignorePath) ? readFileSync(ignorePath, "utf8") : "";
+  if (!/^\.drydock\/?\s*$/m.test(ignored)) {
+    writeFileSync(ignorePath, (ignored && !ignored.endsWith("\n") ? ignored + "\n" : ignored) + "# Drydock wave state, receipts and attribution\n.drydock/\n");
+    console.log(`${who}: added \`.drydock/\` to ${ignorePath}, its state files are not part of your history`);
+  }
+}
+
+// Resolves `base` to a commit exactly as `check` always has (exit 3 on failure).
+function repoAndBase(intentPath, base) {
   const root = repoRoot();
   const gitz = (args) =>
     execFileSync("git", args, { cwd: root, encoding: "utf8", maxBuffer: 64 << 20, stdio: ["ignore", "pipe", "pipe"] })
       .split("\0").filter(Boolean);
   try { gitz(["rev-parse", "--verify", "--quiet", `${base}^{commit}`]); }
   catch { throw new Error(`${intentPath}: base ${base} does not resolve to a commit`); }
+  return { root, gitz };
+}
+
+// `arm <intent.md>` (plan 010 D15): write the intent's owned globs as a hook
+// boundary. wave "check" with plan null can never match a numeric plan wave id
+// in audit-wave's receipt filter (D7). Disarm is `rm`, as for a plan wave (D8).
+function arm(intentPath) {
+  const { base, owned } = readIntent(intentPath);
+  const { root } = repoAndBase(intentPath, base);
+  const file = join(root, ".drydock", "wave-owns.json");
+  if (existsSync(file)) {
+    const cur = readJSON(file) ?? {};
+    console.error(`arm: refused, a boundary is already armed (plan ${cur.plan ?? "?"}, wave ${cur.wave ?? "?"}); close it with rm .drydock/wave-owns.json`);
+    process.exit(1);
+  }
+  const wide = owned.find(unbounded);
+  if (wide) {
+    console.error(`arm: refused, ${wide} reaches every directory; name the directories instead`);
+    process.exit(1);
+  }
+  ensureDrydockIgnored(root, "arm");
+  mkdirSync(join(root, ".drydock"), { recursive: true });
+  writeFileSync(file, JSON.stringify({ plan: null, wave: "check", source: "arm", base, owns: owned }, null, 2) + "\n");
+  console.log(`arm: armed ${owned.length} glob(s) from ${intentPath}`);
+  console.log("disarm with:  rm .drydock/wave-owns.json");
+}
+
+function check(intentPath) {
+  const { base, owned, forbidden, criteria } = readIntent(intentPath);
+  const { root, gitz } = repoAndBase(intentPath, base);
 
   const changed = [...new Set([
     ...gitz(["diff", "--no-renames", "--name-only", "-z", base]),
@@ -2133,11 +2177,21 @@ function check(intentPath) {
     if (matchesOwns(f, forbidden)) flags.push(`FLAG forbidden: ${f}`);
     else if (!matchesOwns(f, owned)) flags.push(`FLAG outside scope: ${f}`);
   }
+  // D10: only a boundary `arm` wrote (wave "check") is compared; absent,
+  // unparseable or any other wave changes nothing. Receipts are not counted.
+  const armed = readJSON(join(root, ".drydock", "wave-owns.json"));
+  let armedNote = false;
+  if (armed?.wave === "check") {
+    const a = new Set(armed.owns), o = new Set(owned);
+    if (a.size === o.size && [...o].every((g) => a.has(g))) armedNote = true;
+    else flags.push("FLAG armed boundary differs from intent");
+  }
   for (const cmd of criteria) {
     const r = spawnSync(cmd, { shell: true, cwd: root, stdio: ["ignore", "pipe", "pipe"] });
     if (r.status !== 0) flags.push(`FLAG criterion exited ${r.status ?? r.error?.code}: ${cmd}`);
   }
   flags.forEach((l) => console.log(l));
+  if (armedNote) console.log("check: hook armed for this scope");
   if (flags.length) { console.log(`check: FLAG (${flags.length})`); process.exit(1); }
   console.log(`check: PASS (${changed.length} file(s), ${criteria.length} criteria)`);
 }
@@ -2219,6 +2273,7 @@ else if (command === "prove-failable" && rest[0]) proveFailable(rest[0]);
 else if (command === "validate-config" && rest[0]) validateConfig(rest[0]);
 else if (command === "resolve-plans-dir") resolvePlansDir(rest[0]);
 else if (command === "check" && rest[0]) check(rest[0]);
+else if (command === "arm" && rest[0]) arm(rest[0]);
 else if (command === "learnings") learnings(rest);
 else {
   console.error("usage: drydock-audit.mjs wave-start   <plan.md> <wave>      # arm the ownership hook");
@@ -2229,6 +2284,7 @@ else {
   console.error("       drydock-audit.mjs resolve-plans-dir [<preferred>]   # where plans go, and whether they can be committed");
   console.error("       drydock-audit.mjs prove-failable <plan.md>            # every criterion must FAIL before its task runs");
   console.error("       drydock-audit.mjs check <intent.md>                   # diff since base vs the declared scope, then run its criteria");
+  console.error("       drydock-audit.mjs arm <intent.md>   # arm the hook from a check intent file");
   console.error("       drydock-audit.mjs learnings [--plans-dir <dir>] <path>...  # CLAUDE.md lines and Deviation Log rows naming a path");
   console.error("       drydock-audit.mjs validate-config <drydock.config.yaml>  # the host profile drydock:init writes");
   console.error("       drydock-audit.mjs validate-plan [--strict] <plan.md>");
