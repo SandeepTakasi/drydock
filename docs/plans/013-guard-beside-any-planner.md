@@ -1,7 +1,7 @@
 ---
 plan: 013-guard-beside-any-planner
 format_version: 3
-status: APPROVED
+status: EXECUTING
 isolation: none
 enforcement: required
 attribution: manifest
@@ -89,16 +89,16 @@ the plan format or any other skill.
 
 ## Baseline
 
-_Filled by T0._
+_Filled by T0, 2026-10-07._
 
 | Item | Value |
 |---|---|
-| Commit SHA | _pending_ |
-| Installed plugin version (no VERSION DRIFT) | _pending_ |
+| Commit SHA | `eaa60fa` |
+| Installed plugin version (no VERSION DRIFT) | 0.17.1 at `6fae4de`; `validate-plan` PASS, no VERSION DRIFT |
 | `node drydock/scripts/drydock-audit.test.mjs` | 159/159 at planning (2026-10-07) |
 | Other suites | enforce-owns 42, detect-bash-writes 24, resolve-target 8, stats 8, all PASS at planning |
-| `cd site && npm run verify` | _pending_ |
-| `node drydock/scripts/drydock-audit.mjs prove-failable docs/plans/013-guard-beside-any-planner.md` | _pending_ |
+| `cd site && npm run verify` | PASS once this plan's README row exists (assert-copy home 21, evidence 7; assert-matrix 12 rows); the run before the row failed assert-matrix on that row only |
+| `node drydock/scripts/drydock-audit.mjs prove-failable docs/plans/013-guard-beside-any-planner.md` | PASS, 7 of 7 criteria fail at baseline (re-run after the live-run record was written) |
 
 ## Practices in effect
 
@@ -162,7 +162,133 @@ _Filled by T0._
 **T0 live-run record** _(filled by T0; the pinned row texts below are what
 T1.1.4 and T1.1.5 copy byte for byte)_
 
-_pending_
+Run 2026-10-07, host `2.1.292 (Claude Code)`, Node v24.14.1, installed
+drydock 0.17.1 at `6fae4de`, repo at `eaa60fa`, no plan wave armed. Every step
+behaved as the protocol requires. Two observations beyond it:
+
+- The uncommitted README row (T0's own bookkeeping) is outside the probe's
+  scope, so step 1 and step 5 FLAG it too. For the two armed audits in steps 2
+  and 3 it was set aside with `git stash push -- docs/plans/README.md` and
+  restored with `git stash pop` straight after, so those audits measure the
+  probe alone.
+- **Out of scope, recorded only:** the Bash write detector fired live. While
+  armed, `.drydock/enforcement.log` gained `"decision":"detected"`,
+  `"mechanism":"bash-tree"` receipts for `tmp-a12/bash.txt` (and for the stash
+  touching the README). Row A9 says live registration was "ATTEMPTED AND
+  NEGATIVE"; this plan does not change A9 (Out of scope, follow-up).
+
+**Pinned A12 compatibility row** (T1.1.4, after A11):
+
+~~~~
+| A12 | `arm` guard (ownership hook armed from a check intent file, no plan) fires in a live session | PASSED | 2026-10-07, host 2.1.292, Node v24.14.1, installed 0.17.1 at `6fae4de`. In this repo with no plan wave armed, `arm .drydock/check.md` (owns `tmp-a12/ok.txt`) wrote a `"check"` boundary. A Write to `tmp-a12/stray.txt` was denied by the live hook (`Drydock ownership violation: wave check does not own tmp-a12/stray.txt.`) and the file stayed absent; an Edit to the owned file was allowed; `check` printed `check: hook armed for this scope` and PASS; after `rm .drydock/wave-owns.json` the same Write went through. **Ceiling, observed:** a Bash write to `tmp-a12/bash.txt` landed while armed and `check` FLAGged it. The session wrote none of `arm`'s code (plan 010 did). See [verification-log.md](verification-log.md#a12--arm-guard-in-a-live-session). |
+~~~~
+
+**Pinned A10 compatibility row** (T1.1.4, replaces the current A10 row):
+
+~~~~
+| A10 | `check` skill (scope audit without a plan) runs in a live session | OBSERVED FLAG THEN PASS | 2026-10-07, host 2.1.292, Node v24.14.1. First run: the installed 0.16.0 skill, model-invoked inside a subagent and an armed plan wave, FLAGged an untracked probe (`check: FLAG (1)`, exit 1), then reported `check: PASS` (exit 0) once the probe was deleted. Later the same day, on the installed 0.17.1, that run's gaps were shown: typed by the user as the slash command `/drydock:check` on unplanned, unarmed work, it FLAGged three files outside scope (`check: FLAG (3)`, exit 1) and stopped to ask rather than fixing them; and model-invoked on unplanned, unarmed site work it reported `check: PASS` twice (`045408c`, `ea14506`). **Not shown:** `check` on a repo other than this one, or run by a user who did not write the plugin. See [verification-log.md](verification-log.md#a10--check-skill-in-a-live-session), and the A12 entry for the later runs. |
+~~~~
+
+**Pinned A12 verification-log entry** (T1.1.4, appended at the end of the file):
+
+~~~~
+## A12 — arm guard in a live session
+
+**Date:** 2026-10-07
+**Host version:** `claude --version` → `2.1.292 (Claude Code)`
+**Node:** v24.14.1
+**Installed plugin:** drydock 0.17.1 at `6fae4de`
+**Repo SHA at run time:** `eaa60fa` (plan 013 approved), working tree carrying only plan 013's uncommitted README row
+
+**What this entry claims.** With no plan wave armed, `drydock-audit.mjs arm`
+turned a check intent file into a live boundary: the host's PreToolUse hook
+denied a Write outside it and left the file absent, allowed an Edit inside it,
+and let the same Write through once the boundary was removed. `check` reported
+the armed scope. A Bash write was not prevented and `check` flagged it.
+
+**What this entry does not claim.** One session, one repo, one owned path. The
+session that ran it is the plugin author's working session, though it wrote
+none of `arm`'s code (plan 010 did). Steps 2 and 3 set plan 013's uncommitted
+README row aside with `git stash` so the audit measured the probe alone.
+
+### Method and raw output
+
+Intent `.drydock/check.md`: `base: eaa60fa491db0ffc491e81a6a58472e29b8249aa`,
+**Files owned:** `tmp-a12/ok.txt`. Commands ran the installed script,
+`node C:/Users/91891/.claude/plugins/cache/drydock/drydock/0.17.1/scripts/drydock-audit.mjs`.
+
+1. Unarmed. Write `tmp-a12/ok.txt` and `tmp-a12/stray.txt`, then `check`
+   (exit 1):
+
+       FLAG outside scope: docs/plans/README.md
+       FLAG outside scope: tmp-a12/stray.txt
+       check: FLAG (2)
+
+2. Deleted `stray.txt`, then `arm .drydock/check.md` (exit 0):
+
+       arm: armed 1 glob(s) from .drydock/check.md
+       disarm with:  rm .drydock/wave-owns.json
+
+   Write `tmp-a12/stray.txt` was refused by the live hook:
+
+       Drydock ownership violation: wave check does not own tmp-a12/stray.txt.
+       Owned by this wave: tmp-a12/ok.txt
+
+   `ls tmp-a12/` then listed only `ok.txt`. Receipt:
+   `"wave":"check","decision":"deny","path":"tmp-a12/stray.txt","mechanism":"file-tool"`.
+   An Edit to `tmp-a12/ok.txt` was allowed (receipt `"decision":"allow"`).
+   `check`, README set aside (exit 0):
+
+       check: hook armed for this scope
+       check: PASS (1 file(s), 0 criteria)
+
+3. Still armed, Bash `echo ... > tmp-a12/bash.txt` landed. `check`, README set
+   aside (exit 1):
+
+       FLAG outside scope: tmp-a12/bash.txt
+       check: hook armed for this scope
+       check: FLAG (1)
+
+4. `rm .drydock/wave-owns.json`; the same Write to `tmp-a12/stray.txt`
+   succeeded.
+
+5. The user typed `/drydock:check scope: only tmp-a12/ok.txt. Goal: plan 013
+   T0, A10 slash-command run. No arming, audit only.` The skill loaded, wrote
+   the intent file and ran the audit (exit 1):
+
+       FLAG outside scope: docs/plans/README.md
+       FLAG outside scope: tmp-a12/bash.txt
+       FLAG outside scope: tmp-a12/stray.txt
+       check: FLAG (3)
+
+   It reported the FLAGs and asked the user how to proceed, changing nothing.
+
+6. `tmp-a12/` and the intent file deleted.
+
+### Verdict
+
+PASSED for the claim above. This is the first live session to arm the hook
+without a plan; A6 remains the evidence for plan waves.
+~~~~
+
+**Pinned site A12 evidence row** (T1.1.5, `evidence.rows`, after A11):
+
+~~~~
+    {
+      id: "A12",
+      label: "arm guard (ownership hook armed from a check intent file, no plan) fires in a live session",
+      status: "PASSED",
+      tone: "pass",
+      note: "2026-10-07, installed 0.17.1. With no plan wave armed, arm wrote a check boundary from an intent file owning one path. A Write outside it was denied by the live hook and the file stayed absent; an edit to the owned path was allowed; check reported the hook armed and passed; disarming let the same Write through. The ceiling was observed too: a Bash write landed while armed and check flagged it afterwards.",
+    },
+~~~~
+
+**Pinned site A10 evidence row** (T1.1.5, replaces the A10 `status` and `note`; `id`, `label` and `tone` unchanged):
+
+~~~~
+      status: "OBSERVED FLAG THEN PASS",
+      note: "2026-10-07. Inside an armed plan wave the audit flagged an untracked probe, then passed once it was deleted. Later the same day the open gaps were shown: typed as the slash command on unplanned, unarmed work it flagged three files outside scope and stopped to ask, and model-invoked on unplanned site work it passed twice. Not shown: a repo other than this one, or a user who did not write the plugin.",
+~~~~
 
 ## Decision Log
 
@@ -353,5 +479,6 @@ N/A: `lane: small` takes no adversarial pressure test (D2). The planner re-opene
 
 | Date | Task | Result | Notes |
 |---|---|---|---|
+| 2026-10-07 | T0 | PASS | Baseline, README row, live guard run (steps 1-6 as specified; slash command typed by the user), pinned texts written; status EXECUTING |
 
 ## Reconcile report
