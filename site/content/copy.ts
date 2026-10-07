@@ -19,7 +19,6 @@ export interface Piece {
   name: string;
   kind: string;
   invocation: string;
-  detail: string;
 }
 
 /** One row of the evidence matrix. `tone` picks the status pill colour. */
@@ -62,7 +61,6 @@ export const meta: Record<
   | "lifecycle"
   | "refuses"
   | "limits"
-  | "terminal"
   | "evidence"
   | "install"
   | "faq",
@@ -87,11 +85,6 @@ export const meta: Record<
     id: "limits",
     eyebrow: "04 / LIMITS",
     heading: "What it does not do",
-  },
-  terminal: {
-    id: "terminal",
-    eyebrow: "03 / THE GATE",
-    heading: "A wave that does not pass",
   },
   evidence: {
     id: "evidence",
@@ -327,41 +320,6 @@ export const evidence: {
   planLinkText: "Read the plan that built this",
 };
 
-export const terminal: {
-  caption: string;
-  label: string;
-  verdict: string;
-  lines: TerminalLine[];
-} = {
-  label: "drydock:wavecheck",
-  verdict: "BLOCK",
-  caption:
-    "An illustration, not a captured session: what wavecheck reports for the 2026-08-18 adversarial dry-run described in docs/self-audit.md.",
-  lines: [
-    { text: "1. plan integrity ............. PASS", tone: "pass" },
-    { text: "2. ownership audit ............ BLOCK", tone: "block" },
-    { text: "3. forbidden audit ............ PASS", tone: "pass" },
-    { text: "4. acceptance audit ........... PASS", tone: "pass" },
-    { text: "   test_greeting.py ........... 1 passed", tone: "pass" },
-    { text: "   test_farewell.py ........... 1 passed", tone: "pass" },
-    { text: "5. deviation reconciliation ... BLOCK", tone: "block" },
-    {
-      text: "T1.1.2 report: files_changed [src/farewell.py, tests/test_farewell.py]",
-      tone: "dim",
-    },
-    {
-      text: "git show T1.1.2: src/greeting.py (owned by T1.1.1, unreported)",
-      tone: "dim",
-    },
-    { text: "Wavecheck 1.1 - BLOCK - 2026-08-18", tone: "block" },
-    { text: "Deviations logged: 1 (1 discovered by wavecheck)", tone: "dim" },
-    {
-      text: "no retries; route: /drydock:replan or human decision",
-      tone: "dim",
-    },
-  ],
-};
-
 export const lifecycle: {
   flow: string[];
   loop: string;
@@ -403,64 +361,46 @@ export const lifecycle: {
       name: "init",
       kind: "skill",
       invocation: "model or /drydock:init (once per repo)",
-      detail:
-        "Onboards a repository once: scans for its quality gates, test framework, commit convention and CI, asks only what scanning cannot answer, and writes a host profile that later plans read instead of asking again.",
     },
     {
       name: "planwright",
       kind: "skill",
       invocation: "model or /drydock:planwright",
-      detail:
-        "Interrogates the request and writes the plan document: phases, parallel waves, atomic tasks with owned files, and the gates between them. Then checks it with drydock-audit.mjs validate-plan, which catches what a reader cannot: duplicate task ids, two tasks owning one file, a dependency that cannot hold. While exploring, it pulls the CLAUDE.md lines and past Deviation Log rows that name the files the plan will own.",
     },
     {
       name: "executor",
       kind: "agent",
       invocation: "spawned per task, or in-session when solo",
-      detail:
-        "Executes exactly one task block and writes only the files that task owns, then records its commit with task-close so attribution never depends on the message text.",
     },
     {
       name: "executor-isolated",
       kind: "agent",
       invocation: "spawned per task",
-      detail:
-        "The same contract inside its own git worktree, so same-wave tasks cannot collide on disk.",
     },
     {
       name: "wavecheck",
       kind: "skill",
       invocation: "blocking gate inside every plan",
-      detail:
-        "Audits the finished wave against the plan, using the actual diff: ownership, forbidden lists, acceptance criteria, deviations. PASS or BLOCK. Its mechanical half is audit-wave, judged against the boundary wave-start derived from the plan. wave-start refuses to arm a wave while an earlier one lacks a PASS report. drydock/scripts/audit-corpus.mjs re-audits every sealed wave of every plan from 005 on, and this repository runs it in CI, from a clean checkout, on every push to main and every pull request.",
     },
     {
       name: "replan",
       kind: "skill",
       invocation: "human-only (disable-model-invocation)",
-      detail:
-        "Patches an approved plan after a BLOCK. Completed waves stay immutable, the decision log is append-only, and task ids are never reused.",
     },
     {
       name: "seatrial",
       kind: "skill",
       invocation: "model, or /drydock:seatrial (after the final wave)",
-      detail:
-        "Drives the plan's written end-to-end cases through a real browser, captures the evidence each one declares, and writes a go/no-go sheet. Halts rather than degrades.",
     },
     {
       name: "reconcile",
       kind: "skill",
       invocation: "final step of every plan",
-      detail:
-        "Turns deviations and failed assumptions into proposed diffs for CLAUDE.md, ADRs and architecture docs. Proposed, never auto-applied.",
     },
     {
       name: "check",
       kind: "skill",
       invocation: "model or /drydock:check (no plan)",
-      detail:
-        "For work too small for a plan: state the scope in a few lines, do the work, and an audit afterwards flags every tracked or untracked file changed outside it and every criterion that fails. It detects after the fact and prevents nothing.",
     },
   ],
 };
