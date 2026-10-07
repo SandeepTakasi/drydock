@@ -14,8 +14,8 @@ import type { SectionProps } from "@/lib/section";
 
 /**
  * The loop: three numbered steps, then the wave diagram, then the nine pieces
- * as a compact list (name, kind, invocation) that links out to the plugin
- * README for the detail, which is deliberately not rendered here.
+ * as a compact list (name, kind, one-line summary, invocation) that links out
+ * to the plugin README for the full description of each.
  *
  * The wave diagram moved here from the hero (plan 012, D3). Two SVG contracts
  * travel with it because `scripts/measure-reduced-motion.mjs` asserts them
@@ -142,6 +142,9 @@ export default function Lifecycle({ meta }: SectionProps) {
                 {piece.kind}
               </span>
             </div>
+            <p data-piece-summary className="mt-2 text-note text-ink-dim">
+              {piece.summary}
+            </p>
             <p className="mt-2 font-mono text-mark text-accent">
               {piece.invocation}
             </p>

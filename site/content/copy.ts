@@ -18,6 +18,7 @@ import type { SectionMeta } from "@/lib/section";
 export interface Piece {
   name: string;
   kind: string;
+  summary: string;
   invocation: string;
 }
 
@@ -350,46 +351,55 @@ export const lifecycle: {
     {
       name: "init",
       kind: "skill",
+      summary: "Learns your repo before the first plan: its quality gates, test framework, commit style and CI. Asks only what it cannot detect, then saves a profile every later plan follows.",
       invocation: "model or /drydock:init (once per repo)",
     },
     {
       name: "planwright",
       kind: "skill",
+      summary: "Interviews you on your practices, maps the code the change touches and pulls lessons from past plans. Then splits the work into parallel waves, picks the right model for each task, and pressure-tests the plan before you approve it.",
       invocation: "model or /drydock:planwright",
     },
     {
       name: "executor",
       kind: "agent",
+      summary: "Takes one task and nothing more: writes only the files it owns, checks every acceptance criterion itself, and reports a deviation instead of working around it.",
       invocation: "spawned per task, or in-session when solo",
     },
     {
       name: "executor-isolated",
       kind: "agent",
+      summary: "The executor's contract in its own git worktree, so tasks running side by side never share a checkout.",
       invocation: "spawned per task",
     },
     {
       name: "wavecheck",
       kind: "skill",
+      summary: "Audits each finished wave against the real diff, not the agents' reports: file ownership, forbidden changes, acceptance criteria, deviations. PASS or BLOCK, and the next wave waits on a PASS.",
       invocation: "blocking gate inside every plan",
     },
     {
       name: "replan",
       kind: "skill",
+      summary: "Repairs a blocked or stale plan: re-checks its decisions against today's code and patches only what broke. Finished waves and their reports stay untouched.",
       invocation: "human-only (disable-model-invocation)",
     },
     {
       name: "seatrial",
       kind: "skill",
+      summary: "Runs the plan's end-to-end cases in a real browser, captures the evidence each case asks for, and hands QA re-runnable Playwright specs and a go/no-go sheet.",
       invocation: "model, or /drydock:seatrial (after the final wave)",
     },
     {
       name: "reconcile",
       kind: "skill",
+      summary: "Closes the loop: compares what the plan assumed with what execution found, and proposes edits to CLAUDE.md, ADRs and docs. Proposed for you to apply, never applied for you.",
       invocation: "final step of every plan",
     },
     {
       name: "check",
       kind: "skill",
+      summary: "For changes too small to plan: state the scope in a few lines, do the work, and get an audit of every file and criterion that strayed outside it.",
       invocation: "model or /drydock:check (no plan)",
     },
   ],
