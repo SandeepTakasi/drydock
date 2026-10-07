@@ -647,6 +647,8 @@ confirmed to exist. Verdict APPROVED-WITH-FIXES; all twelve findings applied:
 | 5 | Wavecheck 1.1-1.3 | The three wavecheck reports paraphrased the audit's enforcement note, so from a clean checkout `audit-corpus` failed 3 of 15 waves. Each report gained a `2b. Enforcement ran` row quoting the sentence verbatim. **discovered by Wave 1.R review (F1)** | `audit-wave` without `.drydock/` recovers the enforcement receipt only from the literal `enforcement active: N hook decision(s) recorded for wave X (N denied)`. The orchestrator wrote prose instead. The counts (8, 6, 9, all 0 denied) are the audit's own, unchanged | Sealed reports amended in place by adding rows, not by rewording verdicts. Re-proved from a fresh clone with an empty `CLAUDE_CONFIG_DIR`. Every later report carries the sentence. A wavecheck that writes its own enforcement evidence must paste it, not paraphrase it | 2026-10-07 |
 | 6 | Wave 1.4 | Wave 1.4 / T1.4.1 added after approval; T1.R.1 now also depends on T1.4.1 | Wave 1.R REJECTED (F2). CLAUDE.md: repair a review rejection in a NEW wave with NEW task ids. Retry 1 of 2 | One extra wave in Phase 1; Wave 1.R re-runs after it | 2026-10-07 |
 | 7 | Wave 1.5 | Wave 1.5 / T1.5.1 added after approval; T1.R.1 now also depends on T1.5.1 | The re-review REJECTED on G1: two `check` fixtures used shell syntax that only cmd.exe accepts. Every wavecheck re-ran the criteria on Windows only, so none could see it. Retry 2 of 2 | One more Phase 1 wave. The lesson for this repo: CLAUDE.md warns about criteria that cross cmd.exe, and the same applies in reverse to test fixtures that `check` runs through `/bin/sh` in CI | 2026-10-07 |
+| 8 | T2.1.1 | The skill's copy of the intent-file contract spells the placeholders `<glob>` and `<command>` inside the backticks, where T1.2.1's contract has `glob` and `command`; its example criterion is `node --test` rather than `npm test` | The audit suite's vocabulary case rejects backticked lowercase words that `plan-format.md` does not define, and the first draft failed on `glob`, `command` and `npm test`. The field structure is otherwise verbatim | None on behaviour: `check` parses the intent file, never the skill. Reported by the executor | 2026-10-07 |
+| 9 | T2.1.3 | The token-usage step was added as reconcile step 6, stating it runs as part of step 5's report assembly and before step 5 appends it, rather than inserted before step 5 | Inserting it would renumber step 5, and the task forbids changing any other reconcile step | The step order on the page is not the execution order; the step says so in its first sentence. Reported by the executor | 2026-10-07 |
 
 ## Wavecheck reports
 
@@ -784,6 +786,35 @@ session and by any session until 0.16.0 is installed.
 
 Deviations logged: 7 (2 discovered by wavecheck, 1 by review)
 
+### Wavecheck 2.1, PASS, 2026-10-07
+
+Executed `fleet`: each task by its own spawned `drydock:executor` (Sonnet 5.5),
+one at a time; audited by the orchestrating session, which wrote none of the diff.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | Status `EXECUTING`; waves 1.1-1.5 have PASS reports, Wave 1.R APPROVED and the Phase 1 gate CLOSED at `23ba670`; the repo-copy `wave-start` armed 2.1. Staleness: `git diff a72deeb..HEAD` over the three owned skill files was empty before arming |
+| 2. Ownership | PASS | Table below. Repo copy and installed 0.15.1 copy both `audit-wave 2.1: PASS, docs/plans/008-stats-gates-check-learnings.md (3 task(s), 3 commit(s), attribution: manifest)`. Working tree clean |
+| 2b. Enforcement ran | PASS | `enforcement active: 3 hook decision(s) recorded for wave 2.1 (0 denied)`. Bash layer: 12 commands, 0 writes outside `owns` |
+| 3. Forbidden | PASS | `git diff a72deeb..HEAD --stat -- drydock/skills/` is 3 files, 85 insertions, 0 deletions: the new `check/SKILL.md` (76 lines), one paragraph in planwright Step 2, one step in reconcile. No other skill and nothing under `planwright/reference/` changed. The `check` skill arms no hook and writes no plan; it states that it prevents nothing, that a FLAG is reported and never auto-fixed, and that criteria run through `cmd.exe` on Windows and `/bin/sh` elsewhere. Reconcile's step pastes numbers and proposes no doc edits from them. Each file was read by the auditor in full or at the changed lines |
+| 4. Acceptance | PASS | Each criterion re-run by the auditor through cmd.exe: T2.1.1 exit 0, T2.1.2 exit 0, T2.1.3 exit 0. Each runs the full audit suite (154/154), so the vocabulary case passed over all three files |
+| 5. Deviations | PASS | Two executor-reported deviations, logged as 8 and 9; none discovered |
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T2.1.1 | `cee4819` | `drydock/skills/check/SKILL.md` | `drydock/skills/check/SKILL.md` | none |
+| T2.1.2 | `6fc714e` | `drydock/skills/planwright/SKILL.md` | `drydock/skills/planwright/SKILL.md` | none |
+| T2.1.3 | `f449722` | `drydock/skills/reconcile/SKILL.md` | `drydock/skills/reconcile/SKILL.md` | none |
+
+**Unexercised (D14). This PASS covers only the mechanical criteria and a
+reading of the text.** None of the three skill edits in this wave has been run:
+`drydock:check` does not exist in this session's skill list, and planwright and
+reconcile load from the installed 0.15.1 copy. That holds for this session and
+for every session until 0.16.0 is installed and a fresh session invokes them.
+They are shipped, gated, and **unproven**.
+
+Deviations logged: 9 (2 discovered by wavecheck, 1 by review)
+
 ## Wave 1.R verdict, APPROVED, 2026-10-07 (second re-review, after Wave 1.5)
 
 A third fresh-context Opus 5.5 reviewer, read-only, told that both earlier
@@ -885,5 +916,9 @@ intents, deleted files and continuation-line criteria; `learnings` on nested
 | 2026-10-07 | T1.5.1 | DONE | `eed9b83` |
 | 2026-10-07 | Wave 1.5 | PASS | wavecheck 1.5; suites pass with `shell: true` routed to sh |
 | 2026-10-07 | T1.R.1 | APPROVED | second re-review; F1, F2, G1 verified; Phase 1 gate CLOSED |
+| 2026-10-07 | T2.1.1 | DONE | `cee4819`; unexercised (D14) |
+| 2026-10-07 | T2.1.2 | DONE | `6fc714e`; unexercised (D14) |
+| 2026-10-07 | T2.1.3 | DONE | `f449722`; unexercised (D14) |
+| 2026-10-07 | Wave 2.1 | PASS | wavecheck 2.1, mechanical criteria only |
 
 ## Reconcile report
