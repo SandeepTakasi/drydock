@@ -22,10 +22,9 @@ const SECTIONS_DIR = join(HERE, "..", "components", "sections");
 const PLUGIN_JSON = join(HERE, "..", "..", "drydock", ".claude-plugin", "plugin.json");
 const README = join(HERE, "..", "..", "README.md");
 
-const REQUIRED = [
-  "APPROVED (HUMAN-ONLY)",
-  "open pilot",
-  "field benchmarks pending",
+// Plan 012 D11: the literal lists split by page. The caveats moved to the
+// evidence page with the matrix; everything else stays on home.
+const REQUIRED_EVIDENCE = [
   // A3 is the one row that must never quietly graduate. Before these two
   // literals were required, the page could have promoted it to PASSED and the
   // gate would still have gone green: nothing checked that the caveat was
@@ -44,6 +43,7 @@ const REQUIRED = [
   // true, which is where an enforcement claim rots next: a hook that stops file
   // tools and nothing else. Drop them and the page can read as a guarantee.
   "outside the project directory are not enforced",
+  "Bash-mediated writes bypass file-tool hooks",
   // A7 ships a browser gate that ran once and generated spec files nobody ran.
   // Both halves have to stay on the page: the run is the claim, and this is the
   // ceiling that would quietly drop off it first.
@@ -53,6 +53,13 @@ const REQUIRED = [
   // drop off the page first now that there is a green suite to boast about —
   // one engine. A passing suite on one browser is not a compatibility rate.
   "Chromium only",
+  "A2b",
+];
+
+const REQUIRED_HOME = [
+  "APPROVED (HUMAN-ONLY)",
+  "open pilot",
+  "field benchmarks pending",
   // The one install prerequisite. A page that sells enforcement without naming
   // the runtime it needs sells a guarantee the reader may not have. Pinned so it
   // cannot be trimmed away as boilerplate.
@@ -66,9 +73,7 @@ const REQUIRED = [
   // too, and a stale one turns the honesty gate into the thing keeping the page
   // wrong.
   "Node 20.17 or newer",
-  "Bash-mediated writes bypass file-tool hooks",
-  "Deviations logged: 1 (1 discovered by wavecheck)",
-  "A2b",
+  "Deviations logged: 6 (3 discovered by wavecheck)",
   "drift",
   "one-file change",
   "NOTHING SAILS UNTIL IT LEAVES THE DOCK",
@@ -84,15 +89,12 @@ const REQUIRED = [
   "seatrial",
   "reconcile",
   // check and init joined the page in 0.16.0 (init itself shipped in 0.14.0).
-  // The "Nine pieces" pin fixes the heading's text and does not count the
-  // cards, so adding or dropping a card still means editing the heading by
-  // hand. The check pin is the card's whole sentence, because the bare phrase
+  // The check pin is the card's whole sentence, because the bare phrase
   // "prevents nothing" also appears in the A10 note and would pass without the
   // card. It is check's honesty caveat; without it the page could sell a
   // post-hoc audit as enforcement and still go green.
   "/drydock:check",
   "/drydock:init",
-  "Nine pieces",
   "It detects after the fact and prevents nothing.",
 ];
 
@@ -152,41 +154,117 @@ try {
 
 const text = normalise(raw);
 
-// --- required literals -----------------------------------------------------
-for (const lit of REQUIRED) {
-  if (!text.includes(lit)) fail(`missing required literal: ${JSON.stringify(lit)}`);
+// Fixture mode (an argument) treats the argument as home only.
+const pages = [{ label: "home", raw, text, required: REQUIRED_HOME, home: true }];
+if (checkRepoSources) {
+  const evPath = resolve(process.cwd(), "out/evidence/index.html");
+  let evRaw;
+  try {
+    evRaw = readFileSync(evPath, "utf8");
+  } catch (err) {
+    console.error(`assert-copy: cannot read ${evPath}: ${err.message}`);
+    process.exit(1);
+  }
+  pages.push({ label: "evidence", raw: evRaw, text: normalise(evRaw), required: REQUIRED_EVIDENCE, home: false });
 }
 
-// --- the `executor` discriminator ------------------------------------------
-// `executor` and `executor-isolated` share kind "agents", and a substring match
-// on "executor" is also satisfied by "executor-isolated" alone. Two occurrences
-// is what proves both rows rendered.
-const executors = (text.match(/executor/g) ?? []).length;
-if (executors < 2) {
-  fail(
-    `expected >= 2 occurrences of "executor" (one bare, one in "executor-isolated"), found ${executors}`
-  );
-}
+let executors = 0;
+for (const page of pages) {
+  // --- required literals ---------------------------------------------------
+  for (const lit of page.required) {
+    if (!page.text.includes(lit)) fail(`${page.label}: missing required literal: ${JSON.stringify(lit)}`);
+  }
 
-// --- over-claim blocklist --------------------------------------------------
-for (const re of OVER_CLAIM) {
-  const hit = text.match(re);
-  if (hit) fail(`forbidden over-claim: ${JSON.stringify(hit[0])} matched ${re}`);
-}
+  // --- the `executor` discriminator (home) ---------------------------------
+  // `executor` and `executor-isolated` share kind "agents", and a substring
+  // match on "executor" is also satisfied by "executor-isolated" alone. Two
+  // occurrences is what proves both rows rendered.
+  if (page.home) {
+    executors = (page.text.match(/executor/g) ?? []).length;
+    if (executors < 2) {
+      fail(
+        `expected >= 2 occurrences of "executor" (one bare, one in "executor-isolated"), found ${executors}`
+      );
+    }
+  }
 
-// --- heading contract (Decision 24), on the RAW markup ---------------------
-const h1Opens = (raw.match(/<h1[\s/>]/gi) ?? []).length;
-if (h1Opens !== 1) {
-  fail(`heading contract: expected exactly one <h1>, found ${h1Opens}`);
-} else {
-  const pair = raw.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i);
-  if (!pair) fail("heading contract: <h1> has no closing tag");
-  else if (!inner(pair[1]).includes("Drydock")) {
-    fail(
-      `heading contract: <h1> must contain "Drydock", got ${JSON.stringify(inner(pair[1]))}`
-    );
+  // --- over-claim blocklist ------------------------------------------------
+  for (const re of OVER_CLAIM) {
+    const hit = page.text.match(re);
+    if (hit) fail(`${page.label}: forbidden over-claim: ${JSON.stringify(hit[0])} matched ${re}`);
+  }
+
+  // --- heading contract (Decision 24), on the RAW markup -------------------
+  const h1Opens = (page.raw.match(/<h1[\s/>]/gi) ?? []).length;
+  if (h1Opens !== 1) {
+    fail(`${page.label}: heading contract: expected exactly one <h1>, found ${h1Opens}`);
+  } else {
+    const pair = page.raw.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i);
+    if (!pair) fail(`${page.label}: heading contract: <h1> has no closing tag`);
+    else if (page.home && !inner(pair[1]).includes("Drydock")) {
+      fail(
+        `heading contract: <h1> must contain "Drydock", got ${JSON.stringify(inner(pair[1]))}`
+      );
+    }
   }
 }
+
+// --- excerpt + pin checks, on home's script-stripped markup -----------------
+// Scripts are stripped first: the RSC payload repeats every string and a
+// mutation of the markup would otherwise be masked (or faked) by it.
+const REPO_ROOT = join(HERE, "..", "..");
+const markup = raw.replace(SCRIPT, " ").replace(COMMENT, "");
+const attr = (tag, name) => {
+  const m = tag.match(new RegExp(`\\s${name}="([^"]*)"`));
+  return m ? decode(m[1]) : undefined;
+};
+/** Every element whose opening tag carries `name`: [{ open, body }]. */
+const elementsWith = (name) =>
+  [...markup.matchAll(new RegExp(`<([a-zA-Z0-9]+)\\b[^>]*\\s${name}="[^"]*"[^>]*>([\\s\\S]*?)</\\1>`, "g"))].map(
+    (m) => ({ open: m[0].slice(0, m[0].indexOf(">") + 1), body: m[2] })
+  );
+const readRepo = (rel, what) => {
+  try {
+    return readFileSync(resolve(REPO_ROOT, rel), "utf8");
+  } catch (err) {
+    fail(`${what}: cannot read repo file ${JSON.stringify(rel)}: ${err.message}`);
+    return undefined;
+  }
+};
+const flat = (s) => s.replace(/\*\*|`/g, "").replace(/\s+/g, " ").trim();
+
+let excerptLines = 0;
+const excerpts = elementsWith("data-excerpt-of");
+for (const { open, body } of excerpts) {
+  const p = attr(open, "data-excerpt-of");
+  const src = readRepo(p, "excerpt");
+  if (src === undefined) continue;
+  const source = flat(src);
+  for (const m of body.matchAll(/<span\b[^>]*>([\s\S]*?)<\/span>/g)) {
+    const line = flat(inner(m[1]));
+    excerptLines++;
+    if (!source.includes(line)) {
+      fail(`excerpt: line ${JSON.stringify(line)} is not in ${p}`);
+    }
+  }
+}
+if (excerpts.length < 1 || excerptLines < 1) {
+  fail(`excerpt: expected >= 1 data-excerpt-of element with >= 1 line, found ${excerpts.length} element(s), ${excerptLines} line(s)`);
+}
+
+const pins = elementsWith("data-pin");
+for (const { open, body } of pins) {
+  const s = attr(open, "data-source");
+  const x = attr(open, "data-pin");
+  if (!s || !x) {
+    fail(`pin: element has data-pin without data-source (or vice versa): ${open}`);
+    continue;
+  }
+  const src = readRepo(s, "pin");
+  if (src !== undefined && !src.includes(x)) fail(`pin: ${JSON.stringify(x)} is not in ${s}`);
+  if (!inner(body).includes(x)) fail(`pin: rendered text does not contain ${JSON.stringify(x)} (source ${s})`);
+}
+if (pins.length !== 4) fail(`pin: expected exactly 4 data-pin elements on home, found ${pins.length}`);
 
 // --- motion contract, over components/sections/*.tsx only ------------------
 // lib/motion.ts legitimately holds every timing literal, so it is never scanned.
@@ -264,7 +342,7 @@ if (checkRepoSources) {
 // Pages project site `../` climbs out of the basePath to the domain root, and
 // docs/ is not deployed at all. Four such links shipped live before this check
 // existed. Docs must be linked absolutely, on GitHub.
-const ESCAPING = raw.match(/href="\.\.\/[^"]*"/g) ?? [];
+const ESCAPING = pages.flatMap((p) => p.raw.match(/href="\.\.\/[^"]*"/g) ?? []);
 for (const hit of [...new Set(ESCAPING)]) {
   fail(
     `relative-escape link: ${hit} climbs out of the basePath and 404s in ` +
@@ -280,7 +358,7 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `assert-copy: PASS — ${target} (${REQUIRED.length} literals, ${executors}x executor, 1 h1${
-    checkMotion ? ", motion contract, version matches plugin.json" : ", motion contract skipped: fixture mode"
+  `assert-copy: PASS — ${target} (${pages.map((p) => `${p.label}: ${p.required.length} literals`).join(", ")}; ${executors}x executor, 1 h1 per page, ${excerpts.length} excerpt (${excerptLines} lines), ${pins.length} pins${
+    checkMotion ? ", motion contract, version matches plugin.json" : ", evidence page and motion contract skipped: fixture mode"
   })`
 );
