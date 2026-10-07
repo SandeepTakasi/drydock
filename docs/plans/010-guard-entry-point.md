@@ -1,7 +1,7 @@
 ---
 plan: 010-guard-entry-point
 format_version: 3
-status: EXECUTING
+status: BLOCKED
 isolation: none
 enforcement: required
 attribution: manifest
@@ -378,8 +378,39 @@ skill and docs describe them, and 0.17.0 is cut locally and unpushed.
 
 | # | Task | What deviated | Why | Impact | Recorded |
 |---|---|---|---|---|---|
+| 1 | T0 | The Baseline says `e2e/009-site-016-additions/` held **three** specs. It held **five** (`tg1`-`tg5`, all dated 2026-10-07 08:33 IST, before this session). | The planner's `ls` was piped through `head -20` and truncated. | No file changed; the Baseline's count is wrong. The pre-existing state it describes is unchanged. `discovered-by-wavecheck` | 2026-10-07 |
+| 2 | — (gate) | `audit-wave 1.1` reports five "Bash writes outside `owns`" and a dirty tree. **Every one is the pre-existing untracked `e2e/009-site-016-additions/` directory**: the files predate the wave by about 2.5 hours, and all five `detected` receipts are stamped on the wave's first Bash command (the orchestrator's staleness check plus `wave-start`, a read-only `git diff` followed by the arming), which wrote nothing there. | The Bash detector attributes to that first command whatever untracked state it has no earlier snapshot for. That is a false positive on pre-existing dirt, and the detector's ceiling list (`detect-bash-writes.mjs` ~40-58) does not name it. | All four task commits stay inside their task's `owns` (the audit's own table). The two FAIL lines are not wave writes, but the audit cannot tell them apart, and the receipts are permanent in `.drydock/enforcement.log`, so a re-audit stays FAIL on error 1 even after the directory is committed or moved. A human decision is required. `discovered-by-wavecheck` | 2026-10-07 |
+| 3 | T1.1.2 | The `check` skill's frontmatter `description:` still ends "Detects scope misses after the fact; prevents nothing.", while the body now offers opt-in prevention. | Reported by the executor as an observation. The task block did not name the description, and no forbidden item covers it. | The description is what the host shows when it chooses a skill, so it now understates the skill. This is inside T1.1.2's `owns`, so it can be repaired in a new wave with a new task id. | 2026-10-07 |
 
 ## Wavecheck reports
+
+### Wavecheck 1.1, BLOCK, 2026-10-07
+
+Execution: `fleet`. Four `drydock:executor` subagents were spawned one at a time (Sonnet 5.5 ×3, Haiku 4.5 ×1). The auditor did not write the diffs.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `format_version: 3`, status `EXECUTING`, wave 1.1 exists, no prior implementation wave. `validate-plan --strict` PASS at `1bf2841`. |
+| 2. Ownership audit | **FAIL** | Installed 0.16.0 `audit-wave 1.1`: `FAIL (2)`. Per-task table below: **every task's commit is inside its `owns`**. Both errors are the pre-existing untracked `e2e/009-site-016-additions/` directory (Deviations 1 and 2), not a wave write. Enforcement ran: `enforcement active: 20 hook decision(s) recorded for wave 1.1 (0 denied)`. |
+| 3. Forbidden audit | PASS | T1.1.1: `git diff d95b080..HEAD -- drydock/hooks` is empty. The `wave-start` gitignore message is byte-identical (`ensureDrydockIgnored(root, "wave-start")` prints `${who}: added ...`). The diff adds no `disarm` subcommand, no CLI glob arguments and no receipt counting. T1.1.2: arming is an opt-in step, and the intent format is unchanged. T1.1.3: no claim that Bash writes are prevented, no claim of a live run, and only the two new sections. T1.1.4: one line changes in each of `copy.ts`, the root README and `plugin.json`. |
+| 4. Acceptance audit | PASS | All four criteria re-run by the auditor through `spawnSync(..., {shell: true})`: T1.1.1 exit 0 (`159/159 passed`), T1.1.2 exit 0, T1.1.3 exit 0, T1.1.4 exit 0. |
+| 5. Deviation reconciliation | PASS (logged) | The executors reported no deviations. Deviation 3 comes from T1.1.2's report; Deviations 1 and 2 were discovered by wavecheck. |
+
+```
+| Task | Commit | Files changed | Owns | Outside owns |
+| T1.1.1 | a795149 | drydock/scripts/drydock-audit.mjs, drydock/scripts/drydock-audit.test.mjs | same | none |
+| T1.1.2 | cc96426 | drydock/skills/check/SKILL.md | same | none |
+| T1.1.3 | 0e4e3cd | drydock/QUICKSTART.md, drydock/README.md | same | none |
+| T1.1.4 | 28cbceb | README.md, drydock/.claude-plugin/plugin.json, drydock/CHANGELOG.md, site/content/copy.ts | same | none |
+note: enforcement active: 20 hook decision(s) recorded for wave 1.1 (0 denied)
+audit-wave 1.1: FAIL (2)
+  - a Bash command wrote outside this wave's `owns`: e2e/009-site-016-additions/tg1..tg5 (5 files)
+  - working tree is not clean after the wave's task commits, 1 uncommitted change(s): e2e/009-site-016-additions/
+```
+
+**Remediation (human decision):** (a) record a human override that accepts the two FAIL lines as pre-existing state and re-audit with that override noted; (b) commit or relocate the plan 009 specs, then re-audit (error 2 clears; error 1 does not, because the receipts persist); (c) `/drydock:replan` with a task that fixes the detector's first-command attribution. Nothing has been fixed by the auditor.
+
+Deviations logged: 3 (2 discovered by wavecheck)
 
 ## Progress log
 
