@@ -461,6 +461,7 @@ install, FAQ; `/drydock/evidence/` renders the full matrix; `npm run verify` and
 | 1 | T1.0.1 | `hero` has no explicit type, so `hero.artifact.source` and `verdict` infer as `string`, not the literal types the sketch shows; `lines` is cast `as TerminalLine[]` | Executor kept `hero` inferred like the rest of the object | None: consumers read the values, and the literal is pinned by T1.1.1's and T1.3.1's checks | executor report |
 | 2 | T1.0.1 | Refusal 3's `output` is the hook's `systemMessage` | The hook emits no separate `permissionDecisionReason`; the systemMessage is its deny reason | None: pin `does not own` is in both the source and the output | executor report |
 | 3 | T1.0.1 | Hero excerpt lines 2-6 are the first two cells of the plan 004 table rows (the Evidence cell is cut), line 7 starts mid-sentence inside row 5's Evidence cell, and line 10 omits that line's trailing `Plan status set to BLOCKED.` | Fits 10 lines in the hero; each line still passes this plan's operational test (normalised substring of the plan 004 file, Execution policies, D2) | Characters are verbatim but not every kept line is a whole source line. Not blocking under the plan's mechanical definition; flagged for the human at the Phase 1 gate (D16), who may require whole lines | discovered-by-wavecheck |
+| 4 | T1.1.2 | `lifecycle.flow` is no longer rendered by `Lifecycle.tsx`, and T1.2.1's removal list does not name it, so it stays in `copy.ts` as unrendered copy | The task's description lists steps, diagram and the nine-name list; the flow strip has no place in it | Dead copy only; no pinned literal lives in it (checked against `assert-copy.mjs` REQUIRED). Left for the review or a follow-up rather than widening T1.2.1 | executor report |
 
 ## Wavecheck reports
 
@@ -486,11 +487,39 @@ install, FAQ; `/drydock/evidence/` renders the full matrix; `npm run verify` and
 
 Deviations logged: 3 (1 discovered by wavecheck)
 
+### Wavecheck 1.1 - PASS - 2026-10-07
+
+`execution: fleet`: each task was written by its own spawned `drydock:executor` (Sonnet 5.5 for T1.1.1-T1.1.3, T1.1.5, T1.1.6; Haiku 4.5 for T1.1.4), one at a time; this audit is by the orchestrator, which wrote none of the diff.
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `status: EXECUTING`; wave 1.1 exists; wave 1.0 has a PASS report (`e9af5d4`). Staleness check: `git diff 15570df..HEAD` over the wave's owned files and `copy.ts` shows only T1.0.1's `3bb4c78`, a handoff |
+| 2. Ownership audit | PASS | `audit-wave 1.1: PASS` (6 tasks, 6 commits, attribution: manifest); 13 hook decisions recorded, so enforcement ran; no Bash write landed outside `owns`. Table and enforcement sentence below |
+| 3. Forbidden audit | PASS | Hero.tsx: no `motion`, `initial=`, `data-reveal`, `<svg>`; one `<h1>`. Lifecycle.tsx: both `d` strings, `viewBox="0 0 960 96"`, `strokeDasharray="10 8"`, `var(--color-line-strong)`/`var(--color-accent)`, `var(--stroke-rule)` identical to `15570df:Hero.tsx`; only `animate` became `whileInView` + `viewport={{ once: true }}`; no `piece.detail`. Refusals.tsx, Limits.tsx: no `motion` import; Limits uses `next/link`. `next.config.ts`: the single added line is `trailingSlash: true`. layout.tsx: skip link `href="#content"` (line 79), `metadata`, fonts and `<noscript>` untouched; the wordmark (previously `<a href="#content">`) and nav items became `<Link>`; no `/drydock` literal outside comments. No task touched `copy.ts` |
+| 4. Acceptance audit | PASS | All six criteria re-run through `spawnSync(crit, {shell: true})` (cmd.exe): T1.1.1 0, T1.1.2 0, T1.1.3 0, T1.1.4 0, T1.1.5 0, T1.1.6 0. Extra: `measure-reduced-motion.mjs` PASS (waterline "10px, 8px", hull opacity 1 dasharray none, invisibleText=0), so C1/M1 survive the move. `npm run verify` not run: red by design until T1.3.1 (D12) |
+| 5. Deviation reconciliation | PASS | One reported deviation-shaped observation logged as 4. T1.1.2's mid-task criterion failure on a comment containing `piece.detail` was fixed before its commit, inside its own file: not a deviation. Note for Wave 1.R, not a conformance finding: T1.1.5's evidence page renders its `<h1>`, lead and home link as unstyled markup outside any container |
+
+### audit-wave 1.1, docs/plans/012-homepage-restructure.md
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.1.1 | `7edc8af` | `site/components/sections/Hero.tsx` | `site/components/sections/Hero.tsx` | none |
+| T1.1.2 | `e686060` | `site/components/sections/Lifecycle.tsx` | `site/components/sections/Lifecycle.tsx` | none |
+| T1.1.3 | `ef0ee13` | `site/components/sections/Refusals.tsx` | `site/components/sections/Refusals.tsx` | none |
+| T1.1.4 | `53d2a95` | `site/components/sections/Limits.tsx` | `site/components/sections/Limits.tsx` | none |
+| T1.1.5 | `73a0ad2` | `site/app/evidence/page.tsx`<br>`site/next.config.ts` | `site/app/evidence/page.tsx`<br>`site/next.config.ts` | none |
+| T1.1.6 | `f2c1f62` | `site/app/layout.tsx`<br>`site/components/MobileNav.tsx` | `site/app/layout.tsx`<br>`site/components/MobileNav.tsx` | none |
+
+  note: enforcement active: 13 hook decision(s) recorded for wave 1.1 (0 denied)
+
+Deviations logged: 4 (1 discovered by wavecheck)
+
 ## Progress log
 
 | Date | Task | Result | Notes |
 |---|---|---|---|
 | 2026-10-07 | T0 | PASS | Baseline filled, README row added, status EXECUTING |
 | 2026-10-07 | T1.0.1 | PASS | `3bb4c78`; wavecheck 1.0 PASS |
+| 2026-10-07 | T1.1.1-T1.1.6 | PASS | `7edc8af`, `e686060`, `ef0ee13`, `53d2a95`, `73a0ad2`, `f2c1f62`; wavecheck 1.1 PASS |
 
 ## Reconcile report
