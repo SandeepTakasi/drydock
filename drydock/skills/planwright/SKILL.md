@@ -62,6 +62,8 @@ Map everything the change touches: entry points, affected modules, data models, 
 
 The output of this step is a written **Findings & constraints** summary: what exists, what the change must integrate with, what could break, and which conventions the plan must follow. If exploration reveals the request is simpler than expected, say so: a plan that shrinks the work is a better plan.
 
+**Pull the learnings.** Once the files the plan will own are known, run `node ${CLAUDE_PLUGIN_ROOT}/scripts/drydock-audit.mjs learnings <file>...` with concrete repo-relative file paths (not patterns). It prints the CLAUDE.md lines and past Deviation Log rows that mention each file, full-path hits first. Carry every relevant hit into *Findings & constraints*, or state that none applied.
+
 **Spec linkage.** The plan describes *how*; a spec describes *what*. If a spec or design document exists, reference it (file path + relevant sections) in the plan header and per-task context briefs rather than restating it. If none exists and the change is large or design-ambiguous, tell the user a design doc should precede the plan, do not smuggle design decisions into task descriptions where nobody will review them.
 
 ### Step 3: Clarify all doubts, then log the decisions
