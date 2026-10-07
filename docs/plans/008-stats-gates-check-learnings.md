@@ -282,7 +282,7 @@ confirmed to exist. Verdict APPROVED-WITH-FIXES; all twelve findings applied:
 
 ## Phase 1: Mechanics
 
-**Phase gate:** all four plugin suites exit 0, `node drydock/scripts/drydock-stats.test.mjs` exits 0, `validate-plan` over the corpus as CI runs it, and Wave 1.R APPROVED.
+**Phase gate:** CLOSED 2026-10-07. All four plugin suites exit 0 (audit 154/154, enforce-owns 42, detect-bash-writes 21, resolve-target 8); `node drydock/scripts/drydock-stats.test.mjs` exits 0 (8/8); `validate-plan` over the corpus as CI runs it exits 0; and Wave 1.R APPROVED on its second re-review, after two repair waves (1.4, 1.5).
 
 ### Wave 1.1 - The wave-order lock, the stats script, the CI re-audit
 
@@ -784,6 +784,28 @@ session and by any session until 0.16.0 is installed.
 
 Deviations logged: 7 (2 discovered by wavecheck, 1 by review)
 
+## Wave 1.R verdict, APPROVED, 2026-10-07 (second re-review, after Wave 1.5)
+
+A third fresh-context Opus 5.5 reviewer, read-only, told that both earlier
+rejections were "passes here, fails in CI" and given the `ComSpec` technique.
+
+- **F1: VERIFIED.** An LF clone (`core.autocrlf=false`, as Linux CI checks it
+  out) of `f97c38c`, with no `.drydock/` and an empty `CLAUDE_CONFIG_DIR`,
+  `HOME` and `USERPROFILE`, gave `audit-corpus: PASS, 17 wave(s) in 4 plan(s)`,
+  rc 0, plan 008 waves 1.1-1.5 included.
+- **F2: VERIFIED.** With the space removed in a scratch clone the suite went
+  to 153/154, failing only the pinning case.
+- **G1: VERIFIED.** With `shell: true` routed through sh, HEAD gave 154/154.
+  Restoring the old criteria gave 152/154, failing exactly the two G1 cases.
+  The same mutant gives 154/154 under cmd.exe, so the cases now tell the two
+  shells apart.
+- **Must-fix: none.** Checked: all five suites pass on the LF clone under sh;
+  `assert-matrix` and the CI `validate-plan` loop pass there too; only `check`
+  criteria depend on the shell (the other new code spawns argv arrays); glob
+  matching has no platform branch; CRLF handled on every new read path; the
+  new plugin-job tests need no repo history; exit codes as contracted; Node 20
+  built-ins only (by reading; not run on Node 20).
+
 ## Wave 1.R verdict, REJECTED, 2026-10-07 (re-review after Wave 1.4)
 
 A second fresh-context Opus 5.5 reviewer, read-only.
@@ -862,5 +884,6 @@ intents, deleted files and continuation-line criteria; `learnings` on nested
 | 2026-10-07 | T1.R.1 | REJECTED | re-review: F1, F2 verified; G1 (fixtures fail under /bin/sh) to Wave 1.5 |
 | 2026-10-07 | T1.5.1 | DONE | `eed9b83` |
 | 2026-10-07 | Wave 1.5 | PASS | wavecheck 1.5; suites pass with `shell: true` routed to sh |
+| 2026-10-07 | T1.R.1 | APPROVED | second re-review; F1, F2, G1 verified; Phase 1 gate CLOSED |
 
 ## Reconcile report
