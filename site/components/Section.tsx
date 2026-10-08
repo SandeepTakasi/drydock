@@ -17,7 +17,7 @@ import type { SectionShellProps } from "@/lib/section";
  * (`mt-10` on the wrapper below). Sections pass their body content with no
  * leading margin of their own.
  */
-export default function Section({ meta, children }: SectionShellProps) {
+export default function Section({ meta, children, reveal = true }: SectionShellProps) {
   const variants = useMotionSafe() ? sectionReveal : NO_MOTION;
 
   return (
@@ -25,7 +25,9 @@ export default function Section({ meta, children }: SectionShellProps) {
       id={meta.id}
       data-reveal
       variants={variants}
-      initial="hidden"
+      // `false` skips the hidden state entirely, so the export carries no
+      // inline `opacity:0` for content that must show before hydration.
+      initial={reveal ? "hidden" : false}
       whileInView="shown"
       viewport={{ once: true, amount: 0.2 }}
       className="border-t border-line"

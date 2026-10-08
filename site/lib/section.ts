@@ -27,6 +27,8 @@ export interface SectionProps {
 export interface SectionShellProps {
   meta: SectionMeta;
   children: React.ReactNode;
+  /** false: render visible from the first paint (a page's primary content). */
+  reveal?: boolean;
 }
 
 export type SectionComponent = React.FC<SectionProps>;

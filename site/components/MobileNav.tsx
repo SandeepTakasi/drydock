@@ -27,6 +27,7 @@ export default function MobileNav() {
           <li key={item.href} className="border-b border-line last:border-b-0">
             <Link
               href={item.href}
+              prefetch={false} /* the /evidence prefetch 404s; see app/layout.tsx */
               onClick={() => ref.current?.removeAttribute("open")}
               className="block px-4 py-3 font-mono text-mark text-ink-dim uppercase transition-colors hover:text-ink"
             >

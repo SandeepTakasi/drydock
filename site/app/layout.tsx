@@ -111,10 +111,15 @@ export default function RootLayout({
               {site.status}
             </span>
             <nav className="ml-auto flex items-center gap-5">
+              {/* prefetch={false}: next@16's static export writes the
+                  /evidence segment prefetch as `__next.evidence/__PAGE__.txt`
+                  but the client requests `__next.evidence.__PAGE__.txt`, so
+                  every prefetch 404s in the console. Navigation itself works. */}
               {nav.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={false}
                   className="hidden py-1.5 font-mono text-mark text-ink-dim uppercase transition-colors hover:text-ink md:inline-block"
                 >
                   {item.label}

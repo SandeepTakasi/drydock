@@ -20,7 +20,8 @@ export default function Limits({ meta }: SectionProps) {
         ))}
       </ul>
       <p className="mt-12 max-w-3xl">
-        <Link href="/evidence" className="text-accent hover:underline">
+        {/* prefetch={false}: the /evidence prefetch 404s; see app/layout.tsx */}
+        <Link href="/evidence" prefetch={false} className="text-accent hover:underline">
           {limits.evidenceLinkText}
         </Link>
       </p>

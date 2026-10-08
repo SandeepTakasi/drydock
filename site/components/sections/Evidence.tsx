@@ -37,9 +37,10 @@ function Row({ row }: { row: EvidenceRow }) {
   );
 }
 
+// The evidence page's primary content, so it is visible on first paint.
 export default function Evidence({ meta }: SectionProps) {
   return (
-    <Section meta={meta}>
+    <Section meta={meta} reveal={false}>
       <ul className="grid gap-px bg-line">
         {evidence.rows.map((row) => (
           <Row key={row.label} row={row} />

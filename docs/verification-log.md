@@ -900,7 +900,8 @@ mechanism that just failed to fire.
 
 ### Not tested
 
-- **Live registration by the host.** Attempted and negative, as above.
+- **Live registration by the host.** Attempted and negative on 2026-09-19, as
+  above; observed live on 2026-10-09, below.
 - **Concurrent executors.** Attribution is "changed around this command", not
   "caused by it". Two executors running Bash at once can be credited with each
   other's changes. Unmeasured, and stated in the docblock rather than assumed
@@ -909,6 +910,60 @@ mechanism that just failed to fire.
   while a wave is armed, and nothing while one is not (an `existsSync` guard
   precedes any git invocation). Timed on neither this repo nor a large one.
 - **Backgrounded commands**, which finish after the hook fires.
+
+### Live registration: observed 2026-10-09
+
+**Host version:** `claude --version` → `2.1.292 (Claude Code)`
+**Node:** v24.14.1
+**Installed plugin:** drydock 0.18.0 (the hooks fired from
+`~/.claude/plugins/cache/drydock/drydock/0.18.0/`, named in the deny message)
+**Repo SHA at run time:** `a3c4d7f`, clean working tree
+
+**What this adds.** The host invoked the PostToolUse detector on a real Bash
+command and it wrote a `detected` receipt for a file that command created outside
+the armed scope: the receipt this row was waiting for. In the same armed session
+the PreToolUse hook denied a file-tool write outside the scope, so both layers
+were live at once.
+
+**What it does not add.** One session, one repo, one owned path, armed with
+`arm` from a check intent rather than by a plan wave's `wave-start`. The session
+is the plugin author's working session, though it wrote none of the detector's
+code. Every ceiling listed under *Not tested* above still stands. Plan 010's
+wavecheck 1.1 and plan 013's T0 had already recorded `bash-tree` receipts in
+passing; this is the first run made to test the claim and recorded against it.
+
+**Method and raw output.** Intent `.drydock/a9-check.md`, base `a3c4d7f`,
+**Files owned:** `tmp-a9/ok.txt`, then `drydock-audit.mjs arm` (installed
+0.18.0), which printed `arm: armed 1 glob(s) from .drydock/a9-check.md`.
+Receipts below are copied from `.drydock/enforcement.log`, one per tool call, in
+order:
+
+1. The arming command itself, the first Bash command of the boundary:
+   `"decision":"observed","mechanism":"bash-tree","detail":"snapshot from an earlier arming discarded, snapshot seeded, nothing to diff against"`
+2. Bash `git status --short`:
+   `"decision":"observed","mechanism":"bash-tree","command":"git status --short","detail":"0 path(s) changed, all inside the wave's owns"`
+3. Bash `mkdir -p tmp-a9 && printf 'a9 probe\n' > tmp-a9/stray.txt`:
+   `"decision":"detected","path":"tmp-a9/stray.txt","owns":["tmp-a9/ok.txt"],"mechanism":"bash-tree","detail":"changed by a Bash command, outside the wave's owns"`
+   The file landed: detection, not prevention, as the row states.
+4. Write tool to `tmp-a9/denied.txt`, refused by the host:
+
+       Drydock ownership violation: wave check does not own tmp-a9/denied.txt.
+       Owned by this wave: tmp-a9/ok.txt
+
+   Receipt `"decision":"deny","path":"tmp-a9/denied.txt","mechanism":"file-tool"`.
+5. Write tool to `tmp-a9/ok.txt`: allowed, receipt `"decision":"allow"`.
+6. `drydock-audit.mjs check .drydock/a9-check.md`:
+
+       FLAG outside scope: tmp-a9/stray.txt
+       check: hook armed for this scope
+       check: FLAG (1)
+
+7. `rm .drydock/wave-owns.json`; `tmp-a9/` and the intent file deleted;
+   `git status --short` empty.
+
+**Verdict.** Live detection by the host is observed. The row moves from LOGIC
+VERIFIED with live registration negative to PASSED for this claim, with its
+ceilings unchanged.
 
 ## A8 — PreToolUse payload fields
 
