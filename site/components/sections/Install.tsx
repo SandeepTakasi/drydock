@@ -37,53 +37,80 @@ async function copyToClipboard(text: string): Promise<boolean> {
 }
 
 /**
- * Two install commands, each a real selectable/copyable <code> element (works
- * with no JS) plus a copy button. The confirmed "Copied" state is left in
- * place until the next copy rather than reset on a timer, so no timing
- * literal is needed in this file (plan Decision 22 keeps those in lib/motion).
+ * Copy button with its own state, so every command and the CI snippet copy
+ * independently. The confirmed "Copied" state is left in place until the next
+ * click rather than reset on a timer, so no timing literal is needed in this
+ * file (plan Decision 22 keeps those in lib/motion).
  */
-export default function Install({ meta }: SectionProps) {
-  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+function CopyButton({ text, label }: { text: string; label: string }) {
+  const [copied, setCopied] = useState(false);
 
   return (
+    <>
+      <button
+        type="button"
+        aria-label={label}
+        onClick={async () => setCopied(await copyToClipboard(text))}
+        className={
+          "shrink-0 border px-3 py-1.5 font-mono text-mark uppercase transition-colors " +
+          (copied
+            ? "border-pass text-pass"
+            : "border-line text-ink-dim hover:border-line-strong hover:text-ink")
+        }
+      >
+        {copied ? install.copiedLabel : install.copyLabel}
+      </button>
+      <span aria-live="polite" className="sr-only">
+        {copied ? install.copiedLabel : ""}
+      </span>
+    </>
+  );
+}
+
+/**
+ * Three numbered steps; each command is a real selectable <code> element
+ * (works with no JS) on one scrolling line, plus a copy button.
+ */
+export default function Install({ meta }: SectionProps) {
+  return (
     <Section meta={meta}>
-      <div className="border border-line bg-surface">
-        {install.commands.map((cmd, i) => {
-          const copied = copiedIndex === i;
-          return (
-            <div
-              key={cmd}
-              className="flex flex-wrap items-center justify-between gap-3 border-line px-4 py-4 not-first:border-t sm:px-6"
-            >
-              <code className="font-mono text-body break-all text-ink">
-                <span aria-hidden="true" className="mr-3 text-accent">
-                  $
-                </span>
-                {cmd}
-              </code>
-              <button
-                type="button"
-                aria-label={`${install.copyAriaLabel}: ${cmd}`}
-                onClick={async () => {
-                  const ok = await copyToClipboard(cmd);
-                  setCopiedIndex(ok ? i : null);
-                }}
-                className={
-                  "shrink-0 border px-3 py-1.5 font-mono text-mark uppercase transition-colors " +
-                  (copied
-                    ? "border-pass text-pass"
-                    : "border-line text-ink-dim hover:border-line-strong hover:text-ink")
-                }
+      <ol className="grid gap-px border border-line bg-line">
+        {install.steps.map((step) => (
+          <li key={step.index} className="bg-surface px-4 py-6 sm:px-6">
+            <div className="flex items-baseline gap-4">
+              <span
+                aria-hidden="true"
+                className="font-mono text-mark text-accent"
               >
-                {copied ? install.copiedLabel : install.copyLabel}
-              </button>
-              <span aria-live="polite" className="sr-only">
-                {copied ? install.copiedLabel : ""}
+                {step.index}
               </span>
+              <h3 className="text-body font-semibold text-ink">{step.title}</h3>
             </div>
-          );
-        })}
-      </div>
+            <p className="mt-2 max-w-3xl text-note text-ink-dim sm:pl-10">
+              {step.body}
+            </p>
+            <div className="mt-4 grid gap-3 sm:pl-10">
+              {step.commands.map((cmd) => (
+                <div
+                  key={cmd}
+                  className="flex items-center gap-3 border border-line px-3 py-2"
+                >
+                  <span aria-hidden="true" className="font-mono text-accent">
+                    $
+                  </span>
+                  <code className="min-w-0 flex-1 overflow-x-auto font-mono text-body whitespace-nowrap text-ink">
+                    {cmd}
+                  </code>
+                  <CopyButton
+                    text={cmd}
+                    label={`${install.copyAriaLabel}: ${cmd}`}
+                  />
+                </div>
+              ))}
+            </div>
+          </li>
+        ))}
+      </ol>
       <p className="mt-6 font-mono text-mark text-ink-dim uppercase">
         {install.scopeNote}
       </p>
@@ -93,6 +120,29 @@ export default function Install({ meta }: SectionProps) {
       <p className="mt-4 max-w-3xl text-note text-ink-dim">
         {install.requirement}
       </p>
+      <details className="group mt-8 border border-line bg-surface">
+        <summary className="flex cursor-pointer list-none items-baseline justify-between gap-4 px-4 py-4 font-mono text-mark text-accent uppercase marker:content-none sm:px-6">
+          <span>{install.ciSummary}</span>
+          <span aria-hidden="true" className="group-open:hidden">
+            +
+          </span>
+          <span aria-hidden="true" className="hidden group-open:inline">
+            -
+          </span>
+        </summary>
+        <div className="border-t border-line px-4 py-4 sm:px-6">
+          <p className="max-w-3xl text-note text-ink-dim">{install.ci.note}</p>
+          <div className="mt-4 flex items-start gap-3">
+            <pre className="min-w-0 flex-1 overflow-x-auto border border-line p-3 font-mono text-note text-ink">
+              {install.ci.snippet}
+            </pre>
+            <CopyButton
+              text={install.ci.snippet}
+              label={install.ci.copyAriaLabel}
+            />
+          </div>
+        </div>
+      </details>
     </Section>
   );
 }
