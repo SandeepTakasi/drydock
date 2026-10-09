@@ -5,11 +5,12 @@ import Lifecycle from "@/components/sections/Lifecycle";
 import Limits from "@/components/sections/Limits";
 import Problem from "@/components/sections/Problem";
 import Refusals from "@/components/sections/Refusals";
+import Ways from "@/components/sections/Ways";
 import { meta } from "@/content/copy";
 
 /**
  * Page composition. The order is the argument: the failure mode, then the
- * mechanism, then the gate's refusals, then what it does not do, then install.
+ * mechanism, then the three ways in, then the gate's refusals, then what it does not do, then install.
  * The evidence matrix lives at /evidence.
  *
  * `<Hero />` is unwrapped and takes no props — it is not a section shell.
@@ -20,6 +21,7 @@ export default function Home() {
       <Hero />
       <Problem meta={meta.problem} />
       <Lifecycle meta={meta.lifecycle} />
+      <Ways meta={meta.ways} />
       <Refusals meta={meta.refuses} />
       <Limits meta={meta.limits} />
       <Install meta={meta.install} />
