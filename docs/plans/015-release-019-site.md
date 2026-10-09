@@ -1,7 +1,7 @@
 ---
 plan: 015-release-019-site
 format_version: 3
-status: EXECUTING
+status: BLOCKED
 isolation: none
 enforcement: required
 attribution: manifest
@@ -440,8 +440,42 @@ order. Each criterion builds the site and checks its own section in the export.
 
 | # | Task | What deviated | Why | Impact | Recorded |
 |---|---|---|---|---|---|
+| 1 | T1.1.1 | The FAQ order in `copy.ts` does not match 6a: "My repo forbids tool names in commit messages." is item 8, where 6a ("exactly this order") puts it at 11, ahead of code quality, gate skipping and the browser. Every string is byte-identical; only the order differs. The executor reported no deviation | Not stated by the executor | The FAQ renders in an order the plan did not approve. Content and claims unaffected | discovered-by-wavecheck, 2026-10-09 |
+| 2 | T1.1.2 | The plan names the executor model "Haiku 4.5"; the available model is Haiku 5.5, which ran it | Model availability | None; the pinned text matched byte for byte | orchestrator, 2026-10-09 |
 
 ## Wavecheck reports
+
+### Wavecheck 1.1 - BLOCK - 2026-10-09
+
+Fleet execution: T1.1.2 by `drydock:executor` (Haiku 5.5), then T1.1.1 by
+`drydock:executor` (Sonnet 5.5), one at a time; the auditor (orchestrating
+session, Opus 5.5) wrote none of the diff. `audit-wave` printed VERSION DRIFT:
+the repo script is v0.19.0 and the installed plugin v0.18.0. That is this wave's
+own version bump; plugin code is unchanged since `e0847c1`, and the install is
+updated at the phase gate (D12).
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.1.1 | `4e552d3` | `site/content/copy.ts`<br>`site/scripts/assert-copy.mjs` | `site/content/copy.ts`<br>`site/scripts/assert-copy.mjs` | none |
+| T1.1.2 | `6606c00` | `README.md`<br>`drydock/.claude-plugin/plugin.json`<br>`drydock/CHANGELOG.md`<br>`scope-gate/README.md` | `drydock/.claude-plugin/plugin.json`<br>`drydock/CHANGELOG.md`<br>`README.md`<br>`scope-gate/README.md` | none |
+
+  note: enforcement active: 19 hook decision(s) recorded for wave 1.1 (0 denied)
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `format_version: 3`, status `EXECUTING` (`563b84b`), wave 1.1 is the first wave, `execution: fleet` |
+| 2. Ownership | PASS | `audit-wave 1.1: PASS` (2 tasks, 2 commits, manifest); 19 file-tool `allow` receipts (T1.1.1: 14, T1.1.2: 5), 16 Bash commands observed, 0 writes outside `owns`; working tree clean |
+| 3. Forbidden | PASS | `hero.artifact` and `hero.wave` byte-identical to `563b84b`; `hero.kicker`, `hero.badges`, `limits.items`, `site.status` kept; all 9 existing FAQ answers verbatim; no file outside `owns`; no push, tag or install |
+| 4. Acceptance | PASS | Both criteria re-run through `spawnSync(cmd, {shell: true})`: T1.1.1 exit 0, T1.1.2 exit 0. `cd site && npm run verify` exit 0 (assert-copy: home 22 literals, evidence 7, 5 pins, version matches 0.19.0; assert-matrix PASS) |
+| 5. Deviations | **BLOCK** | Byte-for-byte: all 88 pinned 6a strings present in `copy.ts`, the workflow snippet equal line for line, the 0.19.0 changelog entry and the `scope-gate/README.md` status block exact. But the FAQ order departs from 6a's "exactly this order" (deviation 1), unreported by the executor. Deviation 2 logged by the orchestrator |
+
+**Verdict: BLOCK.** Wave 1.2 must not start. Remediation options: (a) a targeted
+fix task in a new wave that restores 6a's FAQ order in `copy.ts`, with its own
+criterion; (b) fold the reorder into T1.3.1, which already owns `copy.ts`, by
+amending its description and criterion; (c) accept the executor's order by a
+human decision and amend 6a. Nothing was fixed by this audit.
+
+Deviations logged: 2 (1 discovered by wavecheck)
 
 ## Progress log
 
