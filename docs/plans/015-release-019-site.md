@@ -256,6 +256,7 @@ new `githubLabel` `"GitHub"`. (`status` is removed in T1.3.1.)
 | 11 | `assert-copy.mjs` ownership | T1.1.1 (pins 4→5, `scope-gate/` sources) then T1.3.1 (new literals) | planner | Sequential handoff across waves |
 | 12 | Push, tags, install | Orchestrator after the human gate: move this plan's `docs/plans/README.md` row with its status at every status change, push `main`, push tags `v0.18.0` and `v0.19.0`, watch Verify and Deploy, then `claude plugin marketplace update drydock && claude plugin update drydock@drydock` | planner | Executors never push or tag |
 | 13 | Lane | full: three implementation waves and a review | planner | Size (~13 files) and the copy/component dependency |
+| 14 | How is wavecheck 1.1's BLOCK (deviation 1) repaired? | Plan 012's replaced-task mechanism: `T1.1.1` superseded by `T1.1.1r1` in wave 1.1, which takes over its ownership and restores 6a's FAQ order, then a re-audit of wave 1.1. Wave-1.2 tasks depend on `T1.1.1r1` | user (Sandeep Takasi, 2026-10-09) | `wave-start` will not arm a wave after one whose last verdict is BLOCK; a new task id keeps one `task-close` per task |
 
 ## 8. Open questions
 
@@ -316,7 +317,8 @@ refusal 3.
 
 ### Wave 1.1 - The release, and the new copy beside the old
 
-#### T1.1.1 - Copy deck into copy.ts, and the pin check widened
+#### ~~T1.1.1 - Copy deck into copy.ts, and the pin check widened~~ - SUPERSEDED by T1.1.1r1
+- **Status:** SUPERSEDED (commit `4e552d3` stands as history; its copy and pin check are kept, and its FAQ order is deviation 1). Ownership of both files transfers to `T1.1.1r1`, so the wave's active ownership sets stay disjoint (D14).
 - **Description:** Apply section 6a to `site/content/copy.ts` additively: change strings in place where the field already exists, add the new fields and exports, and keep `hero.kicker`, `hero.badges`, `limits.items` and `site.status` (removed in T1.3.1) so the current components still build. In `site/scripts/assert-copy.mjs`, accept a `data-source` under `drydock/` or `scope-gate/` (update its message) and expect exactly 5 `data-pin` elements.
 - **Files owned:** `site/content/copy.ts`, `site/scripts/assert-copy.mjs`
 - **Depends on:** T0
@@ -365,6 +367,15 @@ refusal 3.
 - **Forbidden:** any other edit; paraphrasing pinned text; pushing, tagging or installing.
 - **Acceptance criterion:** `node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('drydock/.claude-plugin/plugin.json','utf8')).version,r=fs.readFileSync('README.md','utf8'),l=fs.readFileSync('drydock/CHANGELOG.md','utf8'),g=fs.readFileSync('scope-gate/README.md','utf8');const h=(l.match(new RegExp('^## .*$','m'))||[''])[0];process.exit(p==='0.19.0'&&r.includes('(v0.19.0)')&&!r.includes('(v0.18.0)')&&h.startsWith('## 0.19.0: 2026-')&&l.includes('The plugin itself is unchanged from 0.18.0.')&&l.includes('rebuilt for a first-time visitor')&&g.includes('scope-gate@v0.19.0')&&!g.includes('@main')&&!g.includes('PENDING')?0:1)"`
 
+#### T1.1.1r1 - Restore the deck's FAQ order
+- **Description:** In `site/content/copy.ts`, reorder the `faq` array to 6a's order exactly: move "My repo forbids tool names in commit messages." from after "What if I do not run subagents at all?" to after "Does anything actually touch a browser?". Move whole items; change no string (deviation 1, D14).
+- **Files owned:** `site/content/copy.ts`, `site/scripts/assert-copy.mjs` (the second transferred from T1.1.1, not to be edited)
+- **Depends on:** T1.1.1
+- **Model / thinking:** Mechanical / off (Haiku 5.5)   **Executor:** drydock:executor
+- **Context brief:** 6a `faq` (the numbered order); deviation 1; D14; `site/content/copy.ts` `export const faq`. Use Write/Edit, not Bash.
+- **Forbidden:** changing any string; editing `assert-copy.mjs` or any other file.
+- **Acceptance criterion:** `node -e "const c=require('child_process'),fs=require('fs');const s=fs.readFileSync('site/content/copy.ts','utf8');const f=s.slice(s.indexOf('export const faq'));const q=[...f.matchAll(/q: .([^,]+[?.]).,/g)].map(m=>m[1]);const want=['Who is it for?','Is this overkill for a one-file change?','Does it cost more tokens?','Can I keep my current planner?','Can it check pull requests?','How is this different from other planning plugins?','What if I do not run subagents at all?','Does it review code quality?','Can the model skip the gates?','Does anything actually touch a browser?','My repo forbids tool names in commit messages.','Why the name?'];if(JSON.stringify(q)!==JSON.stringify(want))process.exit(1);process.exit(c.spawnSync('npm run verify',{cwd:'site',shell:true,stdio:'ignore'}).status===0?0:1)"`
+
 ### Wave 1.2 - The sections, rebuilt against the new copy
 
 Every task here reads only the copy that wave 1.1 froze, so the five run in any
@@ -373,7 +384,7 @@ order. Each criterion builds the site and checks its own section in the export.
 #### T1.2.1 - Header, footer and hero
 - **Description:** In `app/layout.tsx`, remove the status pill, add a GitHub link (`site.repo`, `site.githubLabel`, external, visible from `md`) beside the nav, and render the footer from the updated `footer`. In `MobileNav.tsx`, add the same GitHub link to the menu. Rebuild the hero text column: `hero.meta` as one quiet mono line replacing the kicker and badges, the `<h1>` unchanged, `promise`, `sub`, the install commands shown only from `lg` (`hidden lg:flex`) and never `break-all`, then the primary CTA (`#install`), a secondary CTA to `site.repo` and the self-audit as a text link. Put `hero.artifactLead` directly above the artifact.
 - **Files owned:** `site/app/layout.tsx`, `site/components/MobileNav.tsx`, `site/components/sections/Hero.tsx`
-- **Depends on:** T1.1.1
+- **Depends on:** T1.1.1r1
 - **Model / thinking:** Standard / extended (Sonnet 5.5)   **Executor:** drydock:executor
 - **Context brief:** 6a `site`, `nav`, `hero`, `footer`; D6, D10; section 6 constraints (one `<h1>` containing Drydock; the excerpt's `data-excerpt-of` `<pre>` and `data-excerpt-verdict` badge stay as they are; `prefetch={false}` on internal links; no timing literals); the three files; CLAUDE.md "Tailwind v4 is CSS-first", "`react-hooks/set-state-in-effect`".
 - **Forbidden:** editing `hero.artifact` rendering beyond moving it; new colours or fonts; `break-all` on a command; files outside `owns`.
@@ -382,7 +393,7 @@ order. Each criterion builds the site and checks its own section in the export.
 #### T1.2.2 - How it works
 - **Description:** In `Lifecycle.tsx`, render each step with its body, then the command (when present) as a labelled code chip using `commandLabel`, and the `outcomeLabel` line with `outcome`; keep the wave illustration; render `loop`; put the pieces grid inside a native `<details>` (closed) whose `<summary>` is `piecesSummary`; update the header comment that says "nine pieces".
 - **Files owned:** `site/components/sections/Lifecycle.tsx`
-- **Depends on:** T1.1.1
+- **Depends on:** T1.1.1r1
 - **Model / thinking:** Standard / default (Sonnet 5.5)   **Executor:** drydock:executor
 - **Context brief:** 6a `lifecycle`; D7; section 6 constraints (motion contract, piece-name literals); `Lifecycle.tsx`; `Faq.tsx` for the `<details>` idiom.
 - **Forbidden:** changing the wave SVG or its motion; files outside `owns`.
@@ -391,7 +402,7 @@ order. Each criterion builds the site and checks its own section in the export.
 #### T1.2.3 - Three ways in
 - **Description:** Create `components/sections/Ways.tsx` rendering `ways` inside the existing `Section` shell: the lead, three cards side by side from `md` (title, the command as a code chip that scrolls rather than wraps mid-word, body, the link when present), then `plannerNote`. Add `<Ways meta={meta.ways} />` to `app/page.tsx` after `Lifecycle` and update its order comment.
 - **Files owned:** `site/components/sections/Ways.tsx`, `site/app/page.tsx`
-- **Depends on:** T1.1.1
+- **Depends on:** T1.1.1r1
 - **Model / thinking:** Standard / default (Sonnet 5.5)   **Executor:** drydock:executor
 - **Context brief:** 6a `ways`; section 6 constraints (motion contract: no timing literal; if it imports `motion/react` it needs `useMotionSafe` and `data-reveal`); `components/Section.tsx`; `components/sections/Refusals.tsx` for card styling; `app/page.tsx`.
 - **Forbidden:** a new dependency; new colours or fonts; files outside `owns`.
@@ -400,7 +411,7 @@ order. Each criterion builds the site and checks its own section in the export.
 #### T1.2.4 - What it catches, and limits
 - **Description:** In `Refusals.tsx`, render `href`/`hrefLabel` as a link under the output when present, and make an odd last item span both columns from `md`; update the header comment that says "four". In `Limits.tsx`, render `limits.points` as a marked list: each `lead` in strong ink, its `detail` after it in dim text.
 - **Files owned:** `site/components/sections/Refusals.tsx`, `site/components/sections/Limits.tsx`
-- **Depends on:** T1.1.1
+- **Depends on:** T1.1.1r1
 - **Model / thinking:** Standard / default (Sonnet 5.5)   **Executor:** drydock:executor
 - **Context brief:** 6a `refusals`, `limits`; section 6 constraints (the `<pre>` keeps `data-source`/`data-pin`; the limits literals); both files.
 - **Forbidden:** changing the `data-source`/`data-pin` contract; files outside `owns`.
@@ -409,7 +420,7 @@ order. Each criterion builds the site and checks its own section in the export.
 #### T1.2.5 - Get started
 - **Description:** Rebuild `Install.tsx` as three numbered step cards from `install.steps`: title, body, and each command as a row with the existing copy button (no `break-all`; the line scrolls). Under the steps: `scopeNote`, `configNote`, `requirement`. Then a closed `<details>` whose summary is `ciSummary`, holding `ci.note` and `ci.snippet` in a `<pre>` with its own copy button. Copy state must be distinct per command and for the snippet.
 - **Files owned:** `site/components/sections/Install.tsx`
-- **Depends on:** T1.1.1
+- **Depends on:** T1.1.1r1
 - **Model / thinking:** Standard / extended (Sonnet 5.5)   **Executor:** drydock:executor
 - **Context brief:** 6a `install`; section 6 constraints (`Node 20.17 or newer` and `/drydock:init` stay rendered; no timing literals); `Install.tsx` (keep `copyToClipboard` and the aria-live pattern); `Faq.tsx` for `<details>`; CLAUDE.md "`react-hooks/set-state-in-effect`". CI runs `e2e/tg4-install-command-video.spec.ts`, which requires the first `code` or `pre` inside `#install` to contain `/plugin marketplace add`: keep step numbers and titles out of `<code>`, and step 01's commands first. Use `ci.copyAriaLabel` for the snippet button.
 - **Forbidden:** files outside `owns`; a new dependency.
