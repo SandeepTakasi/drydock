@@ -236,6 +236,7 @@ dogfood workflow is committed, and A13 sits in `compatibility.md` as PENDING.
 | 1 | T1.1.2 | The dogfood workflow pins `actions/checkout@v5` and `actions/setup-node@v5`, not the sketch's `@v4` | Matches the pins `verify.yml` already uses | None; criterion does not name a version | executor report, 2026-10-09 |
 | 2 | T1.1.3 | The A13 row was inserted with a `node` one-liner through Bash, not the Edit tool | Executor reached for a script after finding Python absent | No PREVENTION receipt for `docs/compatibility.md`; the Bash layer saw the command and found nothing outside `owns`; the commit diff is the one row | executor report, 2026-10-09 |
 | 3 | T1.1.3 | `scope-gate/README.md` also has no file-tool receipt: the hook log for wave 1.1 holds `allow` entries for T1.1.1 (2) and T1.1.2 (3) only, so both of T1.1.3's files landed through Bash, while the executor reported only the row | Unreported in the executor's hand-back | Same as 2: ownership proven by the commit, not prevented by the hook. Bash writes were inside `owns`, so nothing was at risk; the report understated it | discovered-by-wavecheck, 2026-10-09 |
+| 4 | Phase gate | The issue and both PRs were opened by the orchestrating session through `gh`, logged in as SandeepTakasi, not by the human in the web UI. The PRs target a pushed `plan-014` branch, not `main` | Sandeep Takasi handed over `gh` and approved the exact steps in chat. `plan-014` was needed because a PR into `main` would include all of plan 014's files in its diff, and a `pull_request` run uses the workflow from the merge commit | The trust check is unaffected: the issue is authored by the OWNER account. The human half of the gate is "authorised by Sandeep Takasi, performed by Claude", not "opened by a human" | orchestrator, 2026-10-09 |
 
 ## Wavecheck reports
 
@@ -278,5 +279,7 @@ Deviations logged: 3 (1 discovered by wavecheck)
 | 2026-10-09 | T1.1.2 | DONE `8880173` | Deviation 1 |
 | 2026-10-09 | T1.1.3 | DONE `e9043c3` | Deviations 2, 3 |
 | 2026-10-09 | Wave 1.1 | PASS | audit-wave PASS, wavecheck PASS; phase gate open, awaiting the live run |
+| 2026-10-09 | Phase gate, in scope | PASS | Issue [#25](https://github.com/SandeepTakasi/drydock/issues/25) (owns `scope-gate-probe/**`, criterion `node scope-gate/gate.test.mjs`); PR [#26](https://github.com/SandeepTakasi/drydock/pull/26) into `plan-014` adds `scope-gate-probe/in-scope.txt`. Run <https://github.com/SandeepTakasi/drydock/actions/runs/37884210279>: success, log `check: PASS (1 file(s), 1 criteria)`, so the gate's own suite also passed on ubuntu |
+| 2026-10-09 | Phase gate, unowned file | FAIL as intended | PR [#27](https://github.com/SandeepTakasi/drydock/pull/27) into `plan-014` adds `stray-probe.txt`. Run <https://github.com/SandeepTakasi/drydock/actions/runs/37884214325>: failure, log `FLAG outside scope: stray-probe.txt`, `check: FLAG (1)`, annotation `stray-probe.txt: outside the scope declared in #25` |
 
 ## Reconcile report
