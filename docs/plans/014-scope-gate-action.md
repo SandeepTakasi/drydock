@@ -233,12 +233,50 @@ dogfood workflow is committed, and A13 sits in `compatibility.md` as PENDING.
 
 | # | Task | What deviated | Why | Impact | Recorded |
 |---|---|---|---|---|---|
+| 1 | T1.1.2 | The dogfood workflow pins `actions/checkout@v5` and `actions/setup-node@v5`, not the sketch's `@v4` | Matches the pins `verify.yml` already uses | None; criterion does not name a version | executor report, 2026-10-09 |
+| 2 | T1.1.3 | The A13 row was inserted with a `node` one-liner through Bash, not the Edit tool | Executor reached for a script after finding Python absent | No PREVENTION receipt for `docs/compatibility.md`; the Bash layer saw the command and found nothing outside `owns`; the commit diff is the one row | executor report, 2026-10-09 |
+| 3 | T1.1.3 | `scope-gate/README.md` also has no file-tool receipt: the hook log for wave 1.1 holds `allow` entries for T1.1.1 (2) and T1.1.2 (3) only, so both of T1.1.3's files landed through Bash, while the executor reported only the row | Unreported in the executor's hand-back | Same as 2: ownership proven by the commit, not prevented by the hook. Bash writes were inside `owns`, so nothing was at risk; the report understated it | discovered-by-wavecheck, 2026-10-09 |
 
 ## Wavecheck reports
+
+### Wavecheck 1.1 - PASS - 2026-10-09
+
+Fleet execution: all three tasks were written by spawned `drydock:executor`
+agents (Sonnet 5.5), one at a time; the auditor (orchestrating session, Opus
+5.5) wrote none of the diff. Installed plugin 0.18.0, repo 0.18.0, no VERSION
+DRIFT.
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.1.1 | `31cf598` | `scope-gate/gate.mjs`<br>`scope-gate/gate.test.mjs` | `scope-gate/gate.mjs`<br>`scope-gate/gate.test.mjs` | none |
+| T1.1.2 | `8880173` | `.github/workflows/scope-gate.yml`<br>`.github/workflows/verify.yml`<br>`scope-gate/action.yml` | `scope-gate/action.yml`<br>`.github/workflows/scope-gate.yml`<br>`.github/workflows/verify.yml` | none |
+| T1.1.3 | `e9043c3` | `docs/compatibility.md`<br>`scope-gate/README.md` | `scope-gate/README.md`<br>`docs/compatibility.md` | none |
+
+  note: enforcement active: 5 hook decision(s) recorded for wave 1.1 (0 denied)
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | `format_version: 3`, status `EXECUTING` (set by T0 in `86792a7`), wave 1.1 is the plan's only wave, `execution: fleet` |
+| 2. Ownership | PASS | `audit-wave 1.1: PASS` (3 tasks, 3 commits, `attribution: manifest`), table above; working tree clean. Enforcement ran: 5 file-tool `allow` receipts (T1.1.1: 2, T1.1.2: 3) and 16 Bash commands observed, 0 writes detected outside `owns`. T1.1.3 has no file-tool receipt because both its files went through Bash (deviations 2, 3), the one innocent cause; its ownership is proven by its commit |
+| 3. Forbidden | PASS | `git diff --stat c308f72..HEAD` over `drydock/scripts/drydock-audit.mjs`, `docs/verification-log.md`, `package.json` is empty. `gate.mjs`: the token appears only in the `Authorization` header (line 61); every `console` call prints a refusal reason, a check output line or an annotation; the only `fetch` is to `GITHUB_API_URL`; the test asserts the token string is absent from every e2e case's output. `scope-gate.yml` and `action.yml` contain no `pull_request_target`, no `write`, no `secrets`. `verify.yml` diff is one added line. `compatibility.md` diff is one added line (0 removed); A13 is `PENDING` and says "Not run live"; the README says "not yet run live" and names no tag |
+| 4. Acceptance | PASS | Every criterion run through `spawnSync(cmd, {shell: true})` (cmd.exe): T0 exit 0, T1.1.1 exit 0 (`PASS, 18 cases`), T1.1.2 exit 0, T1.1.3 exit 0. Test-first is consistent with the receipts: `gate.test.mjs` allowed at 03:13:53Z, `gate.mjs` at 03:14:10Z; the executor reports `FAIL, 18 of 18 cases` before `gate.mjs` existed |
+| 5. Deviations | PASS | 2 executor-reported deviations logged (1, 2); 1 discovered (3) |
+
+Observations, not deviations: `action.yml`'s input description says the token
+reads "the linked issue and PR files", but the gate reads only the issue; the
+non-`pull_request` exit 2 path has no test case; the suite has run on Windows
+only, so ubuntu is first proven by CI.
+
+Deviations logged: 3 (1 discovered by wavecheck)
 
 ## Progress log
 
 | Date | Task | Result | Notes |
 |---|---|---|---|
+| 2026-10-09 | T0 | DONE `86792a7` | Baseline filled, README row, status EXECUTING; prove-failable 4 of 4 |
+| 2026-10-09 | T1.1.1 | DONE `31cf598` | 18 cases, test written and seen failing first |
+| 2026-10-09 | T1.1.2 | DONE `8880173` | Deviation 1 |
+| 2026-10-09 | T1.1.3 | DONE `e9043c3` | Deviations 2, 3 |
+| 2026-10-09 | Wave 1.1 | PASS | audit-wave PASS, wavecheck PASS; phase gate open, awaiting the live run |
 
 ## Reconcile report
