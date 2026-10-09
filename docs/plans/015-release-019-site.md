@@ -514,6 +514,38 @@ wave's own bump, as in the first report.
 
 Deviations logged: 3 (1 discovered by wavecheck)
 
+### Wavecheck 1.2 - PASS - 2026-10-09
+
+Fleet: five `drydock:executor` agents (Sonnet 5.5), one at a time in the order
+T1.2.1, T1.2.4, T1.2.2, T1.2.3, T1.2.5; the auditor wrote none of the diff.
+After T1.2.1 alone, `npm run verify` was red on `field benchmarks pending` (its
+only carrier was the removed header pill) until T1.2.4 rendered limits point 5,
+as the pressure test predicted; each task's own criterion passed throughout.
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.2.1 | `81cd374` | `site/app/layout.tsx`<br>`site/components/MobileNav.tsx`<br>`site/components/sections/Hero.tsx` | `site/app/layout.tsx`<br>`site/components/MobileNav.tsx`<br>`site/components/sections/Hero.tsx` | none |
+| T1.2.2 | `e81aeee` | `site/components/sections/Lifecycle.tsx` | `site/components/sections/Lifecycle.tsx` | none |
+| T1.2.3 | `40d3403` | `site/app/page.tsx`<br>`site/components/sections/Ways.tsx` | `site/components/sections/Ways.tsx`<br>`site/app/page.tsx` | none |
+| T1.2.4 | `bcd0e14` | `site/components/sections/Limits.tsx`<br>`site/components/sections/Refusals.tsx` | `site/components/sections/Refusals.tsx`<br>`site/components/sections/Limits.tsx` | none |
+| T1.2.5 | `b94ccc4` | `site/components/sections/Install.tsx` | `site/components/sections/Install.tsx` | none |
+
+  note: enforcement active: 26 hook decision(s) recorded for wave 1.2 (0 denied)
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | Status `EXECUTING`; wave 1.1's last report is the re-audit PASS (`2a998ac`) |
+| 2. Ownership | PASS | `audit-wave 1.2: PASS` (5 tasks, 5 commits, manifest); 26 file-tool `allow` receipts across all five tasks, 18 Bash commands observed, 0 writes outside `owns`; working tree clean |
+| 3. Forbidden | PASS | No `data-excerpt`, `data-pin` or `data-source` line changed; no SVG, path or `motion.` line changed in `Lifecycle.tsx`; no `duration:`/`delay:` literal in any section; `break-all` remains only on the wave diagram's owns paths (pre-existing); every colour/text utility added is an existing token; no new dependency |
+| 4. Acceptance | PASS | Through `spawnSync(cmd, {shell: true})`: T1.2.1-T1.2.5 all exit 0. `cd site && npm run verify` exit 0 |
+| 5. Deviations | PASS | None reported, none found in the diff. T1.2.3 ran its criterion from a script file, then the auditor re-ran it inline: exit 0 |
+
+Observation for T1.R.1, not a conformance finding: `Hero.tsx`'s `<h1>` class
+reads `mt-6font-display` (a missing space), so it gets neither `mt-6` nor
+`font-display`; Tailwind emits nothing for the fused token and no gate sees it.
+
+Deviations logged: 3 (1 discovered by wavecheck)
+
 ## Progress log
 
 | Date | Task | Result | Notes |
@@ -524,5 +556,7 @@ Deviations logged: 3 (1 discovered by wavecheck)
 | 2026-10-09 | Wave 1.1 | BLOCK | Repaired per D14 |
 | 2026-10-09 | T1.1.1r1 | DONE `e243cbe` | Deviation 3 (criterion fixed) |
 | 2026-10-09 | Wave 1.1 re-audit | PASS | |
+| 2026-10-09 | T1.2.1-T1.2.5 | DONE | `81cd374`, `e81aeee`, `40d3403`, `bcd0e14`, `b94ccc4` |
+| 2026-10-09 | Wave 1.2 | PASS | |
 
 ## Reconcile report
