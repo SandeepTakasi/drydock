@@ -254,7 +254,7 @@ new `githubLabel` `"GitHub"`. (`status` is removed in T1.3.1.)
 | 9 | Refusal five's output | The two `check` lines from run 37884214325's log, then the annotation as the check-runs API returns it (`path: message`) | planner | Pasted, not composed |
 | 10 | Header | Drop the status pill (pilot status moves to the hero meta line and limits point 5); add a GitHub link | planner | U3, C10 |
 | 11 | `assert-copy.mjs` ownership | T1.1.1 (pins 4→5, `scope-gate/` sources) then T1.3.1 (new literals) | planner | Sequential handoff across waves |
-| 12 | Push, tags, install | Orchestrator after the human gate: move this plan's `docs/plans/README.md` row with its status at every status change, push `main`, push tags `v0.18.0` and `v0.19.0`, watch Verify and Deploy, then `claude plugin marketplace update drydock && claude plugin update drydock@drydock` | planner | Executors never push or tag |
+| 12 | Push, tags, install | Orchestrator after the human gate: move this plan's `docs/plans/README.md` row with its status at every status change, push the tags `v0.18.0` and `v0.19.0` together with `main` in one push (T1.R.1 finding 7: the page tells visitors to pin `@v0.19.0`), watch Verify and Deploy, then `claude plugin marketplace update drydock && claude plugin update drydock@drydock` | planner | Executors never push or tag |
 | 13 | Lane | full: three implementation waves and a review | planner | Size (~13 files) and the copy/component dependency |
 | 15 | How is T1.R.1's REJECTED repaired? | Wave 1.4, task T1.4.1 owning the four section files the findings name, then T1.R.2 reviews again. Within section 10's "max 2 repair rounds"; no human decision needed for round 1 | planner (policy in section 10) | CLAUDE.md: repair a review rejection in a new wave with new task ids |
 | 14 | How is wavecheck 1.1's BLOCK (deviation 1) repaired? | Plan 012's replaced-task mechanism: `T1.1.1` superseded by `T1.1.1r1` in wave 1.1, which takes over its ownership and restores 6a's FAQ order, then a re-audit of wave 1.1. Wave-1.2 tasks depend on `T1.1.1r1` | user (Sandeep Takasi, 2026-10-09) | `wave-start` will not arm a wave after one whose last verdict is BLOCK; a new task id keeps one `task-close` per task |
@@ -267,6 +267,7 @@ None.
 
 - New imagery, a demo video or GIF on the page (the drydock-demo recording exists; embedding it is its own decision).
 - A GitHub Release object; this repo uses tags.
+- T1.R.2 NITs: two stale code comments (`Install.tsx:72`, `Ways.tsx:1`); a space before each `·` in the hero meta line (or an `aria-hidden` dot); let an Install command row wrap below `sm` so the long token gets the full width.
 - Changing the visual identity, fonts or colours.
 - The evidence page layout (only the A13 row is added); its missing A8 and A9 rows.
 - The local-only specs under `e2e/009-*/` and `e2e/012-*/` (not run in CI) expect four refusals, the "Install" nav label and a visible pieces grid; they go stale and are left for a later seatrial pass.
@@ -586,6 +587,26 @@ Fleet: `drydock:executor` (Sonnet 5.5); the auditor wrote none of the diff.
 
 Deviations logged: 3 (1 discovered by wavecheck)
 
+### Wavecheck 1.4 - PASS - 2026-10-09
+
+Fleet: `drydock:executor` (Sonnet 5.5); the auditor wrote none of the diff.
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.4.1 | `4bff81e` | `site/components/sections/Hero.tsx`<br>`site/components/sections/Install.tsx`<br>`site/components/sections/Lifecycle.tsx`<br>`site/components/sections/Ways.tsx` | `site/components/sections/Hero.tsx`<br>`site/components/sections/Lifecycle.tsx`<br>`site/components/sections/Install.tsx`<br>`site/components/sections/Ways.tsx` | none |
+
+  note: enforcement active: 10 hook decision(s) recorded for wave 1.4 (0 denied)
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | Status `EXECUTING`; wave 1.3 PASS; D15 (`69cd94b`) |
+| 2. Ownership | PASS | `audit-wave 1.4: PASS`; 10 file-tool `allow` receipts, 3 Bash commands observed, 0 writes outside `owns`; working tree clean |
+| 3. Forbidden | PASS | No copy change; the only `data-excerpt` and `<h1>` diff lines are the re-indent and the `mt-6 font-display` fix; no `break-all`, `break-words` or `overflow-wrap:anywhere` added |
+| 4. Acceptance | PASS | T1.4.1 criterion through `spawnSync(cmd, {shell: true})`: exit 0 (includes `npm run verify`). Browser, built page: 375x812 `scrollWidth` 375 = `clientWidth`, no block wider than the viewport; 1280x800 no chip overflows, hero commands end at 671px and 699px |
+| 5. Deviations | PASS | None reported, none found |
+
+Deviations logged: 3 (1 discovered by wavecheck)
+
 ## Wave 1.R verdict, REJECTED, 2026-10-09
 
 T1.R.1, fresh-context reviewer (Opus 5.5, read-only), over `git diff d296aab..HEAD -- site/`, with the orchestrator's browser measurements handed over as data and confirmed against the code.
@@ -599,6 +620,10 @@ Passed: all 6a strings verbatim in `copy.ts`; every claim traces to `compatibili
 5. NIT: `[&::-webkit-details-marker]:hidden` on the two new `<summary>` elements for older Safari.
 6. NIT: `Hero.tsx:80-114` wrapper not re-indented.
 7. NIT (release order): the page tells visitors to pin `@v0.19.0`; push the tags with or before `main`.
+
+## Wave 1.R verdict, APPROVED, 2026-10-09 (second review)
+
+T1.R.2, fresh-context reviewer (Opus 5.5, read-only), over `git diff d296aab..HEAD -- site/` with focus on `4bff81e`, re-running `npm run verify` (PASS) and the export, with the orchestrator's re-measurements as data. Findings 1-6 of the first review resolved; no regression. Open, all NIT: (7) push the tags with or before `main`, adopted into D12; two code comments still say chips stay on one line (`Install.tsx:72`, `Ways.tsx:1`); the hero meta spans render "plugin· v0.19.0" with no space before each dot, read that way by copy-paste and possibly screen readers; at 375px the Install row's code box (~175px) still scrolls the long `SandeepTakasi/drydock` token inside its box. Logged as follow-ups in section 9.
 
 ## Progress log
 
@@ -615,5 +640,8 @@ Passed: all 6a strings verbatim in `copy.ts`; every claim traces to `compatibili
 | 2026-10-09 | T1.3.1 | DONE `86846e1` | |
 | 2026-10-09 | Wave 1.3 | PASS | |
 | 2026-10-09 | T1.R.1 | REJECTED | 1 blocking (375px sideways scroll), 2 should-fix; repair per D15 |
+| 2026-10-09 | T1.4.1 | DONE `4bff81e` | |
+| 2026-10-09 | Wave 1.4 | PASS | |
+| 2026-10-09 | T1.R.2 | APPROVED | 4 NITs, follow-ups |
 
 ## Reconcile report
