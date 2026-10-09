@@ -1,7 +1,7 @@
 ---
 plan: 015-release-019-site
 format_version: 3
-status: BLOCKED
+status: EXECUTING
 isolation: none
 enforcement: required
 attribution: manifest
@@ -489,9 +489,40 @@ human decision and amend 6a. Nothing was fixed by this audit.
 
 Deviations logged: 2 (1 discovered by wavecheck)
 
+### Wavecheck 1.1 (re-audit after T1.1.1r1) - PASS - 2026-10-09
+
+`T1.1.1` is superseded by `T1.1.1r1` (D14); its commit `4e552d3` stands as
+history, and its copy and pin check carry into this wave unchanged except for
+the FAQ order. Fleet: `T1.1.1r1` by `drydock:executor` (Haiku 5.5); the auditor
+wrote none of the diff. VERSION DRIFT (repo 0.19.0, installed 0.18.0) is this
+wave's own bump, as in the first report.
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.1.2 | `6606c00` | `README.md`<br>`drydock/.claude-plugin/plugin.json`<br>`drydock/CHANGELOG.md`<br>`scope-gate/README.md` | `drydock/.claude-plugin/plugin.json`<br>`drydock/CHANGELOG.md`<br>`README.md`<br>`scope-gate/README.md` | none |
+| T1.1.1r1 | `e243cbe` | `site/content/copy.ts` | `site/content/copy.ts`<br>`site/scripts/assert-copy.mjs` | none |
+
+  note: enforcement active: 21 hook decision(s) recorded for wave 1.1 (0 denied)
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | Status was `BLOCKED`; D14 (`3dd1aa4`) approved the repair by Sandeep Takasi; wave 1.1 re-armed over the committed plan |
+| 2. Ownership | PASS | `audit-wave 1.1: PASS` (2 tasks, 2 commits, manifest). `e243cbe` changes only `copy.ts`. 21 file-tool `allow` receipts (T1.1.1r1: 2), 26 Bash commands observed, 0 writes outside `owns`. Notes on `3dd1aa4`, `239a9bf` and `4e552d3` recorded by the audit, not failed |
+| 3. Forbidden | PASS | `git diff 4e552d3 e243cbe` moves one whole FAQ item (4 lines out, the same 4 in); no string changed; `assert-copy.mjs` untouched |
+| 4. Acceptance | PASS | Through `spawnSync(cmd, {shell: true})`: T1.1.2 exit 0, T1.1.1r1 exit 0 (after deviation 3's fix, which was also shown to fail on `4e552d3`'s order). `cd site && npm run verify` exit 0 |
+| 5. Deviations | PASS | FAQ order now equals 6a's 12 items in order; every other 6a string still byte-identical (unchanged since the first report). Deviation 3 logged: the executor's reported BLOCK on its own criterion, a planner defect |
+
+Deviations logged: 3 (1 discovered by wavecheck)
+
 ## Progress log
 
 | Date | Task | Result | Notes |
 |---|---|---|---|
+| 2026-10-09 | T0 | DONE `563b84b` | Baseline; prove-failable 10 of 10 |
+| 2026-10-09 | T1.1.2 | DONE `6606c00` | Pinned text byte for byte |
+| 2026-10-09 | T1.1.1 | SUPERSEDED `4e552d3` | Deviation 1 (FAQ order) |
+| 2026-10-09 | Wave 1.1 | BLOCK | Repaired per D14 |
+| 2026-10-09 | T1.1.1r1 | DONE `e243cbe` | Deviation 3 (criterion fixed) |
+| 2026-10-09 | Wave 1.1 re-audit | PASS | |
 
 ## Reconcile report
