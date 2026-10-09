@@ -256,6 +256,7 @@ new `githubLabel` `"GitHub"`. (`status` is removed in T1.3.1.)
 | 11 | `assert-copy.mjs` ownership | T1.1.1 (pins 4→5, `scope-gate/` sources) then T1.3.1 (new literals) | planner | Sequential handoff across waves |
 | 12 | Push, tags, install | Orchestrator after the human gate: move this plan's `docs/plans/README.md` row with its status at every status change, push `main`, push tags `v0.18.0` and `v0.19.0`, watch Verify and Deploy, then `claude plugin marketplace update drydock && claude plugin update drydock@drydock` | planner | Executors never push or tag |
 | 13 | Lane | full: three implementation waves and a review | planner | Size (~13 files) and the copy/component dependency |
+| 15 | How is T1.R.1's REJECTED repaired? | Wave 1.4, task T1.4.1 owning the four section files the findings name, then T1.R.2 reviews again. Within section 10's "max 2 repair rounds"; no human decision needed for round 1 | planner (policy in section 10) | CLAUDE.md: repair a review rejection in a new wave with new task ids |
 | 14 | How is wavecheck 1.1's BLOCK (deviation 1) repaired? | Plan 012's replaced-task mechanism: `T1.1.1` superseded by `T1.1.1r1` in wave 1.1, which takes over its ownership and restores 6a's FAQ order, then a re-audit of wave 1.1. Wave-1.2 tasks depend on `T1.1.1r1` | user (Sandeep Takasi, 2026-10-09) | `wave-start` will not arm a wave after one whose last verdict is BLOCK; a new task id keeps one `task-close` per task |
 
 ## 8. Open questions
@@ -437,6 +438,17 @@ order. Each criterion builds the site and checks its own section in the export.
 - **Forbidden:** any other copy change; removing or weakening an existing check.
 - **Acceptance criterion:** `node -e "const c=require('child_process'),fs=require('fs');const s=fs.readFileSync('site/content/copy.ts','utf8'),a=fs.readFileSync('site/scripts/assert-copy.mjs','utf8');if(/badges:|kicker:|status: .open pilot/.test(s)||/^  items: [[]$/m.test(s.slice(s.indexOf('export const limits'),s.indexOf('export const',s.indexOf('export const limits')+5)))||!['Your agents build what you approved','It checks files, not lines','never pull_request_target','not yet observed in a live session','no other repository has used the Action yet'].every(x=>a.includes(x)))process.exit(1);process.exit(c.spawnSync('npm run verify',{cwd:'site',shell:true,stdio:'ignore'}).status===0?0:1)"`
 
+### Wave 1.4 - Repair of T1.R.1's rejection
+
+#### T1.4.1 - No sideways scroll on phones, chips that wrap, the h1 class
+- **Description:** Fix T1.R.1's findings 1-6 (D15). Add `min-w-0` to the step `<li>` in `Lifecycle.tsx`, and to the step `<li>` and each command row `div` in `Install.tsx`, so a long command can no longer widen its card past a 375px viewport. In the command `<code>` chips of `Lifecycle.tsx`, `Ways.tsx` and `Install.tsx`, replace `whitespace-nowrap` with `whitespace-pre-wrap` (keep `overflow-x-auto`), so chips wrap at spaces and only a single over-long token scrolls; never `break-all`, `break-words` or `overflow-wrap:anywhere`. In `Hero.tsx`, fix `mt-6font-display` to `mt-6 font-display`, and render `hero.meta.split(" · ")` as `whitespace-nowrap` spans joined by ` · ` in a `flex flex-wrap gap-x-2` line so no item breaks mid-phrase. Add `[&::-webkit-details-marker]:hidden` to the two `<summary>` elements, and re-indent `Hero.tsx`'s artifact wrapper.
+- **Files owned:** `site/components/sections/Hero.tsx`, `site/components/sections/Lifecycle.tsx`, `site/components/sections/Install.tsx`, `site/components/sections/Ways.tsx`
+- **Depends on:** T1.3.1
+- **Model / thinking:** Standard / default (Sonnet 5.5)   **Executor:** drydock:executor
+- **Context brief:** D15; the T1.R.1 verdict and findings above the Progress log; the four files; section 6 constraints (excerpt and pin contracts, motion contract). The hero install commands (`hidden lg:flex`) keep `whitespace-nowrap`: they are wide-screen only and D6 wants each on one line.
+- **Forbidden:** any copy change; any other file; `break-all`, `break-words` or `overflow-wrap:anywhere` on a command.
+- **Acceptance criterion:** `node -e "const c=require('child_process'),fs=require('fs');const r=(f)=>fs.readFileSync('site/components/sections/'+f,'utf8');const H=r('Hero.tsx'),L=r('Lifecycle.tsx'),I=r('Install.tsx'),W=r('Ways.tsx');if(H.includes('mt-6font')||!H.includes('mt-6 font-display'))process.exit(1);if([L,I,W].some(s=>/<code[^>]*whitespace-nowrap/.test(s)))process.exit(1);if(!/<li[^>]*min-w-0/.test(L)||(I.match(/min-w-0/g)||[]).length<3)process.exit(1);process.exit(c.spawnSync('npm run verify',{cwd:'site',shell:true,stdio:'ignore'}).status===0?0:1)"`
+
 ### Wave 1.R - Quality review
 
 #### T1.R.1 - Fresh-context review of the rebuilt page
@@ -446,6 +458,14 @@ order. Each criterion builds the site and checks its own section in the export.
 - **Model / thinking:** Judgment / extended (Opus 5.5)   **Executor:** general-purpose reviewer, fresh context
 - **Context brief:** `git diff <baseline SHA>..HEAD -- site/`; this plan's sections 1, 6, 6a and 7; CLAUDE.md "Honesty rule for site copy"; `docs/compatibility.md`; the built `site/out`, served at `/drydock/`.
 - **Acceptance criterion:** `node -e "const s=require('fs').readFileSync('docs/plans/015-release-019-site.md','utf8');process.exit(/^## Wave 1[.]R verdict, APPROVED/m.test(s)?0:1)"`
+
+#### T1.R.2 - Second review, after the repair
+- **Description:** As T1.R.1, over the same diff plus wave 1.4, with the orchestrator re-measuring scrollWidth at 375px and the chips at 1280px in a real browser and handing the numbers over as data. Record `## Wave 1.R verdict, APPROVED|REJECTED, <date> (second review)`.
+- **Files owned:** none (the verdict is written by the orchestrator)
+- **Depends on:** T1.4.1
+- **Model / thinking:** Judgment / extended (Opus 5.5)   **Executor:** general-purpose reviewer, fresh context
+- **Context brief:** as T1.R.1, plus T1.R.1's findings and D15.
+- **Acceptance criterion:** `node -e "const s=require('fs').readFileSync('docs/plans/015-release-019-site.md','utf8');process.exit(/^## Wave 1[.]R verdict, APPROVED, [0-9-]+ [(]second review[)]/m.test(s)?0:1)"`
 
 ## Deviation Log
 
@@ -566,6 +586,20 @@ Fleet: `drydock:executor` (Sonnet 5.5); the auditor wrote none of the diff.
 
 Deviations logged: 3 (1 discovered by wavecheck)
 
+## Wave 1.R verdict, REJECTED, 2026-10-09
+
+T1.R.1, fresh-context reviewer (Opus 5.5, read-only), over `git diff d296aab..HEAD -- site/`, with the orchestrator's browser measurements handed over as data and confirmed against the code.
+
+Passed: all 6a strings verbatim in `copy.ts`; every claim traces to `compatibility.md` (A13, A3 figure, the 0.18 path hedged), FAQ 5 to `scope-gate/README.md`; one `<h1>`; every new `target="_blank"` link has `rel="noopener noreferrer"`; copy buttons labelled with an `aria-live` region; native `<summary>`; hero commands end at 647px and 676px at 1280x800 (D6 holds).
+
+1. **BLOCKING**: at 375px `scrollWidth` is 608 and card text is clipped. A `whitespace-nowrap` code chip inside a grid item with default `min-width: auto` widens the item: `Lifecycle.tsx:174` `<li>` (448px), `Install.tsx:79` `<li>` and the row `div` at `:96` (583/551px). `Ways.tsx` already has `min-w-0` and does not overflow. Fix: `min-w-0` on those three.
+2. **SHOULD-FIX**: the nowrap chips scroll and truncate inside cards at 1280px (`Lifecycle.tsx:187`, `Ways.tsx:340`, `Install.tsx:101`). Fix: `whitespace-pre-wrap` with `overflow-x-auto`; not `break-words` or `overflow-wrap:anywhere`, which would split a token mid-word.
+3. **SHOULD-FIX**: `Hero.tsx:35` `<h1>` class `mt-6font-display` (missing space); no gate sees it.
+4. NIT: the hero meta line wraps mid-phrase at 375px ("OPEN / PILOT"); render its `·`-separated parts as nowrap spans.
+5. NIT: `[&::-webkit-details-marker]:hidden` on the two new `<summary>` elements for older Safari.
+6. NIT: `Hero.tsx:80-114` wrapper not re-indented.
+7. NIT (release order): the page tells visitors to pin `@v0.19.0`; push the tags with or before `main`.
+
 ## Progress log
 
 | Date | Task | Result | Notes |
@@ -580,5 +614,6 @@ Deviations logged: 3 (1 discovered by wavecheck)
 | 2026-10-09 | Wave 1.2 | PASS | |
 | 2026-10-09 | T1.3.1 | DONE `86846e1` | |
 | 2026-10-09 | Wave 1.3 | PASS | |
+| 2026-10-09 | T1.R.1 | REJECTED | 1 blocking (375px sideways scroll), 2 should-fix; repair per D15 |
 
 ## Reconcile report
