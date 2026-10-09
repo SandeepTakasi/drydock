@@ -13,9 +13,10 @@ import {
 import type { SectionProps } from "@/lib/section";
 
 /**
- * The loop: three numbered steps, then the wave diagram, then the nine pieces
- * as a compact list (name, kind, one-line summary, invocation) that links out
- * to the plugin README for the full description of each.
+ * The loop: three numbered steps (what you type, what you get), then the wave
+ * diagram, the line on what a BLOCK does, then the plugin's pieces folded
+ * into a closed native `<details>` (name, kind, one-line summary, invocation),
+ * with a link out to the plugin README for the full description of each.
  *
  * The wave diagram moved here from the hero (plan 012, D3). Two SVG contracts
  * travel with it because `scripts/measure-reduced-motion.mjs` asserts them
@@ -52,10 +53,25 @@ export default function Lifecycle({ meta }: SectionProps) {
               {step.title}
             </h3>
             <p className="mt-3 text-note text-ink-dim">{step.body}</p>
+            {step.command ? (
+              <div className="mt-4">
+                <p className="font-mono text-mark text-ink-dim uppercase">
+                  {lifecycle.commandLabel}
+                </p>
+                <code className="mt-1 block overflow-x-auto border border-line px-3 py-2 font-mono text-note whitespace-nowrap text-ink">
+                  {step.command}
+                </code>
+              </div>
+            ) : null}
+            <p className="mt-4 text-note text-ink">
+              <span className="mr-2 font-mono text-mark text-ink-dim uppercase">
+                {lifecycle.outcomeLabel}
+              </span>
+              {step.outcome}
+            </p>
           </li>
         ))}
       </ol>
-      <p className="mt-4 text-note text-ink-dim">{lifecycle.loop}</p>
 
       {/* The wave: three task lanes, one rail, one gate. */}
       <div className="mt-12 border border-line bg-surface">
@@ -132,25 +148,39 @@ export default function Lifecycle({ meta }: SectionProps) {
           {wave.caption}
         </p>
       </div>
+      <p className="mt-4 text-note text-ink-dim">{lifecycle.loop}</p>
 
-      <ul className="mt-12 grid gap-px bg-line sm:grid-cols-2 lg:grid-cols-3">
-        {lifecycle.pieces.map((piece) => (
-          <li key={piece.name} className="bg-surface px-6 py-5">
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <span className="font-mono text-body text-ink">{piece.name}</span>
-              <span className="border border-line px-2 py-0.5 font-mono text-mark text-ink-dim uppercase">
-                {piece.kind}
-              </span>
-            </div>
-            <p data-piece-summary className="mt-2 text-note text-ink-dim">
-              {piece.summary}
-            </p>
-            <p className="mt-2 font-mono text-mark text-accent">
-              {piece.invocation}
-            </p>
-          </li>
-        ))}
-      </ul>
+      <details className="group mt-12">
+        <summary className="flex cursor-pointer list-none items-center gap-3 font-mono text-mark text-accent uppercase marker:content-none hover:underline">
+          <span aria-hidden="true" className="group-open:hidden">
+            +
+          </span>
+          <span aria-hidden="true" className="hidden group-open:inline">
+            -
+          </span>
+          {lifecycle.piecesSummary}
+        </summary>
+        <ul className="mt-6 grid gap-px bg-line sm:grid-cols-2 lg:grid-cols-3">
+          {lifecycle.pieces.map((piece) => (
+            <li key={piece.name} className="bg-surface px-6 py-5">
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <span className="font-mono text-body text-ink">
+                  {piece.name}
+                </span>
+                <span className="border border-line px-2 py-0.5 font-mono text-mark text-ink-dim uppercase">
+                  {piece.kind}
+                </span>
+              </div>
+              <p data-piece-summary className="mt-2 text-note text-ink-dim">
+                {piece.summary}
+              </p>
+              <p className="mt-2 font-mono text-mark text-accent">
+                {piece.invocation}
+              </p>
+            </li>
+          ))}
+        </ul>
+      </details>
       <p className="mt-6">
         <a
           href={lifecycle.readmeHref}
