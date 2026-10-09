@@ -1,4 +1,4 @@
-// "What it refuses": the section lead, then four refusals. Each shows its title,
+// "What it refuses": the section lead, then the refusals (an odd last one spans both columns). Each shows its title,
 // body, the command line, and the verbatim output in a <pre> that carries
 // data-source and data-pin. The output wraps within its container.
 import Section from "@/components/Section";
@@ -10,8 +10,15 @@ export default function Refusals({ meta }: SectionProps) {
     <Section meta={meta}>
       <p className="max-w-3xl text-lead text-ink">{refusals.lead}</p>
       <ul className="mt-12 grid gap-px bg-line md:grid-cols-2">
-        {refusals.items.map((item) => (
-          <li key={item.title} className="min-w-0 bg-surface px-6 py-8 sm:px-8">
+        {refusals.items.map((item, i) => (
+          <li
+            key={item.title}
+            className={`min-w-0 bg-surface px-6 py-8 sm:px-8${
+              i === refusals.items.length - 1 && refusals.items.length % 2 === 1
+                ? " md:col-span-2"
+                : ""
+            }`}
+          >
             <h3 className="font-mono text-mark uppercase text-ink">
               {item.title}
             </h3>
@@ -29,6 +36,18 @@ export default function Refusals({ meta }: SectionProps) {
                 {item.output}
               </pre>
             </div>
+            {item.href && item.hrefLabel ? (
+              <p className="mt-3 text-mark">
+                <a
+                  href={item.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-accent hover:underline"
+                >
+                  {item.hrefLabel}
+                </a>
+              </p>
+            ) : null}
           </li>
         ))}
       </ul>

@@ -13,9 +13,16 @@ export default function Limits({ meta }: SectionProps) {
     <Section meta={meta}>
       <p className="max-w-3xl text-lead text-ink">{limits.lead}</p>
       <ul className="mt-12 space-y-6">
-        {limits.items.map((item) => (
-          <li key={item} className="max-w-3xl text-body text-ink-dim">
-            {item}
+        {limits.points.map((p) => (
+          <li key={p.lead} className="flex max-w-3xl gap-4 text-body">
+            <span
+              aria-hidden="true"
+              className="mt-[0.6em] h-1.5 w-1.5 shrink-0 bg-accent"
+            />
+            <span className="text-ink-dim">
+              <strong className="font-medium text-ink">{p.lead}</strong>{" "}
+              {p.detail}
+            </span>
           </li>
         ))}
       </ul>
