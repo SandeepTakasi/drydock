@@ -76,7 +76,7 @@ export default function Install({ meta }: SectionProps) {
     <Section meta={meta}>
       <ol className="grid gap-px border border-line bg-line">
         {install.steps.map((step) => (
-          <li key={step.index} className="bg-surface px-4 py-6 sm:px-6">
+          <li key={step.index} className="min-w-0 bg-surface px-4 py-6 sm:px-6">
             <div className="flex items-baseline gap-4">
               <span
                 aria-hidden="true"
@@ -93,12 +93,12 @@ export default function Install({ meta }: SectionProps) {
               {step.commands.map((cmd) => (
                 <div
                   key={cmd}
-                  className="flex items-center gap-3 border border-line px-3 py-2"
+                  className="flex min-w-0 items-center gap-3 border border-line px-3 py-2"
                 >
                   <span aria-hidden="true" className="font-mono text-accent">
                     $
                   </span>
-                  <code className="min-w-0 flex-1 overflow-x-auto font-mono text-body whitespace-nowrap text-ink">
+                  <code className="min-w-0 flex-1 overflow-x-auto font-mono text-body whitespace-pre-wrap text-ink">
                     {cmd}
                   </code>
                   <CopyButton
@@ -121,7 +121,7 @@ export default function Install({ meta }: SectionProps) {
         {install.requirement}
       </p>
       <details className="group mt-8 border border-line bg-surface">
-        <summary className="flex cursor-pointer list-none items-baseline justify-between gap-4 px-4 py-4 font-mono text-mark text-accent uppercase marker:content-none sm:px-6">
+        <summary className="flex cursor-pointer list-none items-baseline justify-between gap-4 px-4 py-4 font-mono text-mark text-accent uppercase marker:content-none [&::-webkit-details-marker]:hidden sm:px-6">
           <span>{install.ciSummary}</span>
           <span aria-hidden="true" className="group-open:hidden">
             +

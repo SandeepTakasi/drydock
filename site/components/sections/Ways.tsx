@@ -17,7 +17,7 @@ export default function Ways({ meta }: SectionProps) {
             <h3 className="font-mono text-mark uppercase text-ink">
               {item.title}
             </h3>
-            <code className="mt-5 block overflow-x-auto whitespace-nowrap bg-ground px-4 py-3 font-mono text-mark text-accent">
+            <code className="mt-5 block overflow-x-auto whitespace-pre-wrap bg-ground px-4 py-3 font-mono text-mark text-accent">
               {item.command}
             </code>
             <p className="mt-5 text-body text-ink-dim">{item.body}</p>

@@ -28,11 +28,16 @@ export default function Hero() {
     <div className="mx-auto w-full max-w-6xl px-6 pt-16 pb-20 sm:px-10 sm:pt-24">
       <div className="grid gap-10 lg:grid-cols-2 lg:items-start">
         <div className="min-w-0">
-          <p className="font-mono text-mark text-ink-dim uppercase">
-            {hero.meta}
+          <p className="flex flex-wrap gap-x-2 font-mono text-mark text-ink-dim uppercase">
+            {hero.meta.split(" · ").map((item, i) => (
+              <span key={item} className="whitespace-nowrap">
+                {i > 0 ? "· " : ""}
+                {item}
+              </span>
+            ))}
           </p>
 
-          <h1 className="mt-6font-display text-display font-semibold text-ink">
+          <h1 className="mt-6 font-display text-display font-semibold text-ink">
             {hero.headline}
           </h1>
 
@@ -78,39 +83,42 @@ export default function Hero() {
         </div>
 
         <div className="min-w-0">
-        <p className="mb-3 text-note text-ink-dim">{hero.artifactLead}</p>
-        <figure className="border border-line bg-surface">
-          <figcaption className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 font-mono text-mark uppercase">
-            <span className="text-ink-dim">{artifact.label}</span>
-            <span className="border border-block px-2 py-1 text-block" data-excerpt-verdict={hero.artifact.source}>
-              {artifact.verdict}
-            </span>
-          </figcaption>
-          <div className="px-4 py-5">
-            <pre
-              data-excerpt-of={artifact.source}
-              className="font-mono text-note whitespace-pre-wrap break-words"
-            >
-              {artifact.lines.map((line) => (
-                <span
-                  key={line.text}
-                  className={`block ${TONE_CLASS[line.tone]}`}
-                >
-                  {line.text}
-                </span>
-              ))}
-            </pre>
-          </div>
-          <p className="border-t border-line px-4 py-3 text-note text-ink-dim">
-            {artifact.caption}{" "}
-            <a
-              href={artifact.href}
-              className="text-accent underline underline-offset-2"
-            >
-              {artifact.source}
-            </a>
-          </p>
-        </figure>
+          <p className="mb-3 text-note text-ink-dim">{hero.artifactLead}</p>
+          <figure className="border border-line bg-surface">
+            <figcaption className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 font-mono text-mark uppercase">
+              <span className="text-ink-dim">{artifact.label}</span>
+              <span
+                className="border border-block px-2 py-1 text-block"
+                data-excerpt-verdict={hero.artifact.source}
+              >
+                {artifact.verdict}
+              </span>
+            </figcaption>
+            <div className="px-4 py-5">
+              <pre
+                data-excerpt-of={artifact.source}
+                className="font-mono text-note whitespace-pre-wrap break-words"
+              >
+                {artifact.lines.map((line) => (
+                  <span
+                    key={line.text}
+                    className={`block ${TONE_CLASS[line.tone]}`}
+                  >
+                    {line.text}
+                  </span>
+                ))}
+              </pre>
+            </div>
+            <p className="border-t border-line px-4 py-3 text-note text-ink-dim">
+              {artifact.caption}{" "}
+              <a
+                href={artifact.href}
+                className="text-accent underline underline-offset-2"
+              >
+                {artifact.source}
+              </a>
+            </p>
+          </figure>
         </div>
       </div>
 

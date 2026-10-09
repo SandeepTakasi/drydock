@@ -45,7 +45,7 @@ export default function Lifecycle({ meta }: SectionProps) {
     <Section meta={meta}>
       <ol className="grid gap-px bg-line md:grid-cols-3">
         {lifecycle.steps.map((step) => (
-          <li key={step.index} className="bg-surface px-6 py-7">
+          <li key={step.index} className="min-w-0 bg-surface px-6 py-7">
             <p className="font-mono text-mark text-accent uppercase">
               {step.index}
             </p>
@@ -58,7 +58,7 @@ export default function Lifecycle({ meta }: SectionProps) {
                 <p className="font-mono text-mark text-ink-dim uppercase">
                   {lifecycle.commandLabel}
                 </p>
-                <code className="mt-1 block overflow-x-auto border border-line px-3 py-2 font-mono text-note whitespace-nowrap text-ink">
+                <code className="mt-1 block overflow-x-auto border border-line px-3 py-2 font-mono text-note whitespace-pre-wrap text-ink">
                   {step.command}
                 </code>
               </div>
@@ -151,7 +151,7 @@ export default function Lifecycle({ meta }: SectionProps) {
       <p className="mt-4 text-note text-ink-dim">{lifecycle.loop}</p>
 
       <details className="group mt-12">
-        <summary className="flex cursor-pointer list-none items-center gap-3 font-mono text-mark text-accent uppercase marker:content-none hover:underline">
+        <summary className="flex cursor-pointer list-none items-center gap-3 font-mono text-mark text-accent uppercase marker:content-none [&::-webkit-details-marker]:hidden hover:underline">
           <span aria-hidden="true" className="group-open:hidden">
             +
           </span>
