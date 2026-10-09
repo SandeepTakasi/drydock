@@ -61,7 +61,16 @@ cd /tmp/dd && python3 -m http.server 5173   # then open /drydock/
   program-free — and must ignore `out/**` and `.next/**`.
 - **Tailwind v4 is CSS-first.** Tokens live in `@theme` in `app/globals.css`;
   there is no `tailwind.config.js`. **A mistyped token emits nothing, with no
-  error**, and unreferenced tokens are tree-shaken out of the build.
+  error**, and unreferenced tokens are tree-shaken out of the build. So does a
+  missing space between classes: `mt-6font-display` is one unknown class, and
+  the `<h1>` lost both (plan 015). No gate reads class names.
+- **`whitespace-nowrap` inside a grid or flex child widens the page.** A grid
+  item's default `min-width: auto` grows to the unbroken line's width, and
+  `overflow-x-auto` on the inner `<code>` does not shrink it: plan 015 shipped
+  `scrollWidth` 608 at 375px through every gate. Put `min-w-0` on the item,
+  prefer `whitespace-pre-wrap` for commands, and before any human gate measure
+  `document.documentElement.scrollWidth` at 375px on the built page. Trust that
+  number over a browser-pane screenshot, which can come back zoomed and cropped.
 - **`react-hooks/set-state-in-effect` is a hard ERROR** here. The
   `useState` + `useEffect(() => setX(true), [])` mount-flag idiom will not lint.
   `useMotionSafe()` already solves hydration via `useSyncExternalStore`.
@@ -300,3 +309,7 @@ work — plan 001's has 49 entries and most are still live constraints.
   carry every one of the plan's files into the diff under test. Push the plan's
   commits to a throwaway branch (`plan-NNN`), open the probes against it, and
   delete it after. Plan 014 deviation 4.
+- **A release is a bump, a tag and one push.** Tag `vX.Y.Z` at the release
+  commit and push it with `main` in a single `git push --atomic origin main
+  vX.Y.Z`, so Deploy never publishes a page pinning a tag that is not there yet.
+  Plan 013 cut 0.18.0 with no tag; plan 015 backfilled it at `e0847c1`.

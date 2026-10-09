@@ -770,3 +770,7 @@ overhead: 88.3% (orchestration + other subagents) of 61274329 tokens across 1 se
 9d009a6e-79a0-4458-80b5-a73fd882c80b  47336408  also mentions: 014-scope-gate-action, 009-site-016-additions, 001-drydock-homepage, 002-design-system-modernisation, 003-hero-revamp, 004-seatrial-e2e-gate, 005-small-lane-and-solo-mode, 006-external-review-repairs, 007-deferred-hardening, 008-stats-gates-check-learnings, 010-guard-entry-point, 011-stale-bash-snapshot, 012-homepage-restructure, 013-guard-beside-any-planner
 a session that mentions 015-release-019-site is counted whole, including unrelated work in it; tokens, not cost
 ```
+
+### Applied
+
+2026-10-09, approved by Sandeep Takasi: R1, R2 and R3 applied to CLAUDE.md as proposed. Q1 left open.
