@@ -54,12 +54,15 @@ export interface Refusal {
   source: string;
   pin: string;
   output: string;
+  href?: string;
+  hrefLabel?: string;
 }
 
 /** Section shells. Hero is exempt from SectionMeta and has no entry here. */
 export const meta: Record<
   | "problem"
   | "lifecycle"
+  | "ways"
   | "refuses"
   | "limits"
   | "evidence"
@@ -70,22 +73,27 @@ export const meta: Record<
   problem: {
     id: "problem",
     eyebrow: "01 / THE PROBLEM",
-    heading: "Parallel agents collide, and then they drift",
+    heading: "Parallel agents collide, then they drift",
   },
   lifecycle: {
     id: "lifecycle",
     eyebrow: "02 / HOW IT WORKS",
-    heading: "Plan, run in waves, audit against the diff",
+    heading: "Plan it, build it in waves, check every wave",
+  },
+  ways: {
+    id: "ways",
+    eyebrow: "03 / WHERE IT FITS",
+    heading: "Three ways in, from one change to every pull request",
   },
   refuses: {
     id: "refuses",
-    eyebrow: "03 / WHAT IT REFUSES",
-    heading: "Four things it will not let through",
+    eyebrow: "04 / WHAT IT CATCHES",
+    heading: "Five things it will not let through",
   },
   limits: {
     id: "limits",
-    eyebrow: "04 / LIMITS",
-    heading: "What it cannot do, said up front",
+    eyebrow: "05 / LIMITS",
+    heading: "What it does not do",
   },
   evidence: {
     id: "evidence",
@@ -94,17 +102,17 @@ export const meta: Record<
   },
   install: {
     id: "install",
-    eyebrow: "05 / INSTALL",
-    heading: "Two commands to start",
+    eyebrow: "06 / GET STARTED",
+    heading: "Start in three steps",
   },
   faq: {
     id: "faq",
-    eyebrow: "06 / QUESTIONS",
-    heading: "Questions",
+    eyebrow: "07 / QUESTIONS",
+    heading: "Questions people ask",
   },
 };
 
-const VERSION = "0.18.0";
+const VERSION = "0.19.0";
 
 /**
  * Docs live in the repo, not in the export — only `site/out` is deployed. So
@@ -119,9 +127,10 @@ const REPO = "https://github.com/SandeepTakasi/drydock";
 const BLOB = `${REPO}/blob/main`;
 
 export const site = {
-  title: "Drydock: plan-first parallel execution for Claude Code",
+  title: "Drydock: parallel Claude Code agents, checked against the plan",
   description:
-    "A Claude Code plugin that makes the plan the contract: parallel subagents that each own their files, every wave audited against the real diff, and what execution learned fed back into your docs.",
+    "A Claude Code plugin: plan a change, let agents build it in parallel inside the files each one owns, and get every wave audited against the real git diff before the next one starts.",
+  githubLabel: "GitHub",
   status: "open pilot, field benchmarks pending",
   version: VERSION,
   selfAuditHref: `${BLOB}/docs/self-audit.md`,
@@ -143,20 +152,24 @@ export const site = {
 /** Top-bar navigation. Home sections as `/#id`, the evidence page as a route. */
 export const nav: { href: string; label: string }[] = [
   { href: "/#lifecycle", label: "How it works" },
-  { href: "/#refuses", label: "What it refuses" },
+  { href: "/#ways", label: "Where it fits" },
+  { href: "/#refuses", label: "What it catches" },
   { href: "/evidence", label: "Evidence" },
-  { href: "/#install", label: "Install" },
+  { href: "/#install", label: "Get started" },
 ];
 
 export const hero = {
   kicker: "CLAUDE CODE PLUGIN",
+  meta: `Claude Code plugin · v${VERSION} · open pilot · MIT`,
   headline: "Drydock",
-  promise:
-    "Agents drift: the tests pass, the review is clean, and the diff still does things nobody asked for.",
+  promise: "Your agents build what you approved. Drydock checks that they did.",
   thesis: "NOTHING SAILS UNTIL IT LEAVES THE DOCK",
-  sub: "Drydock makes the plan the contract. Subagents build in parallel, each inside the files it owns, and every wave is checked against the real diff, not the agent report, before the next one starts.",
+  sub: "Plan a change, let Claude Code agents build it in parallel, each inside the files it owns, and get every wave audited against the real git diff before the next one starts. Collisions and edits outside the plan get caught at the gate, not found in your repo.",
   badges: [`v${VERSION} · OPEN PILOT`, "MIT", "PLAN FORMAT v3"],
-  ctaPrimary: "Install it",
+  ctaPrimary: "Get started",
+  ctaSecondary: "Star on GitHub",
+  artifactLead:
+    "A real gate from plan 004: four checks passed, one did not, and the next wave was not allowed to start.",
   /**
    * Verbatim lines from plan 004's `### Wavecheck 1.1 — BLOCK — 2026-08-20`
    * report. Each `text`, with `**` and backticks stripped and whitespace
@@ -321,6 +334,14 @@ export const evidence: {
       tone: "pass",
       note: "2026-10-07, installed 0.17.1. With no plan wave armed, arm wrote a check boundary from an intent file owning one path. A Write outside it was denied by the live hook and the file stayed absent; an edit to the owned path was allowed; check reported the hook armed and passed; disarming let the same Write through. The ceiling was observed too: a Bash write landed while armed and check flagged it afterwards.",
     },
+    {
+      id: "A13",
+      label:
+        "scope-gate Action fails a PR outside the scope declared in its linked issue, on GitHub-hosted runners",
+      status: "PASSED",
+      tone: "pass",
+      note: "2026-10-09, on GitHub-hosted runners. Issue #25 declared a scope; a pull request inside it passed, and a pull request adding a file outside it failed, naming that file. The refusals for untrusted authors, missing or extra links, late issues and linked pull requests, a forbidden glob and a failing criterion are proven by the test suite, not yet live. The issue and both pull requests were opened by the owner account, and no other repository has used the Action yet.",
+    },
   ],
   provenance: "This page is not a brochure for something built elsewhere. The site was planned, executed in parallel waves and gated with Drydock itself, across five plans whose deviation logs are in the repo.",
   planHref: `${BLOB}/docs/plans/001-drydock-homepage.md`,
@@ -329,31 +350,47 @@ export const evidence: {
 
 export const lifecycle: {
   loop: string;
-  steps: { index: string; title: string; body: string }[];
+  commandLabel: string;
+  outcomeLabel: string;
+  piecesSummary: string;
+  steps: {
+    index: string;
+    title: string;
+    body: string;
+    command?: string;
+    outcome: string;
+  }[];
   readmeHref: string;
   readmeLinkText: string;
   pieces: Piece[];
 } = {
+  commandLabel: "You type",
+  outcomeLabel: "You get",
+  piecesSummary: "All nine pieces of the plugin",
   steps: [
     {
       index: "01",
-      title: "Plan",
-      body: "planwright turns your request into a plan: phases, waves of tasks that can run side by side, and the exact files each task may touch. You approve it before anything runs.",
+      title: "Plan the change",
+      body: "planwright interviews you, reads the code the change touches, and writes a plan: tasks grouped into waves, the exact files each task may touch, and a command that proves each task is done. Nothing runs until you approve it.",
+      command: "/drydock:planwright add rate limiting to the API",
+      outcome: "A plan file in docs/plans, waiting for your approval.",
     },
     {
       index: "02",
-      title: "Run in parallel waves",
-      body: "Subagents run a wave in parallel, each owning different files, or one session runs it in order and says so. While the wave runs, a hook denies file-tool writes outside its boundary.",
+      title: "Build in parallel waves",
+      body: "Agents take one task each and work side by side. Each may only write the files its task owns: while the wave runs, a hook denies file-tool edits to other files in the project.",
+      outcome: "One commit per task, each inside its own files.",
     },
     {
       index: "03",
-      title: "Audit each wave against the diff",
-      body: "wavecheck reads what actually changed in git, not what the agents say they did: ownership, forbidden changes, acceptance criteria, deviations. PASS lets the next wave start. BLOCK stops the plan until you or replan decide.",
+      title: "Check every wave against the diff",
+      body: "wavecheck reads what actually changed in git, not what the agents say they did: the right files, the checks passing, nothing extra. PASS opens the next wave. BLOCK stops the plan and says why.",
+      outcome: "PASS or BLOCK, written into the plan with its evidence.",
     },
   ],
   readmeHref: `${BLOB}/drydock/README.md`,
   readmeLinkText: "Read the plugin README for every piece",
-  loop: "on BLOCK, drift, or NO-GO: /drydock:replan or a human decision. No retries.",
+  loop: "On a BLOCK nothing retries on its own: you decide, or /drydock:replan repairs the plan.",
   pieces: [
     {
       name: "init",
@@ -412,8 +449,43 @@ export const lifecycle: {
   ],
 };
 
+export const ways: {
+  lead: string;
+  items: {
+    title: string;
+    command: string;
+    body: string;
+    href?: string;
+    linkText?: string;
+  }[];
+  plannerNote: string;
+} = {
+  lead: "Drydock is not only for big plans. Pick the size of the change.",
+  items: [
+    {
+      title: "A change across many files",
+      command: "/drydock:planwright <your change>",
+      body: "The full loop: a plan you approve, agents in parallel waves, a gate after every wave, and a reconcile step that turns what went wrong into proposed doc fixes.",
+    },
+    {
+      title: "A small change, no plan",
+      command: "/drydock:check",
+      body: "Say in a few lines which files the change may touch, do the work, and get an audit of every file and check that strayed. Arm the optional guard and file-tool edits outside the scope are denied as you go.",
+    },
+    {
+      title: "Every pull request",
+      command: "uses: SandeepTakasi/drydock/scope-gate@v0.19.0",
+      body: "A GitHub Action that reads the scope from the issue a pull request closes and fails the check on any file outside it. A scope written by someone outside the repo is refused, a path proven by tests and not yet seen live.",
+      href: `${BLOB}/scope-gate/README.md`,
+      linkText: "Read the scope-gate README",
+    },
+  ],
+  plannerNote:
+    "Already plan with another tool, such as Superpowers? Keep it. The check skill can take the file list from that task and audit the work against it. That path shipped in 0.18.0 and is not yet observed in a live session.",
+};
+
 export const refusals: { lead: string; items: Refusal[] } = {
-  lead: "Not mockups. Each message below was pasted from a real run against a scratch repo, and the build checks that its key phrase still exists in the file that prints it.",
+  lead: "Real output, not mockups. Each message is copied from an actual run, four against a scratch repo and one from a pull request on this repo, and the build checks that each key phrase still exists in the code that prints it.",
   items: [
     // `node drydock/scripts/drydock-audit.mjs validate-plan plan.md` in a scratch
     // dir; plan.md is a format_version 3 plan whose T1.0.1 and T1.0.2 (wave 1.0)
@@ -462,11 +534,57 @@ export const refusals: { lead: string; items: Refusal[] } = {
       output:
         "wave-start: wave 1.0 has no PASS wavecheck report (none), so wave 1.1 cannot be armed.\n  Run drydock:wavecheck on wave 1.0 (after a BLOCK and a replan, a re-audit heading whose PASS supersedes the BLOCK), commit the report, then re-arm.",
     },
+    // Run 37884214325 of the scope-gate workflow, pull request #27, which closes
+    // issue #25 (scope `scope-gate-probe/**`) but adds `stray-probe.txt`. Lines 1
+    // and 2 of `output` are the two `check` lines of the run log; line 3 is the
+    // check-run annotation as the GitHub check-runs API returns it (path: message).
+    {
+      title: "A pull request outside its issue",
+      body: "In CI, scope-gate reads the scope from the issue a pull request closes, audits the diff from its base, and fails the check naming every file outside that scope.",
+      command: "pull request #27 (issue #25 owns scope-gate-probe/**)",
+      source: "scope-gate/gate.mjs", pin: "outside the scope declared in",
+      output:
+        "FLAG outside scope: stray-probe.txt\ncheck: FLAG (1)\nstray-probe.txt: outside the scope declared in #25",
+      href: "https://github.com/SandeepTakasi/drydock/actions/runs/37884214325",
+      hrefLabel: "See the run",
+    },
   ],
 };
 
-export const limits: { lead: string; items: string[]; evidenceLinkText: string } = {
+export const limits: {
+  lead: string;
+  points: { lead: string; detail: string }[];
+  items: string[];
+  evidenceLinkText: string;
+} = {
   lead: "Better you read these here than find them in your repo.",
+  points: [
+    {
+      lead: "Bash can write around the hook.",
+      detail:
+        "Two ceilings stand, both exercised rather than assumed: Bash-mediated writes bypass file-tool hooks entirely, and paths outside the project directory are not enforced. The wave audit is the backstop.",
+    },
+    {
+      lead: "Small changes are audited, and only optionally guarded.",
+      detail:
+        "For work too small for a plan, the check skill audits scope afterwards. With the opt-in guard armed, file-tool edits outside that scope are denied; Bash writes are still only detected.",
+    },
+    {
+      lead: "Gate compliance is measured, not promised.",
+      detail:
+        "28 of 29 wave gates were invoked at their boundary across 5 pilot plans. Every session counted knew it was being observed, so read the figure as a ceiling, not a rate.",
+    },
+    {
+      lead: "Approval is a human job.",
+      detail:
+        "Human approval is an instruction the plan format states and a reader upholds. Nothing in the tooling stops a session writing status: APPROVED itself.",
+    },
+    {
+      lead: "It is an open pilot, field benchmarks pending.",
+      detail:
+        "Every figure on this site comes from pilot plans run in this repo; there are no field benchmarks yet.",
+    },
+  ],
   items: [
     "Two ceilings stand, both exercised rather than assumed: Bash-mediated writes bypass file-tool hooks entirely, and paths outside the project directory are not enforced. The wave audit is the backstop.",
     "For work too small for a plan, the check skill audits scope afterwards. With the opt-in guard armed, file-tool edits outside that scope are denied; Bash writes are still only detected.",
@@ -492,8 +610,16 @@ export const evidencePage: {
   homeLinkText: "Back to the homepage",
 };
 
+const INSTALL_COMMANDS = [
+  "/plugin marketplace add SandeepTakasi/drydock",
+  "/plugin install drydock@drydock",
+];
+
 export const install: {
   commands: string[];
+  steps: { index: string; title: string; body: string; commands: string[] }[];
+  ciSummary: string;
+  ci: { note: string; copyAriaLabel: string; snippet: string };
   scopeNote: string;
   configNote: string;
   requirement: string;
@@ -501,13 +627,59 @@ export const install: {
   copyAriaLabel: string;
   copiedLabel: string;
 } = {
-  commands: [
-    "/plugin marketplace add SandeepTakasi/drydock",
-    "/plugin install drydock@drydock",
+  commands: INSTALL_COMMANDS,
+  steps: [
+    {
+      index: "01",
+      title: "Install the plugin",
+      body: "In Claude Code, add the marketplace, then install.",
+      commands: INSTALL_COMMANDS,
+    },
+    {
+      index: "02",
+      title: "Teach it your repo",
+      body: "Run this once. Drydock detects your quality gates, test framework, commit style and CI, asks only what it cannot detect, and saves a profile every plan follows.",
+      commands: ["/drydock:init"],
+    },
+    {
+      index: "03",
+      title: "Plan your first change",
+      body: "Start with something small. For a quick fix, skip the plan and run /drydock:check instead.",
+      commands: ["/drydock:planwright <describe your change>"],
+    },
   ],
-  scopeNote: "Add --scope project to share it with your team.",
+  ciSummary: "Optional: gate pull requests in CI",
+  ci: {
+    note: "This workflow checks every pull request against the scope declared in the issue it closes. It runs on pull_request with read-only permissions, never pull_request_target, because acceptance commands run code from the pull request.",
+    copyAriaLabel: "Copy the workflow to clipboard",
+    snippet: [
+      "name: scope-gate",
+      "",
+      "on:",
+      "  pull_request:",
+      "    types: [opened, edited, synchronize, reopened]",
+      "",
+      "permissions:",
+      "  contents: read",
+      "  issues: read",
+      "  pull-requests: read",
+      "",
+      "jobs:",
+      "  scope-gate:",
+      "    runs-on: ubuntu-latest",
+      "    steps:",
+      "      - uses: actions/checkout@v5",
+      "        with:",
+      "          fetch-depth: 0",
+      "      - uses: actions/setup-node@v5",
+      "        with:",
+      "          node-version: 22",
+      "      - uses: SandeepTakasi/drydock/scope-gate@v0.19.0",
+    ].join("\n"),
+  },
+  scopeNote: "Add --scope project to the install to share it with your team.",
   configNote:
-    "Then run /drydock:init once so Drydock learns your repo, and /drydock:planwright on something small. Settings on enable: where plans live (default docs/plans), which docs reconcile may propose changes to, and where seatrial writes its specs (default e2e). A repo that gitignores planning files gets them under .drydock/plans instead.",
+    "Settings on enable: where plans live (default docs/plans), which docs reconcile may propose changes to, and where seatrial writes its specs (default e2e).",
   requirement:
     "Requires Node 20.17 or newer on PATH, as declared in the plugin manifest and tested on 20, 22 and 24: the ownership hook and the plan audit are Node programs. The hook is inert, by design, whenever no wave is armed.",
   copyLabel: "Copy",
@@ -517,12 +689,24 @@ export const install: {
 
 export const faq: FaqItem[] = [
   {
+    q: "Who is it for?",
+    a: "Anyone using Claude Code on changes that touch several files at once, and especially anyone running subagents in parallel. If you have ever merged a green pull request and then found work in it nobody asked for, this is the problem it is built around.",
+  },
+  {
     q: "Is this overkill for a one-file change?",
     a: "Yes, so do not use a plan for it. For a change that small, the check skill audits your scope in a few lines with no plan at all. For mid-sized work there is a small lane: one phase, one wave, one gate, declared as lane: small and held to it by the validator. Ownership, acceptance criteria and both logs stay; only the ceremony goes. Drydock earns its keep on multi-file changes, parallel agents and teams.",
   },
   {
-    q: "Who is it for?",
-    a: "Anyone using Claude Code on changes that touch several files at once, and especially anyone running subagents in parallel. If you have ever merged a green pull request and then found work in it nobody asked for, this is the problem it is built around.",
+    q: "Does it cost more tokens?",
+    a: "Yes. Planning, the audit after every wave and reconcile all run on top of the build itself. In exchange, a mistake is caught at the wave that made it instead of in review. The reconcile report of every plan prints its token split between orchestration and execution, counting each session whole, so you can see the cost on your own work rather than take a number from this page.",
+  },
+  {
+    q: "Can I keep my current planner?",
+    a: "Yes. If a tool such as Superpowers already writes your plan, run /drydock:check on its task: the skill copies the files that task says it will touch into a scope and audits the work against it, and the optional guard denies file-tool edits outside it. That path shipped in 0.18.0 and is not yet observed in a live session.",
+  },
+  {
+    q: "Can it check pull requests?",
+    a: "Yes, with the scope-gate Action. Write the owned files and acceptance commands in an issue, then close that issue from the pull request. The check fails when the pull request links no issue or more than one, when the issue was opened after the pull request or by someone who is not an owner, member or collaborator, or when any changed file is outside the scope. The out-of-scope failure was observed on this repo; the refusals are proven by the test suite and not yet seen live. It checks files, not lines, and edits to the issue after the pull request opened are not detected (see the scope-gate README).",
   },
   {
     q: "How is this different from other planning plugins?",
@@ -560,12 +744,13 @@ export const footer: {
   links: { href: string; label: string }[];
 } = {
   tagline: "Nothing sails until it leaves the dock.",
-  meta: [`v${VERSION}`, "MIT", "2026-09-01"],
+  meta: [`v${VERSION}`, "MIT"],
   links: [
     { href: REPO, label: "GitHub" },
     { href: `${BLOB}/docs/self-audit.md`, label: "Self-audit" },
     { href: `${BLOB}/docs/compatibility.md`, label: "Compatibility" },
     { href: `${BLOB}/drydock/README.md`, label: "Plugin README" },
+    { href: `${BLOB}/drydock/CHANGELOG.md`, label: "Changelog" },
     { href: `${BLOB}/docs/plans/001-drydock-homepage.md`, label: "Example plan" },
   ],
 };

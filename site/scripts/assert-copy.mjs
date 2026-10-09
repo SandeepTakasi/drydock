@@ -300,14 +300,14 @@ for (const { open, body } of pins) {
     fail(`pin: element has data-pin without data-source (or vice versa): ${open}`);
     continue;
   }
-  if (!s.startsWith("drydock/") || s.includes("..")) {
-    fail(`pin: data-source must be a drydock/ path, got ${JSON.stringify(s)}`);
+  if (!(s.startsWith("drydock/") || s.startsWith("scope-gate/")) || s.includes("..")) {
+    fail(`pin: data-source must be a drydock/ or scope-gate/ path, got ${JSON.stringify(s)}`);
   }
   const src = readRepo(s, "pin");
   if (src !== undefined && !src.includes(x)) fail(`pin: ${JSON.stringify(x)} is not in ${s}`);
   if (!inner(body).includes(x)) fail(`pin: rendered text does not contain ${JSON.stringify(x)} (source ${s})`);
 }
-if (pins.length !== 4) fail(`pin: expected exactly 4 data-pin elements on home, found ${pins.length}`);
+if (pins.length !== 5) fail(`pin: expected exactly 5 data-pin elements on home, found ${pins.length}`);
 
 // --- motion contract, over components/sections/*.tsx only ------------------
 // lib/motion.ts legitimately holds every timing literal, so it is never scanned.
