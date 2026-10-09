@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.19.0: 2026-10-09
+
+**`scope-gate`: a GitHub Action that checks a pull request against the scope its issue declared.** Write `- **Files owned:**` globs, and optionally `- **Forbidden:**` globs and `- **Acceptance criterion:**` commands, in an issue, then close it from the pull request. The Action runs `drydock-audit.mjs check` on the diff from the PR's base and fails with a file annotation on every file outside the scope. It fails closed on a PR that links no issue or more than one, on an issue whose author is not OWNER, MEMBER or COLLABORATOR, and on an issue created after the PR. Use it as `SandeepTakasi/drydock/scope-gate@v0.19.0` on `pull_request` with read-only permissions, never `pull_request_target`. See `scope-gate/README.md`.
+
+**Observed live (A13).** On this repo, a PR inside its issue's scope passed and a PR adding an unowned file failed, naming it. The refusal paths are proven by `scope-gate/gate.test.mjs` (18 cases, in CI on Linux and Windows), not yet live.
+
+**The homepage is rebuilt for a first-time visitor.** It says what Drydock does in plain words, shows what you type and what you get at each step, adds a "Three ways in" section (planwright, check, scope-gate) and a three-step start, and quotes the PR gate's real output.
+
+**The plugin itself is unchanged from 0.18.0.** This version exists so the Action has a tag to pin.
+
+Tests: audit 161, scope-gate 18 (new), others unchanged.
+
 ## 0.18.0: 2026-10-07
 
 **`wave-start` no longer silently replaces a guard armed with `arm`.** With a `"check"` boundary in `.drydock/wave-owns.json` it refuses (exit 1, the file untouched): `wave-start: refused, a check boundary is armed (arm, base <base>); close it with rm .drydock/wave-owns.json, then re-run wave-start`. Until now it overwrote the file and the guard's prevention vanished without a message. A leftover plan-wave boundary is still replaced, as before.

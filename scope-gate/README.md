@@ -4,9 +4,8 @@ A GitHub Action that fails a pull request whose diff leaves the scope declared
 in the issue it closes. The scope is written in the issue body before the work,
 in the same format as `drydock:check`.
 
-Status: dogfooded on this repo, **not yet run live** (row A13 in
-`docs/compatibility.md` is PENDING). No release or tag exists; reference
-`@main` or a commit SHA.
+Status: observed live on this repo (row A13 in `docs/compatibility.md`,
+PASSED 2026-10-09). Pin a release tag, `@v0.19.0` or later.
 
 ## Issue format
 
@@ -46,7 +45,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-      - uses: SandeepTakasi/drydock/scope-gate@main
+      - uses: SandeepTakasi/drydock/scope-gate@v0.19.0
 ```
 
 `fetch-depth: 0` is required so the PR's base SHA is present. To make scopes
