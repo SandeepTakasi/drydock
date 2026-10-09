@@ -546,6 +546,26 @@ reads `mt-6font-display` (a missing space), so it gets neither `mt-6` nor
 
 Deviations logged: 3 (1 discovered by wavecheck)
 
+### Wavecheck 1.3 - PASS - 2026-10-09
+
+Fleet: `drydock:executor` (Sonnet 5.5); the auditor wrote none of the diff.
+
+| Task | Commit | Files changed | Owns | Outside owns |
+|------|--------|---------------|------|--------------|
+| T1.3.1 | `86846e1` | `site/content/copy.ts`<br>`site/scripts/assert-copy.mjs` | `site/content/copy.ts`<br>`site/scripts/assert-copy.mjs` | none |
+
+  note: enforcement active: 7 hook decision(s) recorded for wave 1.3 (0 denied)
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| 1. Plan integrity | PASS | Status `EXECUTING`; wave 1.2 PASS (`24458fd`) |
+| 2. Ownership | PASS | `audit-wave 1.3: PASS`; 7 file-tool `allow` receipts, 5 Bash commands observed, 0 writes outside `owns`; working tree clean |
+| 3. Forbidden | PASS | `copy.ts` removals are exactly `site.status`, `hero.kicker`, `hero.badges`, `limits.items` and its type member; `assert-copy.mjs` removes no line |
+| 4. Acceptance | PASS | T1.3.1 criterion through `spawnSync(cmd, {shell: true})`: exit 0, which includes `npm run verify` (assert-copy home 27 literals, evidence 8; assert-matrix PASS) |
+| 5. Deviations | PASS | None reported, none found |
+
+Deviations logged: 3 (1 discovered by wavecheck)
+
 ## Progress log
 
 | Date | Task | Result | Notes |
@@ -558,5 +578,7 @@ Deviations logged: 3 (1 discovered by wavecheck)
 | 2026-10-09 | Wave 1.1 re-audit | PASS | |
 | 2026-10-09 | T1.2.1-T1.2.5 | DONE | `81cd374`, `e81aeee`, `40d3403`, `bcd0e14`, `b94ccc4` |
 | 2026-10-09 | Wave 1.2 | PASS | |
+| 2026-10-09 | T1.3.1 | DONE `86846e1` | |
+| 2026-10-09 | Wave 1.3 | PASS | |
 
 ## Reconcile report
