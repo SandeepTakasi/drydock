@@ -1,0 +1,13 @@
+name: scope-gate
+description: Fail a pull request whose diff leaves the scope declared in its linked issue.
+inputs:
+  github-token:
+    description: Token used to read the linked issue and PR files (read-only).
+    default: ${{ github.token }}
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: node "${{ github.action_path }}/gate.mjs"
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
