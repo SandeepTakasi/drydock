@@ -1,7 +1,7 @@
 ---
 plan: 015-release-019-site
 format_version: 3
-status: APPROVED
+status: EXECUTING
 isolation: none
 enforcement: required
 attribution: manifest
@@ -73,14 +73,14 @@ the wave illustration, the motion library, or plugin code.
 
 ## 4. Baseline
 
-_Filled by T0._
+_Filled by T0, 2026-10-09._ Installed plugin 0.18.0, repo 0.18.0, no VERSION DRIFT.
 
 | Item | Value |
 |---|---|
-| Commit SHA | _pending_ |
-| `cd site && npm run verify` | _pending_ |
-| `node drydock/scripts/drydock-audit.test.mjs` | _pending_ |
-| `prove-failable` on this plan | _pending_ |
+| Commit SHA | `d296aab` |
+| `cd site && npm run verify` | build, tsc, eslint PASS; assert-copy PASS (home 22 literals, evidence 7, 4 pins, version matches); assert-matrix PASS once T0 added the README row (it failed on that row alone before) |
+| `node drydock/scripts/drydock-audit.test.mjs` | 161/161 passed |
+| `prove-failable` on this plan | PASS, 10 of 10 criteria fail at baseline |
 
 ## 5. Practices in effect
 
