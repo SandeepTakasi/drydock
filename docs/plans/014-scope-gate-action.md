@@ -1,7 +1,7 @@
 ---
 plan: 014-scope-gate-action
 format_version: 3
-status: APPROVED
+status: EXECUTING
 isolation: none
 enforcement: required
 attribution: manifest
@@ -73,14 +73,14 @@ existing `check`. Zero changes to `drydock-audit.mjs`, zero dependencies.
 
 ## 4. Baseline
 
-_Filled by T0._
+_Filled by T0, 2026-10-09._ Installed plugin 0.18.0, repo 0.18.0; `validate-plan` PASS, no VERSION DRIFT.
 
 | Item | Value |
 |---|---|
-| Commit SHA | _pending_ |
-| `node drydock/scripts/drydock-audit.test.mjs` | _pending_ |
-| `node site/scripts/assert-matrix.mjs` (after T0's README row) | _pending_ |
-| `prove-failable` on this plan | _pending_ |
+| Commit SHA | `c308f72` |
+| `node drydock/scripts/drydock-audit.test.mjs` | 161/161 passed |
+| `node site/scripts/assert-matrix.mjs` (after T0's README row) | PASS, 13 matrix rows, 5 A3 ledger plans, 1 logged gate skip accounted for |
+| `prove-failable` on this plan | PASS, 4 of 4 criteria fail at baseline (T0, T1.1.1, T1.1.2, T1.1.3 each exit 1) |
 
 ## 5. Practices in effect
 

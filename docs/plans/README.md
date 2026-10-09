@@ -20,6 +20,7 @@ would have lost.
 | [011-stale-bash-snapshot](011-stale-bash-snapshot.md) | The Bash detector's snapshot is bound to the arming that wrote it, so a stale one is never diffed (v0.17.1) | RECONCILED |
 | [012-homepage-restructure](012-homepage-restructure.md) | The homepage leads with the drift problem, quotes a real BLOCK and four real refusals, and moves the evidence matrix to its own page | DONE |
 | [013-guard-beside-any-planner](013-guard-beside-any-planner.md) | The guard beside any planner: `wave-start` stops erasing an armed guard, the check skill reads another planner's task, `arm` observed live (v0.18.0) | DONE |
+| [014-scope-gate-action](014-scope-gate-action.md) | `scope-gate`: a GitHub Action that fails a PR whose diff leaves the scope its linked issue declared first | EXECUTING |
 
 Plan 001 also has a [field case study](../case-study-001-homepage.md) written
 against it, including the parts that reflect badly on the tool.
