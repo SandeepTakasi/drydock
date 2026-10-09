@@ -1,7 +1,7 @@
 ---
 plan: 014-scope-gate-action
 format_version: 3
-status: DONE
+status: RECONCILED
 isolation: none
 enforcement: required
 attribution: manifest
@@ -284,3 +284,117 @@ Deviations logged: 3 (1 discovered by wavecheck)
 | 2026-10-09 | Phase gate | CLOSED | Approved by Sandeep Takasi; status DONE. A13 stays PENDING by instruction; no release or tag (D1) |
 
 ## Reconcile report
+
+Reconciled 2026-10-09 at `1bb9248`. Gate signed (Sandeep Takasi, 2026-10-09);
+Testing Gate N/A; Verify run 37884446602 on `1bb9248`: 9 of 9 jobs green,
+including `node scope-gate/gate.test.mjs` on ubuntu and windows x Node 20/22/24.
+
+### Deviation synthesis
+
+| Cluster | Deviations | Output |
+|---|---|---|
+| (a) assumption false | 4 (the gate's probe PRs could not target `main`; `gh` was assumed unusable) | R2, R3 |
+| (b) instructions ambiguous | 1 (sketch pinned `@v4` against the repo's `@v5`) | planwright feedback |
+| (d) executor overreach | 2, 3 (owned files written through Bash; one of the two unreported) | executor feedback |
+
+### Assumption postmortem
+
+| Id | Verdict | Evidence |
+|---|---|---|
+| D1 | held | No release or tag cut; A13 PENDING |
+| D2 | held for the trusted path; untrusted path never-exercised live | #25 is OWNER-authored and passed; CONTRIBUTOR/NONE refusals proven only in `gate.test.mjs` |
+| D3 | held; the ceiling never-exercised | #25 created before #26/#27; no body edit was attempted |
+| D4 | held | Three executors, one at a time; auditor wrote none of the diff |
+| D5 | held | `Closes #25` resolved live; zero/many/PR-number refusals proven only in tests |
+| D6 | held locally; remote form never-exercised | `uses: ./scope-gate` ran; `SandeepTakasi/drydock/scope-gate@<ref>` from another repo has not run |
+| D7 | held | Composite action with one `node` step ran on `ubuntu-latest` with `setup-node` 22 |
+| D8 | held | Both live runs used `pull_request` with read-only permissions, and the issue fetch succeeded with `issues: read` |
+| D9 | never-exercised live | No unlinked PR has been opened since the workflow landed; test only |
+| §6 `check` output shape | held | Live log `FLAG outside scope: stray-probe.txt`, `check: FLAG (1)`; annotation emitted from it |
+| §6 `readIntent` over an issue body | held | `check: PASS (1 file(s), 1 criteria)` from #25's body |
+| §6 merge checkout + `fetch-depth: 0` | held | `base.sha` resolved in both runs (no exit 3) |
+| §6 `GITHUB_API_URL` | held | Test stand-in and live API both served by the same code path |
+
+### New knowledge
+
+- From `1bb9248`, every PR into `main` runs `scope-gate.yml`, and a PR whose body
+  does not close exactly one OWNER/MEMBER/COLLABORATOR issue that predates it fails
+  (D9). Nothing in CLAUDE.md says so (R1).
+- A `pull_request` workflow runs from the PR's merge commit, so dogfooding a new one
+  needs a base branch that already contains it, and a PR into `main` would also
+  carry every one of the plan's own files into the gate's diff (R2).
+- `gh`'s 401s on this machine were a stale user-level `GITHUB_TOKEN`, which
+  overrides the keyring login (R3).
+
+### Proposals
+
+#### Proposal R1 | target: CLAUDE.md | kind: addition
+Finding: the repo's own PRs are now gated by `scope-gate` and fail closed without a linked, scoped issue (D9, new knowledge 1).
+Confidence: high
+```diff
+@@ ## Working on `site/`
++**Every PR into `main` is scope-gated** (`.github/workflows/scope-gate.yml`,
++plan 014). The PR body must say `Closes #<n>` for exactly one issue, opened
++before the PR by an OWNER/MEMBER/COLLABORATOR, whose body declares
++`- **Files owned:**` globs (and optional `- **Forbidden:**`,
++`- **Acceptance criterion:**`). No link, two links, or a file outside the
++globs fails the check. Open the scope issue first.
++
+ ```bash
+ cd site && npm install
+```
+
+#### Proposal R2 | target: CLAUDE.md | kind: addition
+Finding: the plan's phase gate assumed probe PRs need no particular base; they had to target a pushed branch holding the workflow (deviation 4).
+Confidence: high
+```diff
+@@ ## Executing a plan here
++- **Dogfood a new `pull_request` workflow from a branch that already has it.**
++  The run uses the workflow file from the PR's merge commit, so the probe PR's
++  base must contain it; and a probe into `main` before the plan is pushed would
++  carry every one of the plan's files into the diff under test. Push the plan's
++  commits to a throwaway branch (`plan-NNN`), open the probes against it, and
++  delete it after. Plan 014 deviation 4.
+```
+
+#### Proposal R3 | target: CLAUDE.md | kind: addition
+Finding: `gh` returned 401 for months because a Windows user-level `GITHUB_TOKEN` overrides the keyring login (deviation 4, new knowledge 3).
+Confidence: medium (a machine fact; drop it if the variable is deleted)
+```diff
+@@ ## Toolchain facts that cost time to discover
++- **`gh` 401 here means the stale user-level `GITHUB_TOKEN`, not a bad login.**
++  `gh` prefers that variable over its keyring, and the variable's token is
++  invalid. Run `env -u GITHUB_TOKEN gh …` (Git Bash), or delete the variable.
++  Measured 2026-10-09, plan 014.
+```
+
+### Questions for the human
+
+- **Q1.** A13 has live evidence (#26 pass, #27 fail naming the file), but was kept
+  PENDING by instruction. `docs/compatibility.md` is outside reconcile's targets.
+  Promote it, with a `verification-log.md` entry, in a follow-up plan before 0.19.0?
+
+### Planwright feedback (cluster b)
+
+- When a sketch names third-party action versions, read the repo's existing pins
+  first; plan 014 wrote `@v4` beside a `verify.yml` on `@v5`.
+- A phase gate that needs live PRs should name the PR base branch, and say
+  whether the session may open them through `gh`.
+
+### Executor feedback (cluster d)
+
+- An executor that writes an owned file through Bash must list **every** such file
+  in its hand-back; T1.1.3 reported one of two, and only the hook log showed it.
+
+### Token usage
+
+```
+bucket          input       cache_create  cache_read    output      total
+orchestration   486         1513495       58535038      198655      60247674
+execution       32          151658        1050835       4941        1207466
+other subagents 0           0             0             0           0
+overhead: 98.0% (orchestration + other subagents) of 61455140 tokens across 2 session(s)
+1fe06cf7-2642-4481-b0d9-729a0d144d6d  54043373  also mentions: 009-site-016-additions, 001-drydock-homepage, 002-design-system-modernisation, 003-hero-revamp, 004-seatrial-e2e-gate, 005-small-lane-and-solo-mode, 006-external-review-repairs, 007-deferred-hardening, 008-stats-gates-check-learnings, 010-guard-entry-point, 011-stale-bash-snapshot, 012-homepage-restructure, 013-guard-beside-any-planner
+9d009a6e-79a0-4458-80b5-a73fd882c80b  6204301  also mentions: 009-site-016-additions, 001-drydock-homepage, 002-design-system-modernisation, 003-hero-revamp, 004-seatrial-e2e-gate, 005-small-lane-and-solo-mode, 006-external-review-repairs, 007-deferred-hardening, 008-stats-gates-check-learnings, 010-guard-entry-point, 011-stale-bash-snapshot, 012-homepage-restructure, 013-guard-beside-any-planner
+a session that mentions 014-scope-gate-action is counted whole, including unrelated work in it; tokens, not cost
+```
