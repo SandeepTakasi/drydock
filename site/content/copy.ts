@@ -717,10 +717,6 @@ export const faq: FaqItem[] = [
     a: "Then say so in the plan header with execution: solo, and one session runs the tasks in order. Every gate, ownership boundary and acceptance criterion still applies. The plan states once that the session writing the code is also the one auditing it, so a reader knows how much weight the audit carries.",
   },
   {
-    q: "My repo forbids tool names in commit messages.",
-    a: "Use attribution: manifest. Your commit messages follow your own convention, and each task records which commit is its own in a manifest. The ownership audit works the same either way, because it reads the files a commit touched, not its message.",
-  },
-  {
     q: "Does it review code quality?",
     a: "No, on purpose. wavecheck answers one question: did the wave do what the plan said. Code quality is judged by a separate fresh-context review after it passes, so the two never blur together.",
   },
@@ -731,6 +727,10 @@ export const faq: FaqItem[] = [
   {
     q: "Does anything actually touch a browser?",
     a: "Yes, through seatrial. A plan can carry end-to-end cases written before the code, and seatrial drives them in a real browser through Playwright MCP, saving the evidence each case asks for into a go/no-go sheet. It reports a step it cannot perform rather than improvising one, halts when the driver is missing, and never overrides its own failures. The specs it generated for this site run in CI and pass, Chromium only (see A7).",
+  },
+  {
+    q: "My repo forbids tool names in commit messages.",
+    a: "Use attribution: manifest. Your commit messages follow your own convention, and each task records which commit is its own in a manifest. The ownership audit works the same either way, because it reads the files a commit touched, not its message.",
   },
   {
     q: "Why the name?",
