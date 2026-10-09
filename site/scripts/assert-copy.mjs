@@ -54,6 +54,8 @@ const REQUIRED_EVIDENCE = [
   // one engine. A passing suite on one browser is not a compatibility rate.
   "Chromium only",
   "A2b",
+  // Plan 015, A13: the scope-gate row must keep its single-repo caveat.
+  "no other repository has used the Action yet",
 ];
 
 const REQUIRED_HOME = [
@@ -102,6 +104,16 @@ const REQUIRED_HOME = [
   "/drydock:init",
   "file-tool edits outside that scope are denied",
   "Bash writes are still only detected.",
+  // Plan 015: the hero promise.
+  "Your agents build what you approved",
+  // Plan 015: the planner entry command stays visible on the page.
+  "/drydock:planwright",
+  // Plan 015: scope-gate audits files, not lines.
+  "It checks files, not lines",
+  // Plan 015: the CI note must keep naming the trigger it refuses.
+  "never pull_request_target",
+  // Plan 015: the Superpowers path stays labelled unobserved.
+  "not yet observed in a live session",
 ];
 
 /** The site must never claim a benchmark it does not have. */

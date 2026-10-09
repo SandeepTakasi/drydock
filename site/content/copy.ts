@@ -131,7 +131,6 @@ export const site = {
   description:
     "A Claude Code plugin: plan a change, let agents build it in parallel inside the files each one owns, and get every wave audited against the real git diff before the next one starts.",
   githubLabel: "GitHub",
-  status: "open pilot, field benchmarks pending",
   version: VERSION,
   selfAuditHref: `${BLOB}/docs/self-audit.md`,
   selfAuditLinkText: "Read the self-audit",
@@ -159,13 +158,11 @@ export const nav: { href: string; label: string }[] = [
 ];
 
 export const hero = {
-  kicker: "CLAUDE CODE PLUGIN",
   meta: `Claude Code plugin · v${VERSION} · open pilot · MIT`,
   headline: "Drydock",
   promise: "Your agents build what you approved. Drydock checks that they did.",
   thesis: "NOTHING SAILS UNTIL IT LEAVES THE DOCK",
   sub: "Plan a change, let Claude Code agents build it in parallel, each inside the files it owns, and get every wave audited against the real git diff before the next one starts. Collisions and edits outside the plan get caught at the gate, not found in your repo.",
-  badges: [`v${VERSION} · OPEN PILOT`, "MIT", "PLAN FORMAT v3"],
   ctaPrimary: "Get started",
   ctaSecondary: "Star on GitHub",
   artifactLead:
@@ -554,7 +551,6 @@ export const refusals: { lead: string; items: Refusal[] } = {
 export const limits: {
   lead: string;
   points: { lead: string; detail: string }[];
-  items: string[];
   evidenceLinkText: string;
 } = {
   lead: "Better you read these here than find them in your repo.",
@@ -584,13 +580,6 @@ export const limits: {
       detail:
         "Every figure on this site comes from pilot plans run in this repo; there are no field benchmarks yet.",
     },
-  ],
-  items: [
-    "Two ceilings stand, both exercised rather than assumed: Bash-mediated writes bypass file-tool hooks entirely, and paths outside the project directory are not enforced. The wave audit is the backstop.",
-    "For work too small for a plan, the check skill audits scope afterwards. With the opt-in guard armed, file-tool edits outside that scope are denied; Bash writes are still only detected.",
-    "Gate compliance is measured, not asserted: 28 of 29 wave gates were invoked at their boundary across 5 pilot plans. Every session counted knew it was being observed, so read the figure as a ceiling, not a rate.",
-    "Human approval is an instruction the plan format states and a reader upholds. Nothing in the tooling stops a session writing status: APPROVED itself.",
-    "It is an open pilot. Every figure on this site comes from pilot plans run in this repo; there are no field benchmarks yet.",
   ],
   evidenceLinkText: "See the full evidence matrix",
 };
