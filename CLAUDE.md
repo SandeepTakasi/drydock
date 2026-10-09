@@ -19,6 +19,14 @@ blocks the deploy rather than shipping past it.
 that decides it. Serving from a domain root instead means setting it to `""` and
 changing nothing else.
 
+## Pull requests into `main` are scope-gated
+
+`.github/workflows/scope-gate.yml` (plan 014) runs on every PR. The PR body
+must say `Closes #<n>` for exactly one issue, opened before the PR by an
+OWNER/MEMBER/COLLABORATOR, whose body declares `- **Files owned:**` globs (and
+optional `- **Forbidden:**`, `- **Acceptance criterion:**`). No link, two
+links, or a file outside the globs fails the check. Open the scope issue first.
+
 ## Working on `site/`
 
 ```bash
@@ -114,6 +122,10 @@ cd /tmp/dd && python3 -m http.server 5173   # then open /drydock/
   version and path on every verdict and shouts `VERSION DRIFT` when the running
   script and the installed plugin disagree — but note it compares versions, so
   editing the plugin without bumping is drift it cannot see. Bump.
+- **`gh` 401 here means the stale user-level `GITHUB_TOKEN`, not a bad login.**
+  `gh` prefers that variable over its keyring, and the variable's token is
+  invalid. Run `env -u GITHUB_TOKEN gh …` (Git Bash), or delete the variable.
+  Measured 2026-10-09, plan 014.
 - **`metadataBase` must NOT contain the basePath.** Next prepends `basePath` to
   every metadata-relative asset, so a base of `…github.io/drydock/` emits
   `/drydock/drydock/opengraph-image.png` — a 404 on every social share, and
@@ -282,3 +294,9 @@ work — plan 001's has 49 entries and most are still live constraints.
   `**Phase gate:` as a separate gate, so a declaration line plus an
   `OPEN`/`CLOSED` status line reads as two gates, and the declaration, which
   still says "human approval" with no signature, stays unsigned forever.
+- **Dogfood a new `pull_request` workflow from a branch that already has it.**
+  The run uses the workflow file from the PR's merge commit, so the probe PR's
+  base must contain it; and a probe into `main` before the plan is pushed would
+  carry every one of the plan's files into the diff under test. Push the plan's
+  commits to a throwaway branch (`plan-NNN`), open the probes against it, and
+  delete it after. Plan 014 deviation 4.

@@ -398,3 +398,7 @@ overhead: 98.0% (orchestration + other subagents) of 61455140 tokens across 2 se
 9d009a6e-79a0-4458-80b5-a73fd882c80b  6204301  also mentions: 009-site-016-additions, 001-drydock-homepage, 002-design-system-modernisation, 003-hero-revamp, 004-seatrial-e2e-gate, 005-small-lane-and-solo-mode, 006-external-review-repairs, 007-deferred-hardening, 008-stats-gates-check-learnings, 010-guard-entry-point, 011-stale-bash-snapshot, 012-homepage-restructure, 013-guard-beside-any-planner
 a session that mentions 014-scope-gate-action is counted whole, including unrelated work in it; tokens, not cost
 ```
+
+### Applied
+
+2026-10-09, approved by Sandeep Takasi: R1, R2 and R3 applied to CLAUDE.md (R1 as its own section, "Pull requests into `main` are scope-gated", rather than inside "Working on `site/`"). Q1 answered yes: A13 promoted to PASSED with a verification-log entry.

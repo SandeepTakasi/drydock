@@ -1536,3 +1536,54 @@ Intent `.drydock/check.md`: `base: eaa60fa491db0ffc491e81a6a58472e29b8249aa`,
 
 PASSED for the claim above. This is the first live session to arm the hook
 without a plan; A6 remains the evidence for plan waves.
+
+## A13 — scope-gate Action on real pull requests
+
+**Date:** 2026-10-09
+**Runner:** GitHub-hosted `ubuntu-latest`, `actions/setup-node@v5` Node 22
+**Workflow:** `.github/workflows/scope-gate.yml` → `uses: ./scope-gate`, event `pull_request`, permissions `contents`/`issues`/`pull-requests`: read
+**Repo SHA under test:** `4d14547` (plan 014 wave 1.1 closed), pushed as branch `plan-014`
+
+**What this entry claims.** On real pull requests, the gate read the scope
+from the single issue each PR closes, passed a PR whose diff stayed inside the
+owned globs and whose criterion exited 0, and failed a PR adding an unowned
+file, naming that file in the log and as a file annotation.
+
+**What this entry does not claim.** The refusal paths (untrusted author, no
+link, two links, issue newer than the PR, linked number is a PR), a forbidden
+glob and a failing criterion are proven only by `scope-gate/gate.test.mjs`, not
+live. No other repository has used the Action. The issue and both PRs were
+opened through `gh` by the plugin author's session, logged in as the owner
+account, with the owner's approval (plan 014 deviation 4).
+
+### Method and raw output
+
+Issue [#25](https://github.com/SandeepTakasi/drydock/issues/25), author
+association OWNER, body:
+
+    - **Files owned:** `scope-gate-probe/**`
+    - **Acceptance criterion:** `node scope-gate/gate.test.mjs`
+
+Both PRs target `plan-014` with body `Closes #25`, opened after the issue.
+
+1. PR [#26](https://github.com/SandeepTakasi/drydock/pull/26) adds
+   `scope-gate-probe/in-scope.txt`. Run
+   <https://github.com/SandeepTakasi/drydock/actions/runs/37884210279>: success.
+
+       check: PASS (1 file(s), 1 criteria)
+
+2. PR [#27](https://github.com/SandeepTakasi/drydock/pull/27) adds
+   `stray-probe.txt`. Run
+   <https://github.com/SandeepTakasi/drydock/actions/runs/37884214325>: failure.
+
+       FLAG outside scope: stray-probe.txt
+       check: FLAG (1)
+
+   Check-run annotation: `stray-probe.txt: outside the scope declared in #25`.
+
+3. Both PRs closed unmerged, the issue closed, `plan-014` and the probe
+   branches deleted.
+
+### Verdict
+
+PASSED for the claim above. Release 0.19.0 may now cite this row (plan 014 D1).
