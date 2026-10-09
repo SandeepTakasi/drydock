@@ -21,7 +21,7 @@ would have lost.
 | [012-homepage-restructure](012-homepage-restructure.md) | The homepage leads with the drift problem, quotes a real BLOCK and four real refusals, and moves the evidence matrix to its own page | DONE |
 | [013-guard-beside-any-planner](013-guard-beside-any-planner.md) | The guard beside any planner: `wave-start` stops erasing an armed guard, the check skill reads another planner's task, `arm` observed live (v0.18.0) | DONE |
 | [014-scope-gate-action](014-scope-gate-action.md) | `scope-gate`: a GitHub Action that fails a PR whose diff leaves the scope its linked issue declared first | RECONCILED |
-| [015-release-019-site](015-release-019-site.md) | Release 0.19.0 (the scope-gate tag) and a homepage rebuilt for a first-time visitor: plain hero, what you type and get, three ways in, a three-step start | DONE |
+| [015-release-019-site](015-release-019-site.md) | Release 0.19.0 (the scope-gate tag) and a homepage rebuilt for a first-time visitor: plain hero, what you type and get, three ways in, a three-step start | RECONCILED |
 
 Plan 001 also has a [field case study](../case-study-001-homepage.md) written
 against it, including the parts that reflect badly on the tool.

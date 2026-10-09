@@ -1,7 +1,7 @@
 ---
 plan: 015-release-019-site
 format_version: 3
-status: DONE
+status: RECONCILED
 isolation: none
 enforcement: required
 attribution: manifest
@@ -646,3 +646,127 @@ T1.R.2, fresh-context reviewer (Opus 5.5, read-only), over `git diff d296aab..HE
 | 2026-10-09 | Phase gate | CLOSED | Built page approved by Sandeep Takasi; status DONE |
 
 ## Reconcile report
+
+Reconciled 2026-10-09 at `8e4df2c`. Gate signed (Sandeep Takasi, 2026-10-09);
+Testing Gate N/A with reason; every wave's last report PASS (1.1 by re-audit).
+Pushed `main` with tags `v0.18.0` (`e0847c1`) and `v0.19.0` in one atomic
+push; Verify 37896241940 9 of 9 green; Deploy 37896242030 success; the live
+page renders the new copy; installed plugin updated 0.18.0 to 0.19.0.
+
+### Deviation synthesis
+
+| Cluster | Items | Output |
+|---|---|---|
+| (a) assumption false | T1.R.1 finding 1: the plan assumed a `whitespace-nowrap` + `overflow-x-auto` chip stays inside its card; in a grid item with `min-width: auto` it widened the page to 608px at 375px. No gate saw it | R1 |
+| (a) assumption false | T1.R.1 finding 3: `mt-6font-display`, a fused class, emitted nothing and passed every gate | R2 |
+| (a) assumption false | `v0.18.0` was never tagged by plan 013; found only because this plan needed a tag to pin | R3 |
+| (b) instructions ambiguous | Deviation 2 (plan named "Haiku 4.5"); deviation 3 (T1.1.1r1's criterion could never pass: a regex over `faq: FaqItem`) | planwright feedback |
+| (d) executor overreach | Deviation 1 (T1.1.1 reordered the FAQ against "exactly this order" and reported no deviation) | executor feedback |
+
+### Assumption postmortem
+
+| Id | Verdict | Evidence |
+|---|---|---|
+| D1 | held | 0.19.0 cut, `v0.19.0` and backfilled `v0.18.0` pushed |
+| D2 | held | Every audit item C1-C10, U1-U7 shipped; T1.R.2 traced every claim |
+| D3 | held | Human approved the built page; two fresh reviews; no browser cases |
+| D4 | held, with one slip | 98 pinned strings byte-identical; order was not, and no criterion checked it (deviation 1) |
+| D5 | held | `npm run verify` green at every wave gate (transiently red mid-wave 1.2 on one literal, as the pressure test predicted) |
+| D6 | held | Hero commands end at 671px and 699px at 1280x800; hidden below `lg` |
+| D7 | held | Piece-name literals pass from inside the closed `<details>` |
+| D8 | held | Both 0.18 mentions hedged; T1.R.1 and T1.R.2 confirmed |
+| D9 | held | Refusal 5 pin passes against `scope-gate/gate.mjs` |
+| D10 | held | Header pill gone; "open pilot" and "field benchmarks pending" carried by hero meta and limits point 5 |
+| D11 | held | `assert-copy.mjs` handed from T1.1.1 to T1.3.1 across waves |
+| D12 | held, amended | T1.R.1 finding 7 moved the tags into the same push as `main` |
+| D13 | held | Four implementation waves (after the repair) and a review |
+| D14 | held | Replaced-task repair re-audited PASS from a clean worktree (`audit-corpus`, 40 waves) |
+| D15 | held | One repair round; T1.R.2 APPROVED |
+| Section 6, pin and literal constraints | held | All enumerated literals rendered after wave 1.2 |
+| Section 6, layout | **failed silently** | The plan had no check for horizontal overflow; a browser measurement before review caught it (R1) |
+
+### New knowledge
+
+- A `whitespace-nowrap` element inside a grid or flex child with no `min-w-0`
+  widens that child to its min-content width, and the page with it;
+  `overflow-x-auto` on the inner element does not help. Measure
+  `document.documentElement.scrollWidth` at 375px on the built page (R1).
+- A missing space between two classes is a fused unknown class: Tailwind emits
+  nothing, and `tsc`, `eslint` and `assert-copy` all pass (R2).
+- Plan 013 cut 0.18.0 without a tag; the release recipe in CLAUDE.md names the
+  install update but not the tag (R3).
+- Browser-pane screenshots at an emulated phone width can come back zoomed and
+  cropped while the page itself fits; trust `getBoundingClientRect` and
+  `scrollWidth` over the picture (folded into R1).
+
+### Proposals
+
+#### Proposal R1 | target: CLAUDE.md | kind: addition
+Finding: 375px horizontal page scroll shipped through four PASS wave gates and was caught only by a browser measurement before review (T1.R.1 finding 1, section 6 postmortem).
+Confidence: high
+```diff
+@@ Toolchain facts that cost time to discover
++- **`whitespace-nowrap` inside a grid or flex child widens the page.** A grid
++  item's default `min-width: auto` grows to the unbroken line's width, and
++  `overflow-x-auto` on the inner `<code>` does not shrink it: plan 015 shipped
++  `scrollWidth` 608 at 375px through every gate. Put `min-w-0` on the item,
++  prefer `whitespace-pre-wrap` for commands, and before any human gate measure
++  `document.documentElement.scrollWidth` at 375px on the built page. Trust that
++  number over a browser-pane screenshot, which can come back zoomed and cropped.
+```
+
+#### Proposal R2 | target: CLAUDE.md | kind: correction
+Finding: the Tailwind bullet covers mistyped tokens but not fused class names, which failed the same way (T1.R.1 finding 3).
+Confidence: high
+```diff
+ - **Tailwind v4 is CSS-first.** Tokens live in `@theme` in `app/globals.css`;
+   there is no `tailwind.config.js`. **A mistyped token emits nothing, with no
+-  error**, and unreferenced tokens are tree-shaken out of the build.
++  error**, and unreferenced tokens are tree-shaken out of the build. So does a
++  missing space between classes: `mt-6font-display` is one unknown class, and
++  the `<h1>` lost both (plan 015). No gate reads class names.
+```
+
+#### Proposal R3 | target: CLAUDE.md | kind: addition
+Finding: 0.18.0 was released without a tag, and a page that tells users to pin `@vX` must not deploy before `vX` exists (D1, D12 amendment).
+Confidence: high
+```diff
+@@ Executing a plan here
++- **A release is a bump, a tag and one push.** Tag `vX.Y.Z` at the release
++  commit and push it with `main` in a single `git push --atomic origin main
++  vX.Y.Z`, so Deploy never publishes a page pinning a tag that is not there yet.
++  Plan 013 cut 0.18.0 with no tag; plan 015 backfilled it at `e0847c1`.
+```
+
+### Questions for the human
+
+- **Q1.** Should `npm run verify` gain a horizontal-overflow check? It would need a
+  browser, like `measure-reduced-motion.mjs`, which the gate keeps out on purpose
+  ("hermetic and browser-free"). The alternative is R1's manual measurement.
+
+### Planwright feedback (cluster b)
+
+- When the copy deck says "exactly this order", the task criterion must check
+  the order, not only the strings; T1.1.1's did not (deviation 1).
+- A repair task written mid-execution still needs its criterion run to a pass
+  on a scratch copy before it is frozen (deviation 3).
+- Name executor models by tier, not version; "Haiku 4.5" was stale (deviation 2).
+- A layout-changing plan needs one browser-measured criterion (page
+  `scrollWidth` at 375px) in its review task, not only in the human gate.
+
+### Executor feedback (cluster d)
+
+- An executor must report any departure from a pinned structure (order,
+  nesting), not only from pinned strings; T1.1.1 reported "none" (deviation 1).
+
+### Token usage
+
+```
+bucket          input       cache_create  cache_read    output      total
+orchestration   364         486997        46663697      185350      47336408
+execution       172         711135        6405720       33452       7150479
+other subagents 118         368610        6417773       941         6787442
+overhead: 88.3% (orchestration + other subagents) of 61274329 tokens across 1 session(s)
+9d009a6e-79a0-4458-80b5-a73fd882c80b  47336408  also mentions: 014-scope-gate-action, 009-site-016-additions, 001-drydock-homepage, 002-design-system-modernisation, 003-hero-revamp, 004-seatrial-e2e-gate, 005-small-lane-and-solo-mode, 006-external-review-repairs, 007-deferred-hardening, 008-stats-gates-check-learnings, 010-guard-entry-point, 011-stale-bash-snapshot, 012-homepage-restructure, 013-guard-beside-any-planner
+a session that mentions 015-release-019-site is counted whole, including unrelated work in it; tokens, not cost
+```
