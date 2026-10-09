@@ -107,9 +107,6 @@ export default function RootLayout({
               />
               {site.wordmark}
             </Link>
-            <span className="hidden border border-line px-2 py-1 font-mono text-mark text-ink-dim uppercase sm:inline-block">
-              {site.status}
-            </span>
             <nav className="ml-auto flex items-center gap-5">
               {/* prefetch={false}: next@16's static export writes the
                   /evidence segment prefetch as `__next.evidence/__PAGE__.txt`
@@ -125,6 +122,14 @@ export default function RootLayout({
                   {item.label}
                 </Link>
               ))}
+              <a
+                href={site.repo}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden py-1.5 font-mono text-mark text-ink-dim uppercase transition-colors hover:text-ink md:inline-block"
+              >
+                {site.githubLabel}
+              </a>
               <MobileNav />
               <span className="font-mono text-mark text-accent uppercase">
                 v{site.version}

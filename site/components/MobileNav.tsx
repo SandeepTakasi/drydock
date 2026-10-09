@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRef } from "react";
-import { nav } from "@/content/copy";
+import { nav, site } from "@/content/copy";
 
 /**
  * The section links below `md`, where the header's inline nav is hidden.
@@ -35,6 +35,16 @@ export default function MobileNav() {
             </Link>
           </li>
         ))}
+        <li>
+          <a
+            href={site.repo}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block px-4 py-3 font-mono text-mark text-ink-dim uppercase transition-colors hover:text-ink"
+          >
+            {site.githubLabel}
+          </a>
+        </li>
       </ul>
     </details>
   );
