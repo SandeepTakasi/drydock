@@ -1,7 +1,7 @@
 ---
 plan: 015-release-019-site
 format_version: 3
-status: EXECUTING
+status: DONE
 isolation: none
 enforcement: required
 attribution: manifest
@@ -307,7 +307,7 @@ refusal 3.
 
 **Exit state:** 0.19.0 committed; the homepage follows 6a; `npm run verify` passes; T1.R.1 APPROVED.
 
-**Phase gate:** wavecheck 1.1, 1.2 and 1.3 PASS, T1.R.1 APPROVED, then a named human approves the built page (desktop and 375px, with both hero install commands visible without scrolling at 1280x800, plan 012's requirement) before the orchestrator pushes `main`, pushes tags `v0.18.0` (at `e0847c1`) and `v0.19.0`, watches Verify and Deploy go green, and updates the installed plugin.
+**Phase gate: CLOSED, approved by Sandeep Takasi - 2026-10-09.** Criteria were wavecheck 1.1 (re-audit), 1.2, 1.3 and 1.4 PASS, the Wave 1.R review APPROVED (second review, after T1.R.1 REJECTED and the D15 repair), and a named human approving the built page on desktop and at 375px before any push, tag or install.
 
 #### T0 - Baseline and plan index row
 - **Description:** Record the SHA and gate results in Baseline, run `prove-failable` on this plan and record it, add this plan's row to `docs/plans/README.md`, set status EXECUTING with the row. Stop if any criterion already exits 0.
@@ -643,5 +643,6 @@ T1.R.2, fresh-context reviewer (Opus 5.5, read-only), over `git diff d296aab..HE
 | 2026-10-09 | T1.4.1 | DONE `4bff81e` | |
 | 2026-10-09 | Wave 1.4 | PASS | |
 | 2026-10-09 | T1.R.2 | APPROVED | 4 NITs, follow-ups |
+| 2026-10-09 | Phase gate | CLOSED | Built page approved by Sandeep Takasi; status DONE |
 
 ## Reconcile report
