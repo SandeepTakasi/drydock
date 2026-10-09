@@ -1,7 +1,7 @@
 ---
 plan: 014-scope-gate-action
 format_version: 3
-status: EXECUTING
+status: DONE
 isolation: none
 enforcement: required
 attribution: manifest
@@ -170,7 +170,7 @@ criterion half and is recorded in the Baseline.
 **Exit state:** `scope-gate/` exists, its test passes in the CI matrix, the
 dogfood workflow is committed, and A13 sits in `compatibility.md` as PENDING.
 
-**Phase gate:** wavecheck 1.1 PASS, then a named human opens a scoped issue and two PRs that close it, one inside the scope (gate passes) and one touching an unowned file (gate fails naming it), with both run URLs recorded in the Progress log.
+**Phase gate: CLOSED, approved by Sandeep Takasi - 2026-10-09.** Criteria were wavecheck 1.1 PASS, then a scoped issue and two PRs that close it, one inside the scope (gate passes) and one touching an unowned file (gate fails naming it), with both run URLs recorded in the Progress log. Met by issue #25, PR #26 (pass) and PR #27 (fail naming `stray-probe.txt`); opened through `gh` under that account with approval, see deviation 4.
 
 #### T0 - Baseline and plan index row
 - **Description:** Record the SHA and gate results in Baseline, add this plan's row to `docs/plans/README.md`, run `prove-failable` on this plan and record it. Stop if any criterion already exits 0.
@@ -281,5 +281,6 @@ Deviations logged: 3 (1 discovered by wavecheck)
 | 2026-10-09 | Wave 1.1 | PASS | audit-wave PASS, wavecheck PASS; phase gate open, awaiting the live run |
 | 2026-10-09 | Phase gate, in scope | PASS | Issue [#25](https://github.com/SandeepTakasi/drydock/issues/25) (owns `scope-gate-probe/**`, criterion `node scope-gate/gate.test.mjs`); PR [#26](https://github.com/SandeepTakasi/drydock/pull/26) into `plan-014` adds `scope-gate-probe/in-scope.txt`. Run <https://github.com/SandeepTakasi/drydock/actions/runs/37884210279>: success, log `check: PASS (1 file(s), 1 criteria)`, so the gate's own suite also passed on ubuntu |
 | 2026-10-09 | Phase gate, unowned file | FAIL as intended | PR [#27](https://github.com/SandeepTakasi/drydock/pull/27) into `plan-014` adds `stray-probe.txt`. Run <https://github.com/SandeepTakasi/drydock/actions/runs/37884214325>: failure, log `FLAG outside scope: stray-probe.txt`, `check: FLAG (1)`, annotation `stray-probe.txt: outside the scope declared in #25` |
+| 2026-10-09 | Phase gate | CLOSED | Approved by Sandeep Takasi; status DONE. A13 stays PENDING by instruction; no release or tag (D1) |
 
 ## Reconcile report
