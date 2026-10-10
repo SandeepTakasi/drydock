@@ -37,7 +37,7 @@ export default function Hero() {
             ))}
           </p>
 
-          <h1 className="mt-6 font-display text-display font-semibold text-ink">
+          <h1 className="mt-6 font-display text-display font-semibold brand-text">
             {hero.headline}
           </h1>
 
@@ -61,7 +61,7 @@ export default function Hero() {
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <a
               href="#install"
-              className="bg-accent px-4 py-2 font-mono text-mark text-ground uppercase transition-opacity hover:opacity-90"
+              className="brand-fill px-4 py-2 font-mono text-mark text-ground uppercase transition-opacity hover:opacity-90"
             >
               {hero.ctaPrimary}
             </a>

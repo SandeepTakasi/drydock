@@ -18,6 +18,9 @@
 
   /* Wayfinding accent. Never used for a verdict. */
   --color-accent: #8a7dff;
+  /* Second stop of the brand gradient (accent -> accent-2). Decorative only:
+     never a verdict colour, so pass/hold/block keep their meaning. */
+  --color-accent-2: #4fc3ff;
 
   /* Verdict semantics */
   --color-pass: #46d39a;
@@ -66,13 +69,19 @@
 @layer base {
   body {
     background-color: var(--color-ground);
-    /* One very wide, very faint accent wash behind the hero. No shadows,
-       no glass, no blur anywhere else in the design. */
-    background-image: radial-gradient(
-      1100px 520px at 50% -8%,
-      color-mix(in srgb, var(--color-accent) 9%, transparent),
-      transparent 70%
-    );
+    /* Two faint washes behind the hero, violet left and cyan right: the brand
+       gradient as light. Static; nothing in the gradient pass animates. */
+    background-image:
+      radial-gradient(
+        900px 480px at 18% -6%,
+        color-mix(in srgb, var(--color-accent) 20%, transparent),
+        transparent 70%
+      ),
+      radial-gradient(
+        800px 460px at 88% 4%,
+        color-mix(in srgb, var(--color-accent-2) 13%, transparent),
+        transparent 70%
+      );
     background-repeat: no-repeat;
     color: var(--color-ink);
     font-family: var(--font-body);
@@ -88,6 +97,62 @@
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
   }
+}
+
+/* The brand gradient, accent -> accent-2, as five static utilities. Body text
+   never gets a gradient: only the display wordmark, where violet on ground is
+   still above 4.5:1 at its darkest stop. */
+@utility brand-text {
+  background-image: linear-gradient(
+    100deg,
+    var(--color-ink) 20%,
+    var(--color-accent) 60%,
+    var(--color-accent-2) 95%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+/* Primary CTA fill. Ground text on either stop is above 6:1. */
+@utility brand-fill {
+  background-image: linear-gradient(
+    100deg,
+    var(--color-accent),
+    var(--color-accent-2)
+  );
+  box-shadow: 0 8px 30px -10px
+    color-mix(in srgb, var(--color-accent) 70%, transparent);
+}
+
+/* A section's top hairline, fading in from both edges. */
+@utility brand-rule {
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--color-accent) 55%, transparent),
+    color-mix(in srgb, var(--color-accent-2) 55%, transparent),
+    transparent
+  );
+  background-size: 80% 1px;
+  background-position: center top;
+  background-repeat: no-repeat;
+}
+
+/* A faint violet wash at the top of a card, over its surface colour. */
+@utility card-wash {
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-accent) 7%, transparent),
+    transparent 45%
+  );
+}
+
+/* Hover edge for interactive-feeling cards; pair with hover: and
+   transition-shadow (default duration, so no timing literal in a section). */
+@utility card-edge {
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--color-accent-2) 55%, transparent);
 }
 
 /* Reduced motion. Framer Motion writes the initial state as an INLINE style

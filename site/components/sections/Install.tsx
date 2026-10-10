@@ -76,7 +76,7 @@ export default function Install({ meta }: SectionProps) {
     <Section meta={meta}>
       <ol className="grid gap-px border border-line bg-line">
         {install.steps.map((step) => (
-          <li key={step.index} className="min-w-0 bg-surface px-4 py-6 sm:px-6">
+          <li key={step.index} className="card-wash min-w-0 bg-surface px-4 py-6 sm:px-6">
             <div className="flex items-baseline gap-4">
               <span
                 aria-hidden="true"

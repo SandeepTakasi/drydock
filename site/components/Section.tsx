@@ -30,7 +30,7 @@ export default function Section({ meta, children, reveal = true }: SectionShellP
       initial={reveal ? "hidden" : false}
       whileInView="shown"
       viewport={{ once: true, amount: 0.2 }}
-      className="border-t border-line"
+      className="brand-rule"
     >
       <div className="mx-auto w-full max-w-6xl scroll-mt-24 px-6 py-20 sm:px-10 sm:py-24">
         <p className="font-mono text-mark text-accent uppercase">
