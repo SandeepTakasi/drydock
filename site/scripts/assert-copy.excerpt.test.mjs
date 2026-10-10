@@ -1,7 +1,8 @@
 // The excerpt check, proven both ways. Injects excerpts into the built home
 // page and runs assert-copy on it in fixture mode: real lines quoted from their
 // section must pass, and a reordered, invented, cross-section or unrecorded
-// excerpt must fail. The PASS set is the hero tour's scenes, so this also
+// excerpt must fail, each for its own stated reason, and the page must carry
+// exactly the five tour scenes. The PASS set is all five scenes, so this also
 // proves every tour line is verbatim before the page uses it.
 //
 //   node site/scripts/assert-copy.excerpt.test.mjs   (builds site/out if absent)
@@ -18,6 +19,14 @@ const base = readFileSync(HOME, "utf8");
 
 const LOG = "docs/verification-log.md";
 const SCENES = {
+  audit: ["docs/plans/004-seatrial-e2e-gate.md", [
+    "Wavecheck 1.1 — BLOCK — 2026-08-20",
+    "| 1. Plan integrity | PASS |",
+    "| 5. Deviation reconciliation | BLOCK |",
+    "T1.1.5 invented a fourth verdict value PARTIAL that the format contract does not define",
+    "Deviations logged: 6 (3 discovered by wavecheck)",
+    "Verdict: BLOCK. Wave 1.2 must not start.",
+  ]],
   plan: ["docs/plans/014-scope-gate-action.md", [
     "T1.1.1 - gate.mjs and its test",
     "- Files owned: scope-gate/gate.mjs, scope-gate/gate.test.mjs",
@@ -58,30 +67,39 @@ const SCENES = {
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const pre = (src, lines) =>
   `<pre data-excerpt-of="${src}">${lines.map((l) => `<span>${esc(l)}</span>`).join("")}</pre>`;
+// The built page minus its first tour scene, for the count rule.
+const oneLess = base.replace(/<pre[^>]*data-excerpt-of="[^"]*"[^>]*>[\s\S]*?<[/]pre>/, "");
 const dir = mkdtempSync(join(tmpdir(), "excerpt-"));
-const run = (name, blocks) => {
+const run = (name, blocks, page, env) => {
   const f = join(dir, `${name}.html`);
-  writeFileSync(f, base.replace("</main>", `${blocks.join("")}</main>`));
-  const r = spawnSync(process.execPath, [join(SITE, "scripts", "assert-copy.mjs"), f], { encoding: "utf8" });
-  return { status: r.status, err: r.stderr };
+  writeFileSync(f, page.replace("</main>", `${blocks.join("")}</main>`));
+  const r = spawnSync(process.execPath, [join(SITE, "scripts", "assert-copy.mjs"), f], {
+    encoding: "utf8",
+    env: { ...process.env, ...env },
+  });
+  return { status: r.status, err: r.stderr ?? "" };
 };
 
 const g = SCENES.guard[1];
+const FIVE = { ASSERT_COPY_EXCERPTS: "5" };
+// [name, expected exit, stderr naming the rule that fired, blocks, page, env]
 const cases = [
-  ["all tour scenes pass", 0, Object.values(SCENES).map(([s, l]) => pre(s, l))],
-  ["reordered lines fail", 1, [pre(LOG, [g[0], g[2], g[1], ...g.slice(3)])]],
-  ["an invented line fails", 1, [pre(LOG, [...g.slice(0, 6), "check: PASS (0 file(s), 0 criteria)"])]],
-  ["a line from another section fails", 1, [pre(LOG, [...g.slice(0, 6), "FLAG outside scope: stray-probe.txt"])]],
-  ["an unrecorded source fails", 1, [pre("docs/compatibility.md", g)]],
-  ["a non-heading first line fails", 1, [pre(LOG, g.slice(1))]],
+  ["all five scenes pass", 0, "", Object.values(SCENES).map(([s, l]) => pre(s, l)), base, {}],
+  ["reordered lines fail", 1, "is not in order", [pre(LOG, [g[0], g[2], g[1], ...g.slice(3)])], base, {}],
+  ["an invented line fails", 1, "is not in order", [pre(LOG, [...g.slice(0, 6), "check: PASS (0 file(s), 0 criteria)"])], base, {}],
+  ["a line from another section fails", 1, "is not in order", [pre(LOG, [...g.slice(0, 6), "FLAG outside scope: stray-probe.txt"])], base, {}],
+  ["an unrecorded source path fails", 1, "must be a docs/plans/ path", [pre("docs/../docs/verification-log.md", g)], base, {}],
+  ["a non-heading first line fails", 1, "heading", [pre(LOG, g.slice(1))], base, {}],
+  ["the built page has exactly five scenes", 0, "", [], base, FIVE],
+  ["a page with four scenes fails", 1, "expected the 5 hero tour scenes", [], oneLess, FIVE],
 ];
 
 let failed = 0;
-for (const [name, want, blocks] of cases) {
-  const { status, err } = run(name.replace(/\W+/g, "-"), blocks);
-  const ok = status === want;
+for (const [name, want, why, blocks, page, env] of cases) {
+  const { status, err } = run(name.replace(/[^a-z0-9]+/gi, "-"), blocks, page, env);
+  const ok = status === want && (want === 0 || err.includes(why));
   if (!ok) failed++;
-  console.log(`${ok ? "ok  " : "FAIL"} ${name} (exit ${status}, want ${want})${ok || want ? "" : "\n" + err}`);
+  console.log(`${ok ? "ok  " : "FAIL"} ${name} (exit ${status}, want ${want}${why ? `, "${why}"` : ""})${ok ? "" : "\n" + err}`);
 }
 console.log(failed ? `FAIL, ${failed} of ${cases.length} cases` : `PASS, ${cases.length} cases`);
 process.exit(failed ? 1 : 0);

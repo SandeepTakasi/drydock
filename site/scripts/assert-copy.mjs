@@ -293,7 +293,10 @@ for (const { open, body } of excerpts) {
     }
     pos = j + line.length;
   }
-  verdictOf.set(p, lines[0].match(/\b(PASS|BLOCK)\b/)?.[1]);
+  // Only a report heading carries a verdict. Two scenes may quote one file
+  // (the verification log), and one without a verdict must not erase another's.
+  const verdict = lines[0].match(/\b(PASS|BLOCK)\b/)?.[1];
+  if (verdict) verdictOf.set(p, verdict);
 }
 // The figcaption badge sits outside the checked <pre>: bind it to the report too.
 const badges = elementsWith("data-excerpt-verdict");
@@ -310,8 +313,11 @@ if (badges.length !== 1) {
 }
 // The hero tour: five scenes, one per part of the loop. Losing one would
 // leave a capability on the page with nothing real behind it.
-if (checkRepoSources && excerpts.length !== 5) {
-  fail(`excerpt: expected the 5 hero tour scenes, found ${excerpts.length} data-excerpt-of element(s)`);
+// Fixture mode skips the count unless ASSERT_COPY_EXCERPTS names one, which
+// is how assert-copy.excerpt.test.mjs proves this rule can fail.
+const wantExcerpts = checkRepoSources ? 5 : Number(process.env.ASSERT_COPY_EXCERPTS) || null;
+if (wantExcerpts !== null && excerpts.length !== wantExcerpts) {
+  fail(`excerpt: expected the ${wantExcerpts} hero tour scenes, found ${excerpts.length} data-excerpt-of element(s)`);
 }
 if (excerpts.length < 1 || excerptLines < 1) {
   fail(`excerpt: expected >= 1 data-excerpt-of element with >= 1 line, found ${excerpts.length} element(s), ${excerptLines} line(s)`);

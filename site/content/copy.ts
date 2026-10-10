@@ -186,8 +186,11 @@ export const hero = {
   ctaSecondary: "Star on GitHub",
   tourLead:
     "Five real moments from this repo, one per part of the loop. Every line is copied from the record it links to.",
+  tourLabel: "Drydock tour",
   tourPause: "Pause the tour",
   tourPlay: "Play the tour",
+  tourPauseShort: "Pause",
+  tourPlayShort: "Play",
   /**
    * The hero tour. Each `text`, with `**` and backticks stripped and
    * whitespace collapsed, is a substring of its `source` normalised the same
@@ -210,7 +213,7 @@ export const hero = {
         { text: "- Depends on: T0", tone: "dim" },
         { text: "- Model / thinking: Complex / extended (Sonnet 5.5) Executor: drydock:executor", tone: "dim" },
         { text: "- Forbidden: editing drydock-audit.mjs or any file outside owns", tone: "block" },
-        { text: "- Acceptance criterion: node -e", tone: "pass" },
+        { text: "- Acceptance criterion: node -e", tone: "ink" },
       ],
       caption:
         "planwright splits a change into tasks, each with the files it may touch, what it must not do, and a command that proves it is done.",
@@ -305,7 +308,7 @@ export const hero = {
       caption:
         "When a plan closes, reconcile turns what went wrong into proposed fixes to your docs. They are applied only when you approve them.",
     },
-  ] as TourScene[],
+  ] satisfies TourScene[],
   wave: {
     label: "WAVE 1.1",
     subLabel: "3 TASKS · DISJOINT OWNERSHIP",

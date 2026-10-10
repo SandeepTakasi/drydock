@@ -12,7 +12,7 @@ export default function Ways({ meta }: SectionProps) {
         {ways.items.map((item) => (
           <li
             key={item.title}
-            className="card-wash flex min-w-0 flex-col bg-surface px-6 py-8 transition-shadow hover:card-edge sm:px-8"
+            className="card-wash flex min-w-0 flex-col bg-surface px-6 py-8 sm:px-8"
           >
             <h3 className="font-mono text-mark uppercase text-ink">
               {item.title}

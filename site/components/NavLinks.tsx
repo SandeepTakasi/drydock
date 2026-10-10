@@ -9,7 +9,7 @@ import { nav } from "@/content/copy";
 /**
  * The header's inline section links (from `md` up), with the one for the
  * section in the middle of the viewport marked current. An
- * IntersectionObserver watches every section on the page; its callback
+ * IntersectionObserver watches every section on the current page; its callback
  * sets the state, so nothing runs synchronously in the effect body. On the
  * evidence route the Evidence link is current instead.
  *
@@ -19,6 +19,13 @@ import { nav } from "@/content/copy";
  */
 export default function NavLinks() {
   const pathname = usePathname();
+  // The layout stays mounted across client navigation, so the links are
+  // keyed by path: every page gets fresh state and an observer on its own
+  // sections, never a sighting carried over from the last page.
+  return <Links key={pathname} pathname={pathname} />;
+}
+
+function Links({ pathname }: { pathname: string }) {
   const [section, setSection] = useState<string | null>(null);
 
   useEffect(() => {

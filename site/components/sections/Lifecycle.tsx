@@ -45,7 +45,7 @@ export default function Lifecycle({ meta }: SectionProps) {
     <Section meta={meta}>
       <ol className="grid gap-px bg-line md:grid-cols-3">
         {lifecycle.steps.map((step) => (
-          <li key={step.index} className="card-wash min-w-0 bg-surface px-6 py-7 transition-shadow hover:card-edge">
+          <li key={step.index} className="card-wash min-w-0 bg-surface px-6 py-7">
             <p className="font-mono text-mark text-accent uppercase">
               {step.index}
             </p>

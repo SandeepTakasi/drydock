@@ -32,20 +32,24 @@ const BADGE: Record<TourScene["badgeTone"], string> = {
  * each `<pre data-excerpt-of>` is checked line by line by assert-copy whether
  * or not it is on screen. The first scene paints statically (no inline
  * opacity before hydration); later scenes replay their lines with the clip
- * reveal from lib/motion. The tour advances every TOUR_DWELL_MS until the
- * visitor hovers, focuses, clicks a tab or presses Pause, and never under
- * reduced motion.
+ * reveal from lib/motion. The tour advances every TOUR_DWELL_MS while the
+ * pointer is away and focus is outside it (the toggle excepted), until a tab
+ * is chosen or Pause is pressed, and never under reduced motion. The tabs
+ * follow the ARIA tabs pattern: roving tabindex, arrows, Home and End.
  */
 export default function HeroTour() {
   const scenes = hero.tour;
   const motionSafe = useMotionSafe();
   const [active, setActive] = useState(0);
   const [stopped, setStopped] = useState(false);
-  const [held, setHeld] = useState(false);
+  // Hover and focus hold the tour separately, so the pointer leaving cannot
+  // advance it while keyboard focus is inside a panel about to be hidden.
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
   // Bumped on every scene change; 0 means nothing has changed since paint.
   const [run, setRun] = useState(0);
   const played = run > 0;
-  const running = motionSafe && !stopped && !held;
+  const running = motionSafe && !stopped && !hovered && !focused;
 
   useEffect(() => {
     if (!running) return;
@@ -62,17 +66,37 @@ export default function HeroTour() {
     setActive(i);
   };
 
+  // ARIA tabs keyboard contract: arrows move between tabs and choose them,
+  // Home and End jump to the ends; only the active tab is in the Tab order.
+  const onTabKey = (e: React.KeyboardEvent, i: number) => {
+    const last = scenes.length - 1;
+    const to =
+      e.key === "ArrowRight" ? (i === last ? 0 : i + 1)
+      : e.key === "ArrowLeft" ? (i === 0 ? last : i - 1)
+      : e.key === "Home" ? 0
+      : e.key === "End" ? last
+      : null;
+    if (to === null) return;
+    e.preventDefault();
+    choose(to);
+    document.getElementById(`tour-tab-${scenes[to].id}`)?.focus();
+  };
+
   return (
     <div
       className="min-w-0"
-      onMouseEnter={() => setHeld(true)}
-      onMouseLeave={() => setHeld(false)}
-      onFocus={() => setHeld(true)}
-      onBlur={() => setHeld(false)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      // Focus on the Play/Pause toggle itself does not hold the tour, so a
+      // keyboard Play visibly plays.
+      onFocus={(e) => setFocused(!(e.target as HTMLElement).dataset.tourToggle)}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocused(false);
+      }}
     >
       <p className="mb-3 text-note text-ink-dim">{hero.tourLead}</p>
       <div className="flex items-center justify-between gap-3">
-        <div role="tablist" aria-label="Drydock tour" className="flex flex-wrap gap-1">
+        <div role="tablist" aria-label={hero.tourLabel} className="flex flex-wrap gap-1">
           {scenes.map((scene, i) => (
             <button
               key={scene.id}
@@ -81,7 +105,9 @@ export default function HeroTour() {
               id={`tour-tab-${scene.id}`}
               aria-selected={i === active}
               aria-controls={`tour-panel-${scene.id}`}
+              tabIndex={i === active ? 0 : -1}
               onClick={() => choose(i)}
+              onKeyDown={(e) => onTabKey(e, i)}
               className={
                 "border-b-2 px-2.5 py-2 font-mono text-mark uppercase transition-colors " +
                 (i === active
@@ -96,11 +122,12 @@ export default function HeroTour() {
         {motionSafe ? (
           <button
             type="button"
+            data-tour-toggle="true"
             onClick={() => setStopped((s) => !s)}
             aria-label={stopped ? hero.tourPlay : hero.tourPause}
             className="shrink-0 border border-line px-2.5 py-1.5 font-mono text-mark text-ink-dim uppercase transition-colors hover:text-ink"
           >
-            {stopped ? "Play" : "Pause"}
+            {stopped ? hero.tourPlayShort : hero.tourPauseShort}
           </button>
         ) : null}
       </div>
