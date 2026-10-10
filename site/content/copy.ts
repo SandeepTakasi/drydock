@@ -33,7 +33,26 @@ export interface EvidenceRow {
 
 export interface TerminalLine {
   text: string;
-  tone: "dim" | "pass" | "block";
+  tone: "dim" | "ink" | "accent" | "pass" | "block";
+}
+
+/**
+ * One hero tour scene. `lines` are verbatim from `source`: the first is the
+ * heading of the section they come from, and assert-copy checks every line in
+ * order inside that section. Exactly one scene sets `verdict`, which binds its
+ * badge to the heading's PASS or BLOCK.
+ */
+export interface TourScene {
+  id: string;
+  tab: string;
+  label: string;
+  badge: string;
+  badgeTone: "accent" | "pass" | "block";
+  verdict?: true;
+  source: string;
+  href: string;
+  lines: TerminalLine[];
+  caption: string;
 }
 
 export interface FaqItem {
@@ -165,19 +184,67 @@ export const hero = {
   sub: "Plan a change, let Claude Code agents build it in parallel, each inside the files it owns, and get every wave audited against the real git diff before the next one starts. Collisions and edits outside the plan get caught at the gate, not found in your repo.",
   ctaPrimary: "Get started",
   ctaSecondary: "Star on GitHub",
-  artifactLead:
-    "A real gate from plan 004: four checks passed, one did not, and the next wave was not allowed to start.",
+  tourLead:
+    "Five real moments from this repo, one per part of the loop. Every line is copied from the record it links to.",
+  tourPause: "Pause the tour",
+  tourPlay: "Play the tour",
   /**
-   * Verbatim lines from plan 004's `### Wavecheck 1.1 — BLOCK — 2026-08-20`
-   * report. Each `text`, with `**` and backticks stripped and whitespace
-   * collapsed, is a substring of the plan file normalised the same way.
+   * The hero tour. Each `text`, with `**` and backticks stripped and
+   * whitespace collapsed, is a substring of its `source` normalised the same
+   * way, in order, inside the section its first line heads. Lines may be
+   * trimmed, never reworded. Proven against the real files by
+   * scripts/assert-copy.excerpt.test.mjs.
    */
-  artifact: {
-    source: "docs/plans/004-seatrial-e2e-gate.md",
-    href: `${BLOB}/docs/plans/004-seatrial-e2e-gate.md`,
-    label: "drydock:wavecheck, plan 004",
-    verdict: "BLOCK",
-    lines: [
+  tour: [
+    {
+      id: "plan",
+      tab: "Plan",
+      label: "drydock:planwright, plan 014",
+      badge: "PLAN",
+      badgeTone: "accent",
+      source: "docs/plans/014-scope-gate-action.md",
+      href: `${BLOB}/docs/plans/014-scope-gate-action.md`,
+      lines: [
+        { text: "T1.1.1 - gate.mjs and its test", tone: "accent" },
+        { text: "- Files owned: scope-gate/gate.mjs, scope-gate/gate.test.mjs", tone: "ink" },
+        { text: "- Depends on: T0", tone: "dim" },
+        { text: "- Model / thinking: Complex / extended (Sonnet 5.5) Executor: drydock:executor", tone: "dim" },
+        { text: "- Forbidden: editing drydock-audit.mjs or any file outside owns", tone: "block" },
+        { text: "- Acceptance criterion: node -e", tone: "pass" },
+      ],
+      caption:
+        "planwright splits a change into tasks, each with the files it may touch, what it must not do, and a command that proves it is done.",
+    },
+    {
+      id: "guard",
+      tab: "Guard",
+      label: "live hook, run A12",
+      badge: "DENIED",
+      badgeTone: "block",
+      source: "docs/verification-log.md",
+      href: `${BLOB}/docs/verification-log.md#a12--arm-guard-in-a-live-session`,
+      lines: [
+        { text: "A12 — arm guard in a live session", tone: "dim" },
+        { text: "arm: armed 1 glob(s) from .drydock/check.md", tone: "ink" },
+        { text: "Drydock ownership violation: wave check does not own tmp-a12/stray.txt.", tone: "block" },
+        { text: "Owned by this wave: tmp-a12/ok.txt", tone: "dim" },
+        { text: "check: PASS (1 file(s), 0 criteria)", tone: "pass" },
+        { text: "FLAG outside scope: tmp-a12/bash.txt", tone: "block" },
+        { text: "check: FLAG (1)", tone: "block" },
+      ],
+      caption:
+        "With the guard armed, the live hook refused a write outside the scope. A Bash write is not prevented: it landed, and the audit flagged it.",
+    },
+    {
+      id: "audit",
+      tab: "Audit",
+      label: "drydock:wavecheck, plan 004",
+      badge: "BLOCK",
+      badgeTone: "block",
+      verdict: true,
+      source: "docs/plans/004-seatrial-e2e-gate.md",
+      href: `${BLOB}/docs/plans/004-seatrial-e2e-gate.md`,
+      lines: [
       { text: "Wavecheck 1.1 — BLOCK — 2026-08-20", tone: "block" },
       { text: "| 1. Plan integrity | PASS |", tone: "pass" },
       { text: "| 2. Ownership audit | PASS |", tone: "pass" },
@@ -194,10 +261,51 @@ export const hero = {
       },
       { text: "Deviations logged: 6 (3 discovered by wavecheck)", tone: "dim" },
       { text: "Verdict: BLOCK. Wave 1.2 must not start.", tone: "block" },
-    ] as TerminalLine[],
-    caption:
-      "An excerpt of a real wavecheck report, verbatim from plan 004 with lines trimmed, never reworded: every acceptance criterion passed, and the gate still blocked a verdict value the contract does not define.",
-  },
+      ],
+      caption:
+        "Four checks passed, one did not, and the next wave was not allowed to start: the gate blocked a verdict value the plan format does not define.",
+    },
+    {
+      id: "ci",
+      tab: "CI",
+      label: "scope-gate, run A13",
+      badge: "FLAG",
+      badgeTone: "block",
+      source: "docs/verification-log.md",
+      href: `${BLOB}/docs/verification-log.md#a13--scope-gate-action-on-real-pull-requests`,
+      lines: [
+        { text: "A13 — scope-gate Action on real pull requests", tone: "dim" },
+        { text: "- Files owned: scope-gate-probe/**", tone: "ink" },
+        { text: "- Acceptance criterion: node scope-gate/gate.test.mjs", tone: "ink" },
+        { text: "check: PASS (1 file(s), 1 criteria)", tone: "pass" },
+        { text: "FLAG outside scope: stray-probe.txt", tone: "block" },
+        { text: "check: FLAG (1)", tone: "block" },
+        { text: "Check-run annotation: stray-probe.txt: outside the scope declared in #25.", tone: "block" },
+      ],
+      caption:
+        "In CI, a pull request inside the scope its issue declared passed, and one adding an unowned file failed with that file named.",
+    },
+    {
+      id: "reconcile",
+      tab: "Reconcile",
+      label: "drydock:reconcile, plan 015",
+      badge: "PROPOSED",
+      badgeTone: "accent",
+      source: "docs/plans/015-release-019-site.md",
+      href: `${BLOB}/docs/plans/015-release-019-site.md`,
+      lines: [
+        { text: "Proposals", tone: "dim" },
+        { text: "Proposal R1 | target: CLAUDE.md | kind: addition", tone: "accent" },
+        { text: "Finding: 375px horizontal page scroll shipped through four PASS wave gates", tone: "ink" },
+        { text: "Confidence: high", tone: "dim" },
+        { text: "+- whitespace-nowrap inside a grid or flex child widens the page.", tone: "pass" },
+        { text: "Proposal R2 | target: CLAUDE.md | kind: correction", tone: "accent" },
+        { text: "Proposal R3 | target: CLAUDE.md | kind: addition", tone: "accent" },
+      ],
+      caption:
+        "When a plan closes, reconcile turns what went wrong into proposed fixes to your docs. They are applied only when you approve them.",
+    },
+  ] as TourScene[],
   wave: {
     label: "WAVE 1.1",
     subLabel: "3 TASKS · DISJOINT OWNERSHIP",

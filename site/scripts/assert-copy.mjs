@@ -308,6 +308,11 @@ if (badges.length !== 1) {
     fail(`excerpt: verdict badge reads ${JSON.stringify(text)} but the bound report heading says ${JSON.stringify(verdictOf.get(bp))}`);
   }
 }
+// The hero tour: five scenes, one per part of the loop. Losing one would
+// leave a capability on the page with nothing real behind it.
+if (checkRepoSources && excerpts.length !== 5) {
+  fail(`excerpt: expected the 5 hero tour scenes, found ${excerpts.length} data-excerpt-of element(s)`);
+}
 if (excerpts.length < 1 || excerptLines < 1) {
   fail(`excerpt: expected >= 1 data-excerpt-of element with >= 1 line, found ${excerpts.length} element(s), ${excerptLines} line(s)`);
 }

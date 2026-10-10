@@ -203,6 +203,13 @@ export function heroReveal(i: number): Variants {
  * zero duration. Consumers swap the variant object
  * (`safe ? sectionReveal : NO_MOTION`) instead of branching their JSX.
  */
+/**
+ * How long one hero tour scene stays up before the tour advances, in ms.
+ * Long enough to read seven short lines; the tour also stops on hover, on
+ * focus, on any tab click, on Pause, and never runs under reduced motion.
+ */
+export const TOUR_DWELL_MS = 7000;
+
 export const NO_MOTION: Variants = {
   hidden: {
     opacity: 1,

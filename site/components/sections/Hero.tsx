@@ -1,10 +1,5 @@
+import HeroTour from "@/components/HeroTour";
 import { hero, install, site } from "@/content/copy";
-
-const TONE_CLASS = {
-  dim: "text-ink-dim",
-  pass: "text-pass",
-  block: "text-block",
-} as const;
 
 /**
  * The page's opening element, a server component with no entrance animation:
@@ -12,18 +7,15 @@ const TONE_CLASS = {
  *
  * Left column: one quiet meta line, the plain `<h1>`, the promise, the sub
  * line, both install commands (from `lg` up only, one scrollable line each),
- * and the CTAs. At `lg` a lead line and a mono block sit beside it rendering
- * `hero.artifact`, a real wavecheck BLOCK excerpt from plan 004. Each line is
- * one `<span>` holding exactly `line.text`; the `<pre>` names its source file
- * in `data-excerpt-of` so assert-copy can check every line against that plan.
+ * and the CTAs. Beside it at `lg` (below it on narrower screens) sits
+ * `HeroTour`: five real moments from the repo as tabs, each line checked by
+ * assert-copy against the plan or verification-log section it quotes.
  * Below both, the thesis band.
  *
  * Exempt from the `Section` shell (plan 001 Decision 18): no eyebrow, no
  * `<h2>`. The wave diagram now lives in the loop section.
  */
 export default function Hero() {
-  const { artifact } = hero;
-
   return (
     <div className="mx-auto w-full max-w-6xl px-6 pt-16 pb-20 sm:px-10 sm:pt-24">
       <div className="grid gap-10 lg:grid-cols-2 lg:items-start">
@@ -82,44 +74,7 @@ export default function Hero() {
           </div>
         </div>
 
-        <div className="min-w-0">
-          <p className="mb-3 text-note text-ink-dim">{hero.artifactLead}</p>
-          <figure className="border border-line bg-surface">
-            <figcaption className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 font-mono text-mark uppercase">
-              <span className="text-ink-dim">{artifact.label}</span>
-              <span
-                className="border border-block px-2 py-1 text-block"
-                data-excerpt-verdict={hero.artifact.source}
-              >
-                {artifact.verdict}
-              </span>
-            </figcaption>
-            <div className="px-4 py-5">
-              <pre
-                data-excerpt-of={artifact.source}
-                className="font-mono text-note whitespace-pre-wrap break-words"
-              >
-                {artifact.lines.map((line) => (
-                  <span
-                    key={line.text}
-                    className={`block ${TONE_CLASS[line.tone]}`}
-                  >
-                    {line.text}
-                  </span>
-                ))}
-              </pre>
-            </div>
-            <p className="border-t border-line px-4 py-3 text-note text-ink-dim">
-              {artifact.caption}{" "}
-              <a
-                href={artifact.href}
-                className="text-accent underline underline-offset-2"
-              >
-                {artifact.source}
-              </a>
-            </p>
-          </figure>
-        </div>
+        <HeroTour />
       </div>
 
       <div className="mt-16 flex items-center gap-4">
