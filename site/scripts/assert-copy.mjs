@@ -258,25 +258,33 @@ for (const { open, body } of excerpts) {
   const p = attr(open, "data-excerpt-of");
   const src = readRepo(p, "excerpt");
   if (src === undefined) continue;
-  if (!p.startsWith("docs/plans/") || p.includes("..")) {
-    fail(`excerpt: data-excerpt-of must be a docs/plans/ path, got ${JSON.stringify(p)}`);
+  // A plan, or the verification log the evidence rows cite (the hero tour
+  // quotes both). Nothing else: an excerpt must come from a record.
+  if (p.includes("..") || !(p.startsWith("docs/plans/") || p === "docs/verification-log.md")) {
+    fail(`excerpt: data-excerpt-of must be a docs/plans/ path or docs/verification-log.md, got ${JSON.stringify(p)}`);
   }
   const source = flat(src);
   const lines = [...body.matchAll(/<span\b[^>]*>([\s\S]*?)<\/span>/g)].map((m) => flat(inner(m[1])));
   excerptLines += lines.length;
   if (lines.length < 6) fail(`excerpt: expected >= 6 lines, found ${lines.length} in ${p}`);
   if (lines.some((l) => l === "")) fail(`excerpt: an empty line in the excerpt of ${p}`);
-  // Bind to ONE report: the first line must head a `### ` section, and every
-  // line must be found in order inside that section only. Matching against the
-  // whole file let a PASS re-audit of the same wave vouch for a BLOCK excerpt.
-  const at = lines[0] ? source.indexOf(`### ${lines[0]}`) : -1;
-  if (at === -1) {
-    fail(`excerpt: first line ${JSON.stringify(lines[0])} is not a "### " report heading in ${p}`);
+  // Bind to ONE section: the first line must be a `##` to `####` heading, and
+  // every line must be found in order inside that section only, which runs to
+  // the next heading of the same or a higher level. Matching against the whole
+  // file let a PASS re-audit of the same wave vouch for a BLOCK excerpt.
+  const esc = (lines[0] ?? "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const head = lines[0] ? new RegExp(`(?:^| )(#{2,4}) ${esc}`).exec(source) : null;
+  if (!head) {
+    fail(`excerpt: first line ${JSON.stringify(lines[0])} is not a "##" to "####" heading in ${p}`);
     continue;
   }
-  const next = source.indexOf("### ", at + 4);
-  const report = source.slice(at, next === -1 ? undefined : next);
-  let pos = 4;
+  const level = head[1].length;
+  const at = head.index + head[0].indexOf("#");
+  const nextHead = new RegExp(` #{1,${level}} `, "g");
+  nextHead.lastIndex = at + level + 1;
+  const next = nextHead.exec(source);
+  const report = source.slice(at, next ? next.index : undefined);
+  let pos = level + 1;
   for (const line of lines) {
     const j = line === "" ? -1 : report.indexOf(line, pos);
     if (j === -1) {
