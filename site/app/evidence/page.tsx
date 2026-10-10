@@ -17,7 +17,7 @@ export default function EvidencePage() {
   return (
     <>
       <header className="mx-auto w-full max-w-6xl px-6 pt-16 sm:px-10">
-        <h1 className="font-display text-display font-semibold text-ink">
+        <h1 className="font-display text-display font-semibold brand-text">
           {evidencePage.heading}
         </h1>
         <p className="mt-6 max-w-3xl text-lead text-ink-dim">

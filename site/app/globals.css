@@ -155,6 +155,19 @@
     color-mix(in srgb, var(--color-accent-2) 55%, transparent);
 }
 
+/* An FAQ answer eases in when its <details> opens. CSS only: the
+   reduced-motion rule below cuts every animation to 0.01ms. */
+@keyframes faq-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@utility faq-reveal {
+  animation: faq-in 200ms ease-out;
+}
+
 /* Reduced motion. Framer Motion writes the initial state as an INLINE style
    (e.g. style="opacity:0"), which CSS cannot override without !important — so
    every animated element carries [data-reveal] and gets force-restored here.

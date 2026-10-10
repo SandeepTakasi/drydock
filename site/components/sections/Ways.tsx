@@ -1,4 +1,4 @@
-// "Where it fits": the lead, three cards (title, one-line command chip, body,
+// "Where it fits": the lead, three cards (title, command chip that wraps at spaces, body,
 // optional link), then the planner note. No motion.
 import Section from "@/components/Section";
 import { ways } from "@/content/copy";

@@ -23,8 +23,8 @@ export default function Hero() {
           <p className="flex flex-wrap gap-x-2 font-mono text-mark text-ink-dim uppercase">
             {hero.meta.split(" · ").map((item, i) => (
               <span key={item} className="whitespace-nowrap">
-                {i > 0 ? "· " : ""}
-                {item}
+                {i > 0 ? <span aria-hidden="true">· </span> : null}
+                {item}{" "}
               </span>
             ))}
           </p>

@@ -15,7 +15,7 @@ export default function Faq({ meta }: SectionProps) {
           {faq.map((item, i) => (
             <li key={item.q} className="bg-surface">
               <details open={i === 0} className="group">
-                <summary className="flex cursor-pointer list-none items-baseline gap-4 px-6 py-5 text-body text-ink marker:content-none sm:px-8">
+                <summary className="flex cursor-pointer list-none items-baseline gap-4 px-6 py-5 text-body text-ink marker:content-none sm:px-8 [&::-webkit-details-marker]:hidden">
                   <span
                     aria-hidden="true"
                     className="font-mono text-mark text-accent group-open:text-ink-dim"
@@ -23,8 +23,18 @@ export default function Faq({ meta }: SectionProps) {
                     {String(i + 1).padStart(2, "0")}
                   </span>
                   <span className="flex-1">{item.q}</span>
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 16 16"
+                    className="h-3.5 w-3.5 shrink-0 self-center text-ink-dim transition-transform group-open:rotate-180"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.75"
+                  >
+                    <path d="M4 6l4 4 4-4" />
+                  </svg>
                 </summary>
-                <p className="max-w-3xl px-6 pb-6 text-note text-ink-dim sm:px-8 sm:pl-16">
+                <p className="faq-reveal max-w-3xl px-6 pb-6 text-note text-ink-dim sm:px-8 sm:pl-16">
                   {item.a}
                 </p>
               </details>

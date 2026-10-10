@@ -5,7 +5,8 @@ import Link from "next/link";
 import mark from "@/assets/drydock-mark.png";
 
 import MobileNav from "@/components/MobileNav";
-import { footer, nav, site } from "@/content/copy";
+import NavLinks from "@/components/NavLinks";
+import { footer, site } from "@/content/copy";
 import { fontVariables } from "@/lib/fonts";
 
 import "./globals.css";
@@ -82,7 +83,7 @@ export default function RootLayout({
           {site.skipLinkText}
         </a>
 
-        <header className="sticky top-0 z-40 border-b border-line bg-ground">
+        <header className="sticky top-0 z-40 border-b border-line bg-ground/80 backdrop-blur-md">
           <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-6 px-6 sm:px-10">
             <Link
               href="/"
@@ -108,20 +109,7 @@ export default function RootLayout({
               {site.wordmark}
             </Link>
             <nav className="ml-auto flex items-center gap-5">
-              {/* prefetch={false}: next@16's static export writes the
-                  /evidence segment prefetch as `__next.evidence/__PAGE__.txt`
-                  but the client requests `__next.evidence.__PAGE__.txt`, so
-                  every prefetch 404s in the console. Navigation itself works. */}
-              {nav.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  prefetch={false}
-                  className="hidden py-1.5 font-mono text-mark text-ink-dim uppercase transition-colors hover:text-ink md:inline-block"
-                >
-                  {item.label}
-                </Link>
-              ))}
+              <NavLinks />
               <a
                 href={site.repo}
                 target="_blank"
@@ -142,7 +130,7 @@ export default function RootLayout({
           {children}
         </main>
 
-        <footer className="border-t border-line">
+        <footer className="brand-rule">
           <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-10 sm:px-10 md:flex-row md:items-center md:justify-between">
             <p className="max-w-sm text-note text-ink-dim">{footer.tagline}</p>
             <ul className="flex flex-wrap gap-x-6 gap-y-1">

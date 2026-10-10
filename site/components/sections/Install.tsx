@@ -58,7 +58,14 @@ function CopyButton({ text, label }: { text: string; label: string }) {
             : "border-line text-ink-dim hover:border-line-strong hover:text-ink")
         }
       >
-        {copied ? install.copiedLabel : install.copyLabel}
+        <span className="inline-flex items-center gap-1.5">
+          {copied ? (
+            <svg aria-hidden="true" viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 8.5l3 3 7-7" />
+            </svg>
+          ) : null}
+          {copied ? install.copiedLabel : install.copyLabel}
+        </span>
       </button>
       <span aria-live="polite" className="sr-only">
         {copied ? install.copiedLabel : ""}
@@ -69,7 +76,8 @@ function CopyButton({ text, label }: { text: string; label: string }) {
 
 /**
  * Three numbered steps; each command is a real selectable <code> element
- * (works with no JS) on one scrolling line, plus a copy button.
+ * (works with no JS) that wraps at spaces, with only a single over-long word
+ * scrolling, plus a copy button that drops below it on narrow screens.
  */
 export default function Install({ meta }: SectionProps) {
   return (
@@ -93,12 +101,12 @@ export default function Install({ meta }: SectionProps) {
               {step.commands.map((cmd) => (
                 <div
                   key={cmd}
-                  className="flex min-w-0 items-center gap-3 border border-line px-3 py-2"
+                  className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 border border-line px-3 py-2"
                 >
                   <span aria-hidden="true" className="font-mono text-accent">
                     $
                   </span>
-                  <code className="min-w-0 flex-1 overflow-x-auto font-mono text-body whitespace-pre-wrap text-ink">
+                  <code className="min-w-0 flex-1 basis-[12rem] overflow-x-auto font-mono text-body whitespace-pre-wrap text-ink">
                     {cmd}
                   </code>
                   <CopyButton
