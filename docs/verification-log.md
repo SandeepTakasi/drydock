@@ -1587,3 +1587,140 @@ Both PRs target `plan-014` with body `Closes #25`, opened after the issue.
 ### Verdict
 
 PASSED for the claim above. Release 0.19.0 may now cite this row (plan 014 D1).
+
+## A14 — planwright first-run profile step
+
+**Date:** 2026-10-19
+**Host version:** `claude --version` → `2.1.299 (Claude Code)`
+**Node:** v22.23.1
+**Installed plugin:** drydock 0.20.0, tag `v0.20.0` at `354af9c`, installed by
+`claude plugin marketplace update drydock && claude plugin update drydock@drydock`
+(`Plugin "drydock" updated from 0.19.0 to 0.20.0`). `diff -rq` of the cache
+against this repo's `drydock/` showed only the host's `.in_use` marker.
+
+**What this entry claims.** A fresh session on the installed 0.20.0, in a repo
+with no `drydock.config.yaml`, scanned before asking and, once given answers,
+wrote a profile that `validate-config` passes. It also claims the step was
+**not** followed as written on the first turn.
+
+**What this entry does not claim.** One run, headless (`claude -p`), in a
+throwaway repo the parent session built: `package.json` (`test: node --test
+test/`, `lint: node --check src/greet.js`), `src/greet.js`, `src/version.js`,
+`test/greet.test.js`, two conventional commits, no UI. The parent session is
+the plugin author's working session; it wrote none of the folded skill text
+under test (that was the 0.20.0 session) but did write the prompts.
+
+### Method and raw output
+
+Run 1, fresh session `6a43247d`, 17 turns, from the scratch repo:
+
+    claude -p "/drydock:planwright Plan adding a farewell(name) function to src/greet.js,
+      returning 'Goodbye, <name>', with a node:test case. It is tiny; use the small lane."
+      --permission-mode acceptEdits --allowedTools "Skill Read Write Edit Glob Grep Bash(node:*) ..."
+
+Tool calls from its transcript: `git ls-files`, `cat package.json` and every
+tracked file, `npm test` and `npm run lint` (test red on Node 22:
+`MODULE_NOT_FOUND` for `test/`), `resolve-plans-dir`, `git log`, Read
+`.../0.20.0/skills/planwright/reference/config-schema.md`, `ls
+drydock.config.yaml .drydock`, then Write `docs/plans/001-farewell.md`,
+`validate-plan --strict` (FAIL (3), fixed, then PASS) and `prove-failable`.
+Every script call printed `drydock-audit.mjs v0.20.0 at
+/Users/.../plugins/cache/drydock/drydock/0.20.0/scripts/drydock-audit.mjs`.
+
+No scan table, no profile, no `validate-config`. Its closing message decided
+the questions the step reserves for the user and asked about the profile last:
+
+    2. One executor subagent runs the task (`execution: fleet`). If you'll run it
+       yourself in this session, it should be `solo`.
+    3. "sandeep" (from git config) signs the phase approval.
+    4. There's no `drydock.config.yaml` (the per-repo Drydock settings file) yet.
+       Should I write one with these values? This is the only open question, and
+       nothing waits on it.
+
+Run 2, same session resumed (`--resume 6a43247d`) with: solo; signer Sandeep
+Takasi; write the profile; no browser surface. It wrote `drydock.config.yaml`
+(sections `execution`, `gates`, `testing`, `vcs`, `gates_human`, `paths`,
+`browser`, `tracker`, each with `provenance: discovered <file>` or `stated
+2026-10-19`; two marked "planner proposal ... not objected to"). Re-run by the
+parent session against the installed script (exit 0):
+
+    validate-config: PASS, drydock.config.yaml (config_version 1, execution: solo)
+
+### Verdict
+
+OBSERVED PARTIAL. The scan and the profile writer work; the trigger did not
+fire on the first turn, and the agent answered two unanswerable questions from
+defaults and git config instead of asking. Headless mode offers no question UI,
+which may explain the deferral. An interactive run is still to be observed.
+
+## A15 — wavecheck closing step
+
+**Date:** 2026-10-19
+**Host, Node, install:** as A14.
+
+**What this entry claims.** On the A14 repo's small-lane plan, fresh sessions
+running the installed 0.20.0 wavecheck refused to close on an unsigned human
+gate, refused with NO-GO on a declared Testing Gate case with no spec, and,
+with both resolved, wrote the Reconcile report and set `RECONCILED`.
+
+**What this entry does not claim.** No Playwright spec was ever run: the GO
+path and a FAIL verdict from a real runner are unobserved. Run (2)'s Testing
+Gate and the `trial operator` signature were fixtures the parent session
+committed (`07f3e40`) to provoke the refusal. Run (3)'s signature names
+Sandeep Takasi, written by the parent session after the user approved it in
+chat, on the scratch plan only.
+
+### Method and raw output
+
+Execution (scratch repo, all via the installed script): T0 by the parent;
+`wave-start docs/plans/001-farewell.md 1.0`; T1.0.1 by a fresh session
+(`16c62fa9`) with Edit/Write, commit `5f6033e`, `task-close` →
+`T1.0.1 -> 5f6033e (2 file(s))`. `.drydock/enforcement.log` recorded two
+`allow` decisions (`mechanism":"file-tool"`) and six Bash `observed` entries.
+
+Wavecheck 1.0, fresh session `97d9dc68`: BLOCK.
+
+    wave-start: added `.drydock/` to .../ddtrial/.gitignore, its state files are not part of your history
+    ...
+    audit-wave 1.0: FAIL (1), docs/plans/001-farewell.md
+      - working tree is not clean after the wave's task commits, 1 uncommitted change(s): M .gitignore
+
+The `.gitignore` line is written by `ensureDrydockIgnored` (from plan 010,
+`a795149`), not by the task. The parent committed it outside the plan
+(`20c0532`, remediation (c), logged against D1) and reset status to EXECUTING.
+
+Closing run (1), fresh session `71dfddec`, `/drydock:wavecheck <plan> 1.0`:
+wave PASS, then, unasked, the closing step refused:
+
+    **I didn't close the plan.** Phase 1 needs Sandeep Takasi's approval, and that
+    line still reads "+ approval by Sandeep Takasi" instead of `CLOSED, approved by
+    Sandeep Takasi, <date>`. A passing wave doesn't count as that approval.
+
+Closing run (2), fresh session `3b2793ea`, after fixture `07f3e40` (gate
+`CLOSED, approved by trial operator - 2026-10-19.`; §11 one `blocker` case TG1,
+no `e2e/`): refused, nothing written, status stayed `DONE`.
+
+    **1. The Phase 1 human gate isn't signed by a human.** ... the plan names the
+    signer as **Sandeep Takasi** ... and `drydock.config.yaml` says the same
+    **2. The Testing Gate is NO-GO.** ... No spec backs it. There's no
+    `<e2e_dir>/001-farewell/` ... the gate rule's verdict is NO-GO either way
+
+It did not run `npx playwright test` (it would have fetched Playwright from
+npm), so there is no runner summary line.
+
+Closing run (3), fresh session `dd9461d0`, after `4528042` (gate `CLOSED,
+approved by Sandeep Takasi - 2026-10-19.`; §11 restored to `N/A, <reason>`):
+wrote `## Reconcile report` (pre-close checks; deviation synthesis by cluster
+(a)-(d); assumption postmortem for Decisions 1-8; Proposal R1 `target:
+CLAUDE.md | kind: addition`, confidence high, with a diff; tooling feedback;
+`### Token usage` with `drydock-stats.mjs` output) and set `status:
+RECONCILED`. It noted the gate's ` - ` separator against the `, ` it expects
+and accepted it.
+
+### Verdict
+
+OBSERVED for both refusals and the Reconcile report. Observed defect, not a
+0.20.0 regression: `wave-start`'s uncommitted `.gitignore` edit BLOCKs the
+first wave of any repo that does not already ignore `.drydock/`. Text drift:
+wavecheck/SKILL.md asks for `CLOSED, approved by <name>, <date>`;
+plan-format.md specifies `CLOSED, approved by <name> - <YYYY-MM-DD>`.
