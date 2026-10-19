@@ -8,7 +8,7 @@
     {
       "name": "drydock",
       "source": "./drydock",
-      "description": "Plan-first parallel execution: rigorous plan documents, wave-based subagent execution with disjoint file ownership, plan-conformance verification gates, and a reconcile loop that feeds execution learnings back into your docs. Nothing sails until it leaves the dock.",
+      "description": "Keeps an AI agent inside the files you said it may touch: a hook denies writes outside a declared scope, Bash writes are detected, and an audit checks the diff. Use it alone, beside any planner, as a PR check, or with plan-first parallel waves. Nothing sails until it leaves the dock.",
       "keywords": [
         "plan",
         "planning",

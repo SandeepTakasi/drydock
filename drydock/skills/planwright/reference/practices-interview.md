@@ -27,13 +27,13 @@ block is skipped. Do not ask them for a docs-only or library-only change.
 - **Is there a UI or API surface this change affects that a browser can exercise?** *(A "no" here is the N/A reason, written into the plan verbatim. A "yes" means the plan carries written cases before implementation starts, not after.)*
 - **Base URL per environment, and the exact command that starts the app.** *(Guessing a port is how a gate ends up testing nothing. If the app needs a build step or a static server, capture that command too.)*
 - **Auth approach for a test run:** a dedicated test account, a bypass or seeded session, or genuinely none? *(An unauthenticated target is a legitimate answer; an unstated one is a HALT at run time.)*
-- **Evidence retention:** how long should screenshots and video be kept, and may they be committed? *(Default: written under the evidence root and gitignored. Committing binary evidence to a repo is permanent, so it is asked, never assumed.)*
-- **Do you want re-runnable `.spec.ts` files generated, and where?** *(Default `e2e/` at the repo root, overridable by the `e2e_dir` plugin config. Note whether a Playwright runner already exists, if not, generated specs are written but cannot be executed, and must be labelled as such rather than described as a passing suite.)*
+- **Evidence retention:** how long should screenshots be kept, and may they be committed? *(Default: written under the evidence root and gitignored. Committing binary evidence to a repo is permanent, so it is asked, never assumed.)*
+- **Where should the specs live, and is a Playwright runner already installed?** *(Default `e2e/` at the repo root, overridable by the `e2e_dir` plugin config. The final wave writes one spec per case there and the closing wavecheck runs them, so a repo with no runner needs one installed, or a CI step that installs it outside the tree.)*
 - **Which cases must be blockers?** *(Severity is the whole gate rule: blocker FAIL is NO-GO, major FAIL needs a written human override, minor is recorded only. A plan where everything is a blocker has not been thought about.)*
 
 This is **not** the same question as the manual browser-confirmation gate under
 *Review & gates* below. That one is a human looking at a screen and approving.
-This one is written cases a browser executes and `drydock:seatrial` scores. A
+This one is written cases that run as Playwright specs at the closing wavecheck. A
 plan can carry both, and they answer to different failures: a person notices that
 something looks wrong, a written case notices that something stopped being true.
 

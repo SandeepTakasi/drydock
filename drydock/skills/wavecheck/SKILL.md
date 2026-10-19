@@ -132,10 +132,58 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/drydock-audit.mjs plan-status --write <plan>
 
 It derives the status from the wavecheck reports in the plan, including the one
 you just wrote, so it cannot disagree with the gates. It refuses to choose
-between `DONE` and `RECONCILED`: closing a plan is `drydock:reconcile`'s call,
+between `DONE` and `RECONCILED`: closing the plan is the separate step below,
 not a side effect of the last wave passing. `validate-plan` fails on a status
 the reports contradict, and `audit-wave` notes one, so a stale status is
 detectable rather than merely regrettable.
+
+## Closing the plan (after the final wave PASSes)
+
+This step was the reconcile skill until 0.20.0. Run it once, when every wave
+has a PASS report. You still edit no code and no doc: you propose diffs a human
+applies or rejects. Allowed proposal targets come from plugin config
+`docs_targets` (default `CLAUDE.md,docs/decisions,docs/architecture.md`).
+
+**Refuse to close, and say why, when any of these holds:**
+
+- **A human gate is unsigned.** Every `**Phase gate:**` line that declares a
+  human approval must read `CLOSED, approved by <name>, <date>`. Do not infer
+  approval from a passing wave, an APPROVED review, or being asked to close.
+- **The Testing Gate fails.** If `## Testing Gate` is not `N/A, <reason>`, run
+  its specs (`npx playwright test <e2e_dir>/<plan-id>`, written by the plan's
+  final-wave spec task) and apply the gate rule in the format contract. A
+  blocker FAIL is NO-GO; a major FAIL needs a recorded human override naming the
+  case, the reason and who decided. No specs at all is NO-GO: the plan declared
+  browser cases and nothing ran them. Paste the runner's summary line verbatim.
+
+**Then write the close-out** into the plan's **`## Reconcile report`** section
+(located by NAME, position 17):
+
+1. **Deviation synthesis.** Cluster the Deviation Log by root cause: (a) false
+   assumption, (b) ambiguous instructions, (c) codebase drift, (d) executor
+   overreach. (a) and (c) produce doc proposals; (b) and (d) produce feedback on
+   planwright and the executor contract.
+2. **Assumption postmortem.** Each load-bearing Decision Log and Findings entry,
+   by id: held / failed / never-exercised. A failed assumption traced to a doc
+   claim is the highest-value finding.
+3. **Proposals.** One concern each, minimal diff against the doc as it is now;
+   anything `low` confidence becomes a question instead:
+
+   ````
+   #### Proposal R<n> | target: <path> | kind: correction|addition|deletion
+   Finding: <one sentence, citing deviation/decision ids>
+   Confidence: high|medium|low
+   ```diff
+   <minimal unified diff>
+   ```
+   ````
+4. **Token usage.** Run `node ${CLAUDE_PLUGIN_ROOT}/scripts/drydock-stats.mjs <plan>`
+   and paste its output verbatim under `### Token usage`; if it exits 1, say no
+   transcript was found. Propose nothing from the numbers.
+
+Set status `RECONCILED`, and tell the user: proposals by target, the top three,
+and any (b)/(d) feedback. No retrospective prose, nothing the docs already say,
+and no edits to the plan's historical sections.
 
 ## Cost discipline
 

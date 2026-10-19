@@ -1,6 +1,6 @@
 # Drydock host profile — `drydock.config.yaml`
 
-One file per repository, written by `drydock:init`, read by `planwright`.
+One file per repository, written and read by `planwright` (the `init` skill wrote it before 0.20.0).
 
 Checked by `drydock-audit.mjs validate-config <path>`.
 

@@ -312,7 +312,7 @@ cases.push(
   // a declaration.
   ["an evidence line refusing video is not a video declaration",
     () => validateRaw("tg-novideo", tgPlan(oneGoodCase("screenshot only (no video — the driver cannot capture it)")), true),
-    (out) => out.includes("no `video` evidence declared. Good:") && out.includes("validate-plan --strict: PASS")],
+    (out) => out.includes("no `video` evidence declared. Good") && out.includes("validate-plan --strict: PASS")],
 
   // ...while a real declaration is still plan 004's NO-GO.
   ["a case actually declaring video is still rejected",
@@ -322,7 +322,7 @@ cases.push(
   // Prose about the driver's limits is not an evidence declaration either.
   ["prose mentioning video outside an evidence line is ignored",
     () => validateRaw("tg-prose", tgPlan(`**Browser:** Playwright MCP. Video capture is impossible here.\n${oneGoodCase("screenshot")}`), true),
-    (out) => out.includes("no `video` evidence declared. Good:")],
+    (out) => out.includes("no `video` evidence declared. Good")],
 );
 
 // --------------------------------------------------------------------------
@@ -768,7 +768,7 @@ cases.push(
 );
 
 // --------------------------------------------------------------------------
-// A Testing Gate naming a driver seatrial will not use (issue #7). Same shape
+// A Testing Gate naming a driver other than Playwright (issue #7). Same shape
 // as the `video` rule one field over: the run would produce a different kind of
 // evidence than the gate promises, and the case substitutes an artifact nobody
 // can compare. Caught at plan time because it is cheaper there.
@@ -807,11 +807,11 @@ cases.push(
 
   ["naming another driver only to exclude it does not trip the check",
     () => validateRaw("gate-guarded", gateSection("Playwright MCP, Chromium (not Puppeteer)"), true),
-    (out) => !out.includes("as the driver, but seatrial drives")],
+    (out) => !out.includes("as the driver, but Testing Gate cases run")],
 
   ["the supported driver alone is fine",
     () => validateRaw("gate-ok", gateSection("Chromium via Playwright MCP"), true),
-    (out) => !out.includes("as the driver, but seatrial drives")]
+    (out) => !out.includes("as the driver, but Testing Gate cases run")]
 );
 
 // --------------------------------------------------------------------------
@@ -1161,11 +1161,11 @@ cases.push(
     );
 
     // Same scoping, second contract. The HOST PROFILE is its own schema, owned
-    // by `skills/init`, and its vocabulary is legitimate there and nowhere else.
+    // by planwright (it was `skills/init` until 0.20.0), and its vocabulary is legitimate there and nowhere else.
     // Adding it globally would let any skill say `provenance` and mean whatever
     // it liked -- the drift this check exists to catch.
     const initOnly = new Set(
-      [...read("skills/init/reference/config-schema.md").matchAll(/`?([a-z][a-z_]{2,24})`?:/g)].map((m) => m[1])
+      [...read("skills/planwright/reference/config-schema.md").matchAll(/`?([a-z][a-z_]{2,24})`?:/g)].map((m) => m[1])
     );
     for (const t of ["discovered", "stated"]) initOnly.add(t);
 
@@ -1178,7 +1178,7 @@ cases.push(
       const allowed = (tok) =>
         vocabulary.has(tok) ||
         (rel.startsWith("agents/") && agentOnly.has(tok)) ||
-        (rel.startsWith("skills/init/") && initOnly.has(tok));
+        (rel.startsWith("skills/planwright/") && initOnly.has(tok));
       for (const m of read(rel).matchAll(/`([a-z][a-z_ ]{2,24})`/g)) {
         const tok = m[1].toLowerCase();
         if (!allowed(tok) && !unknown.some((u) => u.tok === tok && u.rel === rel)) {
@@ -1979,45 +1979,9 @@ cases.push(
 );
 
 // --------------------------------------------------------------------------
-// `learnings <path>...`: CLAUDE.md lines and Deviation Log rows naming a path.
-
-const lrn = (name, claude, log, paths) => {
-  const dir = mkrepo(name);
-  writeFileSync(join(dir, "CLAUDE.md"), claude);
-  git(dir, ["add", "CLAUDE.md"]);
-  git(dir, ["commit", "-q", "-m", "claude"]);
-  mkdirSync(join(dir, "docs", "plans"), { recursive: true });
-  writeFileSync(join(dir, "docs", "plans", "001-x.md"),
-    `# x\n\n## Deviation Log\n\n| # | what |\n|---|---|\n${log}\n\n## Next\n\n| 9 | src/lib/widget.js outside the log |\n`);
-  const r = spawnSync(NODE, [CLI, "learnings", ...paths], { cwd: dir, encoding: "utf8" });
-  return `EXIT:${r.status}\n${r.stdout}${r.stderr}`;
-};
+// Usage.
 
 cases.push(
-  ["learnings finds a CLAUDE.md line naming the path", () =>
-    lrn("lr-claude", "intro\nnever edit src/lib/widget.js by hand\n", "| 1 | unrelated |", ["src/lib/widget.js"]),
-  (out) => out.includes("EXIT:0") && out.includes("## src/lib/widget.js") && /CLAUDE\.md:2 {2}never edit src\/lib\/widget\.js/.test(out) && !out.includes("(none)")],
-
-  ["learnings finds a Deviation Log row naming the path", () =>
-    lrn("lr-log", "nothing\n", "| 1 | src/lib/widget.js broke the build |", ["src/lib/widget.js"]),
-  (out) => /001-x\.md:7 {2}\| 1 \| src\/lib\/widget\.js broke/.test(out) && !out.includes("outside the log") && !out.includes("| # |") && !out.includes("---")],
-
-  ["learnings lists basename-only hits after full-path hits", () =>
-    lrn("lr-order", "see other/widget.js too\nsrc/lib/widget.js is fragile\n", "| 1 | none |", ["src/lib/widget.js"]),
-  (out) => {
-    const full = out.indexOf("CLAUDE.md:2"), only = out.indexOf("basename only:"), base = out.indexOf("CLAUDE.md:1");
-    return full > 0 && only > full && base > only;
-  }],
-
-  ["learnings ignores a short extensionless basename", () =>
-    lrn("lr-short", "the index is rebuilt\nit lives in a.js\n", "| 1 | index and a.js |", ["src/index", "x/a.js"]),
-  (out) => out.split("(none)").length === 3],
-
-  ["learnings with no paths is exit 2", () => {
-    const r = spawnSync(NODE, [CLI, "learnings"], { cwd: DIR, encoding: "utf8" });
-    return `EXIT:${r.status}`;
-  }, (out) => out === "EXIT:2"],
-
   ["usage lists validate-config with its argument", () => cli(DIR, []),
   (out) => out.includes("validate-config <drydock.config.yaml>")],
 );

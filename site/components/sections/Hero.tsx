@@ -29,7 +29,8 @@ export default function Hero() {
             ))}
           </p>
 
-          <h1 className="mt-6 font-display text-display font-semibold brand-text">
+          {/* pb: background-clip:text paints only the box, and line-height 0.92 leaves the y's descender outside it */}
+          <h1 className="mt-6 pb-[0.12em] font-display text-display font-semibold brand-text">
             {hero.headline}
           </h1>
 

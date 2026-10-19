@@ -44,15 +44,6 @@ const REQUIRED_EVIDENCE = [
   // tools and nothing else. Drop them and the page can read as a guarantee.
   "outside the project directory are not enforced",
   "Bash-mediated writes bypass file-tool hooks",
-  // A7 ships a browser gate that ran once and generated spec files nobody ran.
-  // Both halves have to stay on the page: the run is the claim, and this is the
-  // ceiling that would quietly drop off it first.
-  // A7's ceiling MOVED on 2026-09-02: the generated specs are now executed in
-  // CI and pass, so pinning "GENERATED, NOT EXECUTED" would force the page to
-  // understate its own evidence. What it pins instead is the limit that would
-  // drop off the page first now that there is a green suite to boast about —
-  // one engine. A passing suite on one browser is not a compatibility rate.
-  "Chromium only",
   "A2b",
   // Plan 015, A13: the scope-gate row must keep its single-repo caveat.
   "no other repository has used the Action yet",
@@ -81,27 +72,23 @@ const REQUIRED_HOME = [
   "drift",
   "one-file change",
   "NOTHING SAILS UNTIL IT LEAVES THE DOCK",
-  // the nine lifecycle pieces. seatrial was missing here for two releases:
-  // it shipped in v0.6.0 and the page never learned about it, so the flow strip
-  // sold five steps for a six-step product. The literal list is what stops a
-  // piece going quiet, and it can only do that for pieces somebody added to it.
+  // the six lifecycle pieces. A piece missing from this list can go quiet on
+  // the page; seatrial once did for two releases. 0.20.0 removed seatrial,
+  // reconcile and init, so they are no longer required.
   "planwright",
   "executor",
   "executor-isolated",
   "wavecheck",
   "replan",
-  "seatrial",
-  "reconcile",
   // See A6 comment above these same literals in REQUIRED_EVIDENCE.
   "outside the project directory are not enforced",
   "Bash-mediated writes bypass file-tool hooks",
-  // check and init joined the page in 0.16.0 (init itself shipped in 0.14.0).
+  // check joined the page in 0.16.0.
   // The two sentence pins below pin check's ceiling now that A12 shows the
   // opt-in guard denying file-tool edits. The Bash half must stay on the page
   // beside it; without it the page could sell a guard that only covers file
   // tools as full enforcement and still go green.
   "/drydock:check",
-  "/drydock:init",
   "file-tool edits outside that scope are denied",
   "Bash writes are still only detected.",
   // Plan 015: the hero promise.

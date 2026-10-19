@@ -11,7 +11,7 @@
 | `docs/verification-log.md` | raw evidence behind each compatibility row |
 | `docs/self-audit.md` | adversarial dry-run of the auditor |
 | `docs/plans/` | Drydock plan documents |
-| `.drydock/` | plan-execution runtime state, **gitignored**: `wave-owns.json` (the armed ownership boundary; deleting it closes the wave), `enforcement.log` (one JSONL receipt per hook decision), `attribution.jsonl` (task → commit manifest under `attribution: manifest`), `testing/` (seatrial evidence) |
+| `.drydock/` | plan-execution runtime state, **gitignored**: `wave-owns.json` (the armed ownership boundary; deleting it closes the wave), `enforcement.log` (one JSONL receipt per hook decision), `attribution.jsonl` (task → commit manifest under `attribution: manifest`), `testing/` (Testing Gate evidence) |
 
 ## `site/` — four frozen contracts, then components
 

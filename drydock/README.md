@@ -2,18 +2,19 @@
 
 Ships get built here. Nothing sails until it leaves the dock.
 
-Drydock is a plan-first execution system for Claude Code: rigorous plan
-documents, wave-based parallel subagent execution with **disjoint file
-ownership**, plan-conformance **verification gates** between waves, and a
-**reconcile loop** that feeds what execution learned back into your project
-docs. The plan is the source of truth from first question to final doc diff.
+Drydock keeps an AI agent inside the files you said it may touch. A
+`PreToolUse` hook **denies** any Write/Edit outside a declared set of globs, a
+second hook **detects** shell writes it cannot block, and an audit checks the
+final diff against the same list. Use the guard on its own, beside any planner,
+or with Drydock's own plans when the work is big enough to split into waves.
 
-## Just the guard
+## 1. The guard (start here)
 
-No plan needed. `/drydock:check` writes the intent file below and can run these
-steps for you. Set `DD` as in the lifecycle section further down, then:
+No plan needed. `/drydock:check` writes the intent file, arms the guard, and
+audits the result for you. By hand:
 
 ```bash
+# The install dir is not on PATH. In a checkout of this repo, DD=drydock.
 DD=$(ls -d ~/.claude/plugins/cache/drydock/drydock/*/ | sort -V | tail -1)
 # .drydock/check.md: base: <commit sha>, Files owned: `src/**`-style globs
 node "$DD/scripts/drydock-audit.mjs" arm .drydock/check.md    # Write/Edit outside the globs are denied
@@ -22,211 +23,119 @@ node "$DD/scripts/drydock-audit.mjs" check .drydock/check.md  # audit the diff a
 rm .drydock/wave-owns.json                                    # disarm
 ```
 
-Ceilings: Bash writes are detected rather than prevented, and catch-all globs
-(anything starting with `**`) are refused, so name the directories.
+**With another planner:** keep it. Before its task runs, `/drydock:check` reads
+that task (for example a Superpowers `**Files:**` block), proposes the owned
+list for you to confirm, and can arm it. Nothing parses the other tool's format;
+the audit flags any path the skill missed.
 
-### With another planner
+**On pull requests:** the `scope-gate` Action fails a PR that changes files
+outside the scope declared in its linked issue. See
+[`scope-gate/README.md`](../scope-gate/README.md).
 
-Keep your planner. Before its task runs, `/drydock:check` reads that task (for
-example a Superpowers `writing-plans` task and its `**Files:**` block),
-proposes the owned list for you to confirm, and can arm it. Afterwards `check`
-audits the diff against the same list. Nothing parses the other tool's
-format: the skill reads it each time, and the audit flags any path it missed.
-Bash writes are detected, not prevented. New in 0.18.0 and not yet run by a
-live session.
+### What the guard does not do
 
-## The lifecycle
+- **Shell writes are detected, not prevented.** `sed -i`, `>` and
+  `git checkout` never reach a file-tool hook. A `PostToolUse` hook records
+  what each Bash command changed, and the audit fails on any change outside
+  scope. Gitignored writes, write-then-restore inside one command, and
+  backgrounded commands escape it; concurrent Bash can be misattributed.
+- **It is wave-level, not per-task.** The hook reads one owned set at a time.
+- **It is inert unless `.drydock/wave-owns.json` exists.** That is the default
+  state and the escape hatch.
+- **Catch-all globs are refused.** Anything starting with `**`: name the
+  directories.
+
+## 2. Plans, when the work is big
+
+For multi-file work that should be split across parallel subagents:
 
 ```
-planwright ──► [human approves] ──► execute waves ──► wavecheck ──► seatrial ──► reconcile
-                                         ▲                │              │
-                                         └── /replan ◄────┴──────────────┘
-                                             (on BLOCK, drift, or NO-GO)
+planwright ──► [human approves] ──► execute waves ──► wavecheck ──► (final) wavecheck closes the plan
+                                         ▲                │
+                                         └── /replan ◄────┘  (on BLOCK or drift)
 ```
 
 | Piece | Kind | Invocation |
 |-------|------|-----------|
-| `planwright` | skill | model or `/drydock:planwright` |
-| `check` | skill | model or `/drydock:check` (small work, no plan) |
+| `check` | skill | `/drydock:check`: the guard, no plan |
+| `planwright` | skill | `/drydock:planwright`: writes the plan (and the repo profile on first run) |
 | `executor` / `executor-isolated` | agents | spawned per task by the orchestrating session |
-| `wavecheck` | skill | named as a blocking gate inside every plan |
-| `seatrial` | skill | model, or `/drydock:seatrial` (after the final wave) |
-| `replan` | skill | **human-only** (`disable-model-invocation`) |
-| `reconcile` | skill | final step of every plan |
+| `wavecheck` | skill | gate after every wave; after the last, it runs the Testing Gate and proposes doc fixes |
+| `replan` | skill | **human-only**: patches a plan, never regenerates it |
 
-## What makes it different
+- **Disjoint ownership per wave.** `wave-start` arms the guard from the plan;
+  no file is owned by two tasks in one wave. Same-wave tasks can also run in
+  separate git worktrees (`isolation: worktree`).
+- **Plan-conformance auditing, not code review.** Wavecheck asks one question:
+  did the wave do exactly what the plan said and nothing else? It judges from
+  per-task commits and executed acceptance criteria, never from what executors
+  claim. `audit-wave` prints the SHAs and file lists it derived.
+- **The plan is checked by a program.** `validate-plan` catches duplicate task
+  ids, same-wave ownership collisions, same-wave dependencies, and Testing Gate
+  defects; `prove-failable` errors on any criterion that already passes before
+  its task runs.
+- **A small lane, and an offer to skip the plan.** `lane: small` is one phase,
+  one wave, one gate. `execution: solo` drops subagents. Below about five units
+  of work planwright offers to just do the task.
+- **The Testing Gate is written before the code.** UI-touching plans carry
+  end-to-end cases from the start; a final-wave task writes them as Playwright
+  specs and the closing wavecheck runs them. A browser verdict is evidence about
+  the paths tested, not proof other defects are absent.
+- **Closing proposes, never applies.** The final wavecheck turns deviations and
+  failed assumptions into proposed diffs to `CLAUDE.md`, ADRs and architecture
+  docs. A human applies them.
 
-- **Disjoint ownership is enforced, not requested** (v0.6.0). A `PreToolUse`
-  hook reads `.drydock/wave-owns.json` and **denies** any Write/Edit to a path no
-  task in the active wave owns. Bash writes are **detected rather than
-  prevented** by a second hook (v0.12.0), because what a shell command writes
-  cannot be read off the command string. Prose did not hold this line: a plan in
-  this repo staged a file outside its `owns` and the stated cause was that the work
-  ran inline, where the contract binds nobody. A hook binds every writer in the
-  session. Three ceilings, stated plainly: **Bash writes are detected, not
-  prevented** (`sed -i`, `>`, `git checkout` never reach a file-tool hook, so a
-  second hook records what they changed and `audit-wave` fails the wave on it);
-  it is **wave-level, not per-task**, which is a property of what the hook reads
-  rather than a limit anyone has measured (A8); and it is **inert unless
-  `.drydock/wave-owns.json` exists**, which is both the default state and the
-  escape hatch. Same-wave tasks can additionally be
-  isolated by git worktrees (`isolation: worktree` in the plan header).
-  **`enforcement: required` is a receipt check, not a coverage guarantee**: it
-  asserts the hook ran, and the hook is one of two layers. The hook *prevents*
-  at the tool boundary and cannot see Bash; `audit-wave` *detects* from each
-  task's commit and the working tree, and that ownership verdict is derived
-  purely from those two sources, so it catches what the hook is blind to,
-  after the fact rather than before. The enforcement receipt is a separate
-  signal: when the plan declares `enforcement: required`, the same script also
-  reads `.drydock/enforcement.log`, the hook's own output, and judges it on
-  its own terms. A wave with an empty log ran without prevention, not without
-  auditing. **The Bash detection layer's own ceilings, stated plainly:** a
-  `.gitignore`d write leaves no receipt; a write-then-restore inside one
-  command shows nothing; a content-identical rewrite of an already-dirty path
-  (a `touch`, or a line-ending normalisation) now yields a detected receipt
-  with no real change, a false positive traded on purpose for the false
-  negative it replaces; a backgrounded command finishes after the hook fires,
-  so its writes land in a later command's diff or nowhere; and attribution is
-  "changed around this command", not "caused by it", so two executors running
-  Bash concurrently can be credited with each other's changes.
-- **Plan-conformance auditing, not code review.** Wavecheck answers one
-  question: did the wave do exactly what the plan said and nothing else?
-  Ownership boundaries, forbidden lists, acceptance criteria verified against
-  the actual diff, never against executor claims.
-- **The plan is checked by a program, not only by a reader.**
-  `scripts/drydock-audit.mjs validate-plan` catches duplicate task ids,
-  same-wave ownership collisions, dependencies on same-wave tasks, and Testing
-  Gate defects; `audit-wave` computes the ownership audit from per-task commits
-  and prints the SHAs and file lists it derived, so wavecheck's evidence is
-  reproducible rather than eyeballed. Its first run reported a same-wave
-  dependency in two of this repo's plans that reviews and pressure tests had
-  missed, **and one of the two turned out to be the checker's own defect**,
-  which is the more useful half of the story: the wave was read off the task id
-  when the format contract says an id outlives its wave assignment, so a
-  correctly-moved task looked like a cycle. One real defect (plan 004, accepted
-  and recorded as its deviation 15), one checker bug (fixed in v0.8.10).
-- **There is a small lane, and the planner routes you to it.** Not every change
-  wants fourteen waves. `lane: small` is **one phase, one wave, one gate**: no
-  `Wave x.R` quality review, no adversarial pressure test, plan under ~100
-  lines. And `execution: solo` drops subagent spawning entirely, so the orchestrating
-  session runs the tasks itself. Everything that makes Drydock worth using still
-  applies: ownership, acceptance criteria, the Decision Log, the Deviation Log,
-  the Testing Gate. `validate-plan` enforces the lane's limits rather than
-  trusting the header, so a "small" plan that grows a second wave fails.
-  Planwright sizes the work first and picks the lane; **below about five units of
-  work it offers to skip the plan and just do the task.** A tool that always
-  recommends itself is a tool you stop believing. Worked example:
-  [plan 005](../docs/plans/005-small-lane-and-solo-mode.md).
-- **Per-task model right-sizing lives in the plan**, not in global config.
-- **The Testing Gate is written before the code.** A plan touching a UI or API
-  surface carries its end-to-end cases from the start, with declared evidence
-  types and severities; `seatrial` drives them through a real browser afterwards
-  and emits a go/no-go sheet for QA. A gate written after implementation tests
-  what was built rather than what was asked for. The sheet says what it is worth:
-  evidence about the paths tested at one commit in one browser, never proof that
-  other defects are absent.
-- **Reconcile closes the loop.** Deviations and failed assumptions become
-  proposed diffs to CLAUDE.md / ADRs / architecture docs. Proposed, never
-  auto-applied.
-- **Replan patches, never regenerates.** Decision Log append-only, completed
-  waves immutable, task ids never reused.
-- **A plan document is executed, not merely read.** `drydock-audit.mjs
-  prove-failable` and wavecheck's acceptance audit both run each acceptance
-  criterion's backticked command through the platform shell: once to confirm
-  it can fail, once to confirm it passes. So running either of those gates
-  against a plan document runs commands from the plan, with whatever access
-  that shell has, and that is true whether or not you wrote the plan. Treat a
-  plan file the way you would treat a script from the same source: read it
-  before you gate on it, especially one you did not write yourself.
-
-## The wave lifecycle, in three commands
-
-Ownership enforcement is armed per wave, from the plan, and closed when the wave
-closes:
+Arming a wave by hand:
 
 ```bash
-# Set once per shell. The install directory is not on your PATH, and
-# $CLAUDE_PLUGIN_ROOT is substituted by the HOST when it loads a skill, not by
-# bash, so a command pasted from a file with the placeholder still in it runs
-# `node /scripts/...` and dies MODULE_NOT_FOUND. In a checkout of this repo,
-# DD=drydock instead.
-DD=$(ls -d ~/.claude/plugins/cache/drydock/drydock/*/ | sort -V | tail -1)
-
 node "$DD/scripts/drydock-audit.mjs" wave-start docs/plans/005-x.md 2.1   # arm the hook
-# ... the wave's executors run; the hook denies writes outside the boundary ...
 node "$DD/scripts/drydock-audit.mjs" audit-wave  docs/plans/005-x.md 2.1  # audit afterwards
 rm .drydock/wave-owns.json                                                # close the wave
 ```
 
-`wave-start` derives the boundary from the plan. Never write
-`.drydock/wave-owns.json` by hand. It also refuses to arm a plan that fails
-`validate-plan` or that has uncommitted changes, and adds `.drydock/` to your
-`.gitignore` if it is missing, because the claim that `.drydock/` is gitignored
-was only ever true of this repo: in a fresh host repo the first `audit-wave`
-failed on the tool's own state files.
+`wave-start` refuses a plan that fails `validate-plan` or has uncommitted
+changes, and adds `.drydock/` to `.gitignore` if missing. Never write
+`.drydock/wave-owns.json` by hand.
 
-The hook records every decision to `.drydock/enforcement.log`, and `audit-wave`
-reads that log to establish whether enforcement was actually running, which is a
-different and stronger question than whether a config file existed.
+**A plan document is executed, not merely read.** `prove-failable` and
+wavecheck run each criterion's backticked command through your shell. Read a
+plan you did not write before you gate on it.
 
 ## Requirements
 
-**Node >= 20.17**, on PATH, as declared in `engines` and tested in CI on 20, 22
-and 24. This read "Node >= 22" for several releases, on the strength of
-`path.matchesGlob` being stdlib from 22; both scripts in fact ran on 20.20, and
-the plugin no longer calls that function at all, because it does not match
-dotfiles (`src/**` did not cover `src/.env`, so no task could write the dotfiles
-inside a directory it owned). A fifteen-line matcher in `lib/owns-match.mjs`
-replaced it.
+**Node >= 20.17** on PATH (CI tests 20, 22 and 24), and a host that runs
+`PreToolUse` hooks, or the guard silently does nothing. Check the hook before
+relying on it; this runs in a temp directory:
 
-Since v0.6.0 the ownership hook and the audit script are Node programs; before
-that the plugin was markdown-only and ran wherever Claude Code ran. That is a
-real adoption cost rather than a footnote. The host must also support
-`PreToolUse` hooks, or ownership enforcement silently does nothing. Run
-`node "$DD/hooks/enforce-owns.test.mjs"` to confirm the hook behaves before
-relying on it; it runs in a temp directory and touches nothing in your repo.
+```bash
+node "$DD/hooks/enforce-owns.test.mjs"
+```
 
-## Quickstart
-
-**[QUICKSTART.md](QUICKSTART.md)** walks one small change end to end, in
-about 15 minutes. It uses the small lane, which is where most work belongs. Start there
-rather than here; this file is the reference, not the on-ramp.
-
-## Install (internal, team scope)
+## Install
 
 ```
 /plugin marketplace add SandeepTakasi/drydock
 /plugin install drydock@drydock
 ```
 
-Add `--scope project` to the install to share it with your team.
+Add `--scope project` to share it with your team. Settings: `plans_dir`
+(default `docs/plans`; falls back to `.drydock/plans/` if gitignored),
+`docs_targets` (what the closing wavecheck may propose changes to), `e2e_dir`
+(where Testing Gate specs go, default `e2e`).
 
-Configure on enable (or `--config`): `plans_dir` (default `docs/plans`),
-`docs_targets` (default `CLAUDE.md,docs/decisions,docs/architecture.md`).
-If your repo gitignores `plans_dir` (house rules against committing tool
-artifacts), planwright falls back to `.drydock/plans/` and says so in one fixed
-sentence in the plan, rather than each plan improvising a justification for its
-own location. `drydock-audit.mjs resolve-plans-dir` reports what it resolved.
-
-Versioning: explicit semver from v0.4.0 (`CHANGELOG.md` maintained per release).
-Licensed MIT. Per [compatibility](../docs/compatibility.md), three of the four
-public-release criteria are met and one is partial: A2b (worktree merge) passed
-2026-08-19, and A3's numbers are published across five pilot plans. **What A3
-still lacks is independence, not sample size.** Every run was self-observed, so
-the figure is a ceiling rather than a rate, and the row stays `PUBLISHED, not
-PASSED` until a session that has not been told the gate is watched runs a plan it
-did not write.
+**[QUICKSTART.md](QUICKSTART.md)** walks one small change end to end in about
+15 minutes. Evidence for every claim above, including what is not yet shown, is
+in [compatibility](../docs/compatibility.md). MIT licensed; semver, with
+[CHANGELOG.md](CHANGELOG.md).
 
 ## The spine
 
 Everything interoperates through one contract:
 `skills/planwright/reference/plan-format.md`. Change it → bump
-`format_version` → update every consumer. Skills refuse plans with unsupported
-versions.
+`format_version` → update every consumer.
 
 ## Deliberate non-goals
 
-- Code-quality review (use a review tool; wavecheck audits conformance only)
-- Minimalism enforcement (pairs well with `ponytail`, which owns that)
-- Spec authoring (specs feed *into* planwright from outside)
+- Code-quality review (wavecheck audits conformance only)
+- Spec authoring (specs feed *into* planwright)
 - Auto-editing any documentation, ever

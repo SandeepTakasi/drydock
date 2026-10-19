@@ -40,7 +40,7 @@ body:
     id: where
     attributes:
       label: Which piece
-      description: planwright, executor, executor-isolated, wavecheck, replan, reconcile, or install.
+      description: check, planwright, executor, executor-isolated, wavecheck, replan, scope-gate, or install.
       placeholder: "wavecheck"
 
   - type: dropdown

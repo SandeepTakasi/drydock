@@ -1,4 +1,11 @@
-# Quickstart: your first Drydock plan
+# Quickstart
+
+**Most work wants only the guard.** Say `/drydock:check`, name the files the
+change may touch, and confirm. Writes outside them are denied, and the diff is
+audited against the same list when you finish. That is the whole on-ramp; the
+rest of this page is for work big enough to plan.
+
+## Your first plan
 
 This walks one small change end to end. It uses the **small lane**, which is
 where most work belongs; the full lifecycle in the README is what Drydock does
@@ -110,8 +117,7 @@ executors is not a boundary.
 
 Two files ship with the plugin if you want to write or read one by hand:
 `$DD/skills/planwright/reference/template.md` is a copyable skeleton that passes
-`--strict`, and `$DD/skills/planwright/reference/example-small-plan.md` is a
-finished small-lane plan, logs and all.
+`--strict`, and `plan-format.md` beside it is the contract it follows.
 
 ## 3. Execute
 
@@ -157,11 +163,7 @@ contract breaches, not quality misses.
 
 ## 5. Close the loop
 
-```
-/drydock:reconcile docs/plans/00N-your-plan.md
-```
-
-Reconcile turns what execution *learned* into proposed edits to your
+After the last wave PASSes, wavecheck runs once more to close the plan. It turns what execution *learned* into proposed edits to your
 `CLAUDE.md`, ADRs and architecture notes. **Proposed, never applied.** Failed
 assumptions that trace back to a claim in a doc are the highest-value output:
 the doc said X, reality was Y.
@@ -191,6 +193,6 @@ disagree.
 
 The full lane: multiple phases, parallel `drydock:executor` subagents on
 disjoint files, a `Wave x.R` quality review, an adversarial pressure test. Also
-the **Testing Gate**, where `seatrial` drives written end-to-end cases through a
-real browser and emits a go/no-go sheet. Reach for those when the change is big
+the **Testing Gate**: end-to-end cases written before the code, turned into
+Playwright specs by a final-wave task, and run by the closing wavecheck. Reach for those when the change is big
 enough to deserve them.

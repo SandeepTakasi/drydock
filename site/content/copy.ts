@@ -131,7 +131,7 @@ export const meta: Record<
   },
 };
 
-const VERSION = "0.19.0";
+const VERSION = "0.20.0";
 
 /**
  * Docs live in the repo, not in the export — only `site/out` is deployed. So
@@ -290,8 +290,8 @@ export const hero = {
     },
     {
       id: "reconcile",
-      tab: "Reconcile",
-      label: "drydock:reconcile, plan 015",
+      tab: "Close",
+      label: "closing report, plan 015",
       badge: "PROPOSED",
       badgeTone: "accent",
       source: "docs/plans/015-release-019-site.md",
@@ -306,7 +306,7 @@ export const hero = {
         { text: "Proposal R3 | target: CLAUDE.md | kind: addition", tone: "accent" },
       ],
       caption:
-        "When a plan closes, reconcile turns what went wrong into proposed fixes to your docs. They are applied only when you approve them.",
+        "When a plan closes, wavecheck turns what went wrong into proposed fixes to your docs. They are applied only when you approve them.",
     },
   ] satisfies TourScene[],
   wave: {
@@ -399,25 +399,11 @@ export const evidence: {
       note: "28 of 29 wave gates invoked at their boundary across 5 pilot plans, with 1 skipped and 27 of 29 recorded before the next wave opened. The skip is the useful part: the following gate refused to open on the missing report, and the retroactive audit then blocked on a real ownership breach, so the recovery path is observed rather than assumed. Every session counted knew it was being observed, so read the figure as a ceiling, not a rate. The sample now touches the bottom of the 5 to 10 this row asks for, on its weakest instance: one session planned, executed and audited the fifth plan, so the count moved and what it is evidence of did not.",
     },
     {
-      id: "A5",
-      label: "Browser-drive round trip through Playwright MCP",
-      status: "PASSED",
-      tone: "pass",
-      note: "2026-08-22, driven against this site's own export served at its basePath. Nine driver capabilities returned live state, each confirmed by a second measurement rather than by the call not erroring: navigation, snapshot, clicks that moved the page, style evaluation, network recording, resize, tabs, console. Two constraints stand. Availability is per-session and belongs to the environment rather than to Drydock, and seatrial halts with instructions when the driver is missing. Video evidence cannot be captured through this driver at all.",
-    },
-    {
       id: "A6",
       label: "Ownership enforcement hook fires in a live session",
       status: "PASSED",
       tone: "pass",
       note: "Verified live on 2026-08-22 by a session that wrote none of this code. A write and a real edit to unowned paths were both refused, files untouched; writes inside the boundary were allowed and logged; closing the wave let the same refused write through. Two ceilings stand, both exercised rather than assumed: Bash-mediated writes bypass file-tool hooks entirely, and paths outside the project directory are not enforced. The wave audit is the backstop.",
-    },
-    {
-      id: "A7",
-      label: "seatrial Testing Gate executes end to end",
-      status: "OBSERVED, TWO FULL RUNS",
-      tone: "hold",
-      note: "Run twice, 2026-08-20 and 2026-08-26, twelve commits apart, with identical verdicts: six cases, three passes, and three failures that the plan designed to fail: a false expectation, an unperformable step that halted to ask rather than improvise, and a video clause this driver cannot satisfy. Both sheets closed NO-GO; seatrial writes no override for its own failures. The second run also halted on stale cases and on an unreachable target, and wrote nothing at all when the driver dropped mid-suite. The specs it generated now run in CI and pass: Chromium only, one viewport, first executed 2026-09-02.",
     },
     {
       id: "A10",
@@ -426,14 +412,6 @@ export const evidence: {
       status: "OBSERVED FLAG THEN PASS",
       tone: "hold",
       note: "2026-10-07. Inside an armed plan wave the audit flagged an untracked probe, then passed once it was deleted. Later the same day the open gaps were shown: typed as the slash command on unplanned, unarmed work it flagged three files outside scope and stopped to ask, and model-invoked on unplanned site work it passed twice. Not shown: a repo other than this one, or a user who did not write the plugin.",
-    },
-    {
-      id: "A11",
-      label:
-        "planwright runs its learnings step in a live session (stopped after Step 2)",
-      status: "OBSERVED PARTIAL",
-      tone: "hold",
-      note: "2026-10-07. In Step 2 the skill ran the learnings call on two concrete paths and carried the hits it printed into its findings text. Not shown: Steps 3 to 6, since the run stopped after Step 2 on supplied interview answers and wrote no plan, nor the slash command or a real user.",
     },
     {
       id: "A12",
@@ -474,7 +452,7 @@ export const lifecycle: {
 } = {
   commandLabel: "You type",
   outcomeLabel: "You get",
-  piecesSummary: "All nine pieces of the plugin",
+  piecesSummary: "All six pieces of the plugin",
   steps: [
     {
       index: "01",
@@ -501,15 +479,9 @@ export const lifecycle: {
   loop: "On a BLOCK nothing retries on its own: you decide, or /drydock:replan repairs the plan.",
   pieces: [
     {
-      name: "init",
-      kind: "skill",
-      summary: "Learns your repo before the first plan: its quality gates, test framework, commit style and CI. Asks only what it cannot detect, then saves a profile every later plan follows.",
-      invocation: "model or /drydock:init (once per repo)",
-    },
-    {
       name: "planwright",
       kind: "skill",
-      summary: "Interviews you on your practices, maps the code the change touches and pulls lessons from past plans. Then splits the work into parallel waves, picks the right model for each task, and pressure-tests the plan before you approve it.",
+      summary: "On its first run, learns your repo and saves a profile. Then interviews you on your practices, maps the code the change touches and pulls lessons from past plans. Then splits the work into parallel waves, picks the right model for each task, and pressure-tests the plan before you approve it.",
       invocation: "model or /drydock:planwright",
     },
     {
@@ -527,7 +499,7 @@ export const lifecycle: {
     {
       name: "wavecheck",
       kind: "skill",
-      summary: "Audits each finished wave against the real diff, not what the agents report: file ownership, forbidden changes, acceptance criteria, deviations. PASS or BLOCK, and the next wave waits on a PASS.",
+      summary: "Audits each finished wave against the real diff, not what the agents report: file ownership, forbidden changes, acceptance criteria, deviations. PASS or BLOCK, and the next wave waits on a PASS. After the last wave it runs the plan's browser cases and proposes doc fixes, never applying them.",
       invocation: "blocking gate inside every plan",
     },
     {
@@ -535,18 +507,6 @@ export const lifecycle: {
       kind: "skill",
       summary: "Repairs a blocked or stale plan: re-checks its decisions against the current code and patches only what broke. Finished waves and their reports stay untouched.",
       invocation: "human-only (disable-model-invocation)",
-    },
-    {
-      name: "seatrial",
-      kind: "skill",
-      summary: "Runs the end-to-end cases written into the plan in a real browser, captures the evidence each case asks for, and hands QA re-runnable Playwright specs and a go/no-go sheet.",
-      invocation: "model, or /drydock:seatrial (after the final wave)",
-    },
-    {
-      name: "reconcile",
-      kind: "skill",
-      summary: "Closes the loop: compares what the plan assumed with what execution found, and proposes edits to CLAUDE.md, ADRs and docs. Proposed for you to apply, never applied for you.",
-      invocation: "final step of every plan",
     },
     {
       name: "check",
@@ -573,7 +533,7 @@ export const ways: {
     {
       title: "A change across many files",
       command: "/drydock:planwright <your change>",
-      body: "The full loop: a plan you approve, agents in parallel waves, a gate after every wave, and a reconcile step that turns what went wrong into proposed doc fixes.",
+      body: "The full loop: a plan you approve, agents in parallel waves, a gate after every wave, and a closing check that turns what went wrong into proposed doc fixes.",
     },
     {
       title: "A small change, no plan",
@@ -737,14 +697,14 @@ export const install: {
     },
     {
       index: "02",
-      title: "Teach it your repo",
-      body: "Run this once. Drydock detects your quality gates, test framework, commit style and CI, asks only what it cannot detect, and saves a profile every plan follows.",
-      commands: ["/drydock:init"],
+      title: "Guard your next change",
+      body: "Name the files a change may touch. Writes outside them are denied, and the diff is audited against the same list.",
+      commands: ["/drydock:check"],
     },
     {
       index: "03",
-      title: "Plan your first change",
-      body: "Start with something small. For a quick fix, skip the plan and run /drydock:check instead.",
+      title: "Plan a bigger change",
+      body: "For work across many files. The first run also learns your repo and saves a profile every later plan follows.",
       commands: ["/drydock:planwright <describe your change>"],
     },
   ],
@@ -779,7 +739,7 @@ export const install: {
   },
   scopeNote: "Add --scope project to the install to share it with your team.",
   configNote:
-    "Settings on enable: where plans live (default docs/plans), which docs reconcile may propose changes to, and where seatrial writes its specs (default e2e).",
+    "Settings on enable: where plans live (default docs/plans), which docs the closing check may propose changes to, and where Testing Gate specs go (default e2e).",
   requirement:
     "Requires Node 20.17 or newer on PATH, as declared in the plugin manifest and tested on 20, 22 and 24: the ownership hook and the plan audit are Node programs. The hook is inert, by design, whenever no wave is armed.",
   copyLabel: "Copy",
@@ -798,7 +758,7 @@ export const faq: FaqItem[] = [
   },
   {
     q: "Does it cost more tokens?",
-    a: "Yes. Planning, the audit after every wave and reconcile all run on top of the build itself. In exchange, a mistake is caught at the wave that made it instead of in review. The reconcile report of every plan prints its token split between orchestration and execution, counting each session whole, so you can see the cost on your own work rather than take a number from this page.",
+    a: "Yes. Planning and the audit after every wave run on top of the build itself. In exchange, a mistake is caught at the wave that made it instead of in review. The closing report of every plan prints its token split between orchestration and execution, counting each session whole, so you can see the cost on your own work rather than take a number from this page.",
   },
   {
     q: "Can I keep my current planner?",
@@ -810,7 +770,7 @@ export const faq: FaqItem[] = [
   },
   {
     q: "How is this different from other planning plugins?",
-    a: "A plan is only worth what the result has to answer to. Drydock checks the result against it: did the wave do exactly what the plan said and nothing else, judged from the actual diff rather than from what the agents claim. File ownership is enforced, not requested: while a wave runs, a hook denies file-tool writes outside its boundary, and the audit catches what a hook cannot see, such as Bash writes (see A6). Each task names the model it needs, and reconcile turns what execution learned into proposed doc changes.",
+    a: "A plan is only worth what the result has to answer to. Drydock checks the result against it: did the wave do exactly what the plan said and nothing else, judged from the actual diff rather than from what the agents claim. File ownership is enforced, not requested: while a wave runs, a hook denies file-tool writes outside its boundary, and the audit catches what a hook cannot see, such as Bash writes (see A6). Each task names the model it needs, and the closing wavecheck turns what execution learned into proposed doc changes.",
   },
   {
     q: "What if I do not run subagents at all?",
@@ -826,7 +786,7 @@ export const faq: FaqItem[] = [
   },
   {
     q: "Does anything actually touch a browser?",
-    a: "Yes, through seatrial. A plan can carry end-to-end cases written before the code, and seatrial drives them in a real browser through Playwright MCP, saving the evidence each case asks for into a go/no-go sheet. It reports a step it cannot perform rather than improvising one, halts when the driver is missing, and never overrides its own failures. The specs it generated for this site run in CI and pass, Chromium only (see A7).",
+    a: "Yes, if the plan has a Testing Gate. Its end-to-end cases are written before the code, a final-wave task turns them into Playwright specs, and the closing wavecheck runs them and refuses to close the plan on a blocker failure. This site's own specs run in CI on Chromium only.",
   },
   {
     q: "My repo forbids tool names in commit messages.",

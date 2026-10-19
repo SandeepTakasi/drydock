@@ -159,7 +159,7 @@ any gate. It removes a claim the plan was making falsely, nothing else.
 Status transitions are one-way except BLOCKED (may return to EXECUTING after
 replan or human decision). Only a human sets APPROVED. Executors MUST NOT run
 against a plan that is not APPROVED or EXECUTING. RECONCILED is set only by
-the reconcile skill.
+the closing wavecheck (the step after the final wave PASSes).
 
 ## Orchestrator contract: embed VERBATIM in every plan's preamble
 
@@ -174,7 +174,7 @@ the reconcile skill.
 > out are `/drydock:replan` or a human decision. Quality-review rejections
 > follow the escalation policy (max 2 retries → tier up → human); wavecheck
 > BLOCKs on ownership violations or unlogged deviations get NO retries. When
-> the final wave and phase gate pass, invoke `drydock:reconcile`.
+> the final wave and phase gate pass, run wavecheck's closing step.
 >
 > **If you cannot spawn executors**, a standing instruction against unprompted
 > agents, agents unavailable, that is a deviation to log **before the wave
@@ -259,7 +259,7 @@ written to the template did not register as a gate at all.
     + phase review), escalation, checkpointing (commit per task/wave, rollback
     unit), human gates, tracker mirroring (plan file is source of truth).
 11. **Testing Gate**, written browser-executed E2E cases, authored at plan
-    time, executed after the final wave by the `drydock:seatrial` skill. Schema
+    time, written as Playwright specs by a final-wave task and run by the closing wavecheck. Schema
     and gate rule below. Plans with no user-facing surface write
     `N/A, <reason>` and nothing else.
 
@@ -273,14 +273,14 @@ written to the template did not register as a gate at all.
 15. **Wavecheck reports**, appended by wavecheck per wave (shape in that skill):
     `### Wavecheck <phase>.<wave>, PASS|BLOCK, <date>`.
 16. **Progress log**, `| Date | Task | Result | Notes |`.
-17. **Reconcile report**, appended once by reconcile at completion.
+17. **Reconcile report**, appended once by the closing wavecheck.
 
 ## Testing Gate section
 
 Authored by planwright at plan time, never bolted on after implementation, and
-never written by the session that just implemented the code. `drydock:seatrial`
-consumes it; `drydock:reconcile` refuses to close a plan whose gate has no GO
-verdict. No hook enforces any of this: the gate is prose, like every other gate
+never written by the session that just implemented the code. A final-wave task
+turns each case into a Playwright spec under `<e2e_dir>/<plan-id>/`; the closing
+wavecheck runs them and refuses to close a plan whose gate is NO-GO. No hook enforces any of this: the gate is prose, like every other gate
 in Drydock.
 
 A plan with no user-facing surface writes exactly `N/A, <reason>` as the whole
@@ -290,10 +290,10 @@ section body. "N/A" without a reason is not valid.
 
 | Field | Content |
 |---|---|
-| Target | Base URL under test, and how it is served (command, port, path). **A claim, not a fact:** `seatrial` re-resolves the origin from the repo's dev config at gate start and HALTs if they disagree, because a port written at plan time drifts. |
+| Target | Base URL under test, and how it is served (command, port, path). The specs read it from config, not a literal, because a port written at plan time drifts. |
 | Auth | How a case authenticates, or `none` and why |
-| Browser | Engine and driver. Playwright MCP is the only supported driver. Also re-resolved at gate start; a gate naming a different driver is a HALT, since the run would produce a different kind of evidence than the plan promised. |
-| Commit SHA | Recorded by seatrial at run time, not by the planner |
+| Browser | Engine. Cases run under `@playwright/test`; Chromium unless the plan says otherwise. |
+| Commit SHA | Recorded by the closing wavecheck at run time, not by the planner |
 | Evidence root | `.drydock/testing/<plan-id>/<case-id>/`, frozen, not a suggestion |
 
 ### Per-case fields (all required, every case)
@@ -305,7 +305,7 @@ section body. "N/A" without a reason is not valid.
 | `preconditions` | What must already be true; a false precondition is a HALT, not a FAIL |
 | `steps` | Given / When / Then. Written to be performed exactly as stated |
 | `expected` | The observable result, including which evidence must exist |
-| `evidence` | Exactly one of `screenshot` \| `network assertion`. **`video` is rejected by `validate-plan --strict`**: the supported driver cannot capture it at all (A5), so a case declaring it fails its evidence clause on every possible run, which describes the harness rather than the software |
+| `evidence` | Exactly one of `screenshot` \| `network assertion`. `video` is rejected by `validate-plan --strict`; plans have never needed it, and a screenshot or a network assertion states what was true |
 | `severity` | Exactly one of `blocker` \| `major` \| `minor` |
 
 A case whose expected outcome is itself a failure (used to prove the gate can
@@ -316,28 +316,28 @@ reasonably treats the case as broken.
 ### Gate rule: complete rule body
 
 - Any case of severity **blocker** with verdict FAIL → **NO-GO**. Deployment
-  does not proceed and reconcile refuses to set `RECONCILED`.
+  does not proceed and the closing wavecheck refuses to set `RECONCILED`.
 - Any case of severity **major** with verdict FAIL → **GO-WITH-OVERRIDES**, and
-  only when `verdict.md` records an explicit human override naming the case, the
+  only when the Reconcile report records an explicit human override naming the case, the
   reason, and who decided. Absent that record the verdict is **NO-GO**.
-- Any case of severity **minor** with verdict FAIL → recorded in `verdict.md`;
+- Any case of severity **minor** with verdict FAIL → recorded in the Reconcile report;
   no effect on the summary verdict.
 - All cases PASS, no overrides needed → **GO**.
 - A case that **cannot be executed at all**, target unreachable, driver absent,
   evidence path unwritable, precondition false, is neither a PASS nor a skip.
-  seatrial HALTs and asks. A gate that degrades to "skipped" under pressure is
+  The closing wavecheck stops and asks. A gate that degrades to "skipped" under pressure is
   not a gate.
 - A step that cannot be performed as written is verdict FAIL with reason
   `step not executable`. Improvising a substitute step is a contract breach, not
   a workaround.
 
-### Verdict sheet
+### Verdict
 
-seatrial writes `.drydock/testing/<plan-id>/verdict.md`, frozen path, quoted
-identically here, in `drydock:seatrial`, and in `drydock:reconcile`. It carries
-the summary verdict on its first line (`GO` | `NO-GO` | `GO-WITH-OVERRIDES`), an
-environment block, one row per case, and a QA handoff note stating what was
-covered and what was not. Evidence artifacts live under the evidence root and
+The closing wavecheck records the summary verdict (`GO` | `NO-GO` |
+`GO-WITH-OVERRIDES`), the runner's summary line, one row per case, and what was
+not covered, in the plan's Reconcile report. Before 0.20.0 the `seatrial` skill
+wrote this to `.drydock/testing/<plan-id>/verdict.md`; closed plans cite that path.
+Evidence artifacts live under the evidence root and
 are gitignored by default; committing them requires asking first.
 
 **A browser verdict is evidence about the paths that were tested. It is not
@@ -348,7 +348,7 @@ proof of correctness.
 
 The gate is stale if the target's source changed after the cases were written:
 `git diff <baseline SHA>..HEAD -- <paths the target is built from>`. Non-empty →
-seatrial HALTs and asks rather than testing written cases against a moved target.
+the spec task re-validates the cases with a human rather than testing written cases against a moved target.
 
 ## Phase / wave / task structure
 
@@ -365,7 +365,7 @@ seatrial HALTs and asks rather than testing written cases against a moved target
 A gate that has been met is rewritten in place to record it, and a human gate
 records **who** and **when**: `**Phase gate: CLOSED, approved by <name> -
 <YYYY-MM-DD>.**` followed by the conditions met. Nothing infers a human's
-approval from surrounding text, and `drydock:reconcile` reads this line, so an
+approval from surrounding text, and the closing wavecheck reads this line, so an
 open gate, or a closed one with no name and date, is a refusal to close the
 plan. Write the unmet form while the phase is open; amend it when it closes.
 
@@ -429,7 +429,7 @@ node "$DD/scripts/drydock-audit.mjs" plan-status [--write] <plan.md>
 `validate-plan` fails on a contradiction and `audit-wave` notes one at the wave
 boundary, so a plan cannot sit at `EXECUTING` after its last wave passed, or
 claim `DONE` over a `BLOCK`. `--write` sets only what the reports prove;
-`DONE` vs `RECONCILED` is reconcile's business and it refuses to guess.
+`DONE` vs `RECONCILED` is the closing wavecheck's business, so `--write` refuses to guess.
 
 ## Worktree merge procedure (isolation: worktree only)
 

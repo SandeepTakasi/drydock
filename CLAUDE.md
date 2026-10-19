@@ -299,7 +299,7 @@ work — plan 001's has 49 entries and most are still live constraints.
   authorship as a deviation. When the budget is tight, spawn a wave's tasks one
   at a time so each finished task is committed before the next starts.
 - **Write each phase gate as ONE `**Phase gate:` line and rewrite it in place
-  when it closes.** `plan-status` and `reconcile` treat every line beginning
+  when it closes.** `plan-status` and the closing wavecheck treat every line beginning
   `**Phase gate:` as a separate gate, so a declaration line plus an
   `OPEN`/`CLOSED` status line reads as two gates, and the declaration, which
   still says "human approval" with no signature, stays unsigned forever.

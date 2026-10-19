@@ -22,7 +22,7 @@ Check your copy before you arm anything:
   node <plugin>/scripts/drydock-audit.mjs validate-plan --strict docs/plans/NNN-slug.md
 
 `wave-start` refuses a plan that does not pass, so this is the first gate, not
-an optional one. A worked plan of this shape is in `example-small-plan.md`.
+an optional one.
 
 Separator grammar: comma, hyphen and em dash all parse wherever a reason or a
 verdict follows a label. Write the comma form.

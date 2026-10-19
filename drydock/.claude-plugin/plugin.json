@@ -1,8 +1,8 @@
 {
   "name": "drydock",
   "displayName": "Drydock",
-  "version": "0.19.0",
-  "description": "Plan-first parallel execution: rigorous plan documents, wave-based subagent execution with disjoint file ownership, plan-conformance verification gates, and a reconcile loop that feeds execution learnings back into your docs. Nothing sails until it leaves the dock.",
+  "version": "0.20.0",
+  "description": "Keeps an AI agent inside the files you said it may touch: a hook denies writes outside a declared scope, Bash writes are detected, and an audit checks the diff. Use it alone, beside any planner, as a PR check, or with plan-first parallel waves. Nothing sails until it leaves the dock.",
   "author": {
     "name": "Sandeep Takasi"
   },
@@ -38,22 +38,22 @@
     },
     "docs_targets": {
       "type": "string",
-      "title": "Reconcile doc targets",
-      "description": "Comma-separated repo-relative paths reconcile may propose updates for (never auto-edited)",
+      "title": "Closing doc targets",
+      "description": "Comma-separated repo-relative paths the closing wavecheck may propose updates for (never auto-edited)",
       "default": "CLAUDE.md,docs/decisions,docs/architecture.md",
       "required": false
     },
     "e2e_dir": {
       "type": "string",
       "title": "Generated E2E spec directory",
-      "description": "Repo-relative directory seatrial writes re-runnable Playwright spec files into",
+      "description": "Repo-relative directory the Testing Gate Playwright specs are written into",
       "default": "e2e",
       "required": false
     },
     "config_path": {
       "type": "string",
       "title": "Host profile path",
-      "description": "Repo-relative path to the drydock.config.yaml host profile written by drydock:init",
+      "description": "Repo-relative path to the drydock.config.yaml host profile written by planwright on its first run",
       "default": "drydock.config.yaml",
       "required": false
     }

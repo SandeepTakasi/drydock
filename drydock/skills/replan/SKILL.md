@@ -33,9 +33,9 @@ Replan is a PATCH operation, never regeneration. Hard invariants:
    **This sweep is judgement, not a command run, and that is a real weakness.**
    Until 0.8.12 this step said "run every Assumptions Register verification
    command", but no such section exists in the format contract, in any plan, or
-   anywhere outside this file and `reconcile`. The step named a source that was
+   anywhere outside this file and the reconcile skill. The step named a source that was
    never defined, so it could not be followed as written. The Decision Log is
-   where those facts actually live (`reconcile` already reads it that way,
+   where those facts actually live (the closing wavecheck reads it that way,
    plan 005's Assumption postmortem keys its rows on `D3`/`D4`/`D6`), but its
    columns are `| # | Question | Decision | Decided by | Rationale |` with no
    verification command, so nothing here is machine-checkable. **Follow-up, not
