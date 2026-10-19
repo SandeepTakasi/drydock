@@ -147,8 +147,9 @@ applies or rejects. Allowed proposal targets come from plugin config
 **Refuse to close, and say why, when any of these holds:**
 
 - **A human gate is unsigned.** Every `**Phase gate:**` line that declares a
-  human approval must read `CLOSED, approved by <name>, <date>`. Do not infer
-  approval from a passing wave, an APPROVED review, or being asked to close.
+  human approval must read `CLOSED, approved by <name> - <YYYY-MM-DD>`, the
+  form in `plan-format.md`. Do not infer approval from a passing wave, an
+  APPROVED review, or being asked to close.
 - **The Testing Gate fails.** If `## Testing Gate` is not `N/A, <reason>`, run
   its specs (`npx playwright test <e2e_dir>/<plan-id>`, written by the plan's
   final-wave spec task) and apply the gate rule in the format contract. A

@@ -94,7 +94,7 @@ rm .drydock/wave-owns.json                                                # clos
 ```
 
 `wave-start` refuses a plan that fails `validate-plan` or has uncommitted
-changes, and adds `.drydock/` to `.gitignore` if missing. Never write
+changes, and adds `.drydock/` to `.git/info/exclude` if nothing ignores it. Never write
 `.drydock/wave-owns.json` by hand.
 
 **A plan document is executed, not merely read.** `prove-failable` and

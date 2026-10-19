@@ -2,6 +2,16 @@
 
 Older entries: [CHANGELOG-archive.md](CHANGELOG-archive.md).
 
+## 0.20.1: 2026-10-19
+
+**The first wave no longer BLOCKs on Drydock's own `.gitignore` edit.** `wave-start` and `arm` appended `.drydock/` to `.gitignore` and left it uncommitted, so in any repo that did not already ignore `.drydock/`, the first `audit-wave` FAILed with `M .gitignore`, a file no task owns (A15; present since plan 010). They now write the line to `.git/info/exclude`, which is never tracked, and only when `git check-ignore` reports that nothing ignores `.drydock/` already.
+
+**One signed gate-line form.** wavecheck asked for `CLOSED, approved by <name>, <date>` while `plan-format.md` specified `CLOSED, approved by <name> - <YYYY-MM-DD>`. wavecheck now asks for the plan-format form. `plan-status` and `validate-plan` are unchanged: they accept any separator before the date, because signed gates in existing plans use several.
+
+**Unexercised, stated plainly.** Proven by the audit suite, not yet in a live session.
+
+Tests: audit 156, unchanged in count; the `.gitignore` case is replaced by one that arms a wave, commits both tasks and requires `audit-wave` to PASS on a clean tree.
+
 ## 0.20.0: 2026-10-19
 
 **Fewer pieces: seven skills become four.** The guard (`check`, `arm`, the two hooks) is unchanged and is now what the README leads with.

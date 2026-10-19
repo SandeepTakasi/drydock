@@ -1787,12 +1787,18 @@ cases.push(
     return cli(dir, ["wave-start", "plan.md", "1.0"]);
   }, (out) => out.includes("uncommitted changes") && !out.includes("armed")],
 
-  ["wave-start gitignores .drydock/ so the first audit is not dirty", () => {
+  // Until 0.20.1 this appended to `.gitignore` and left it uncommitted, so the
+  // first wave's `audit-wave` FAILed on `M .gitignore`, a file no task owns (A15).
+  ["wave-start ignores .drydock/ without dirtying the tree, so the first wave PASSes", () => {
     const dir = bareRepo("ws-ignore");
     git(dir, ["add", "-A"]); git(dir, ["commit", "-q", "-m", "plan"]);
-    const out = cli(dir, ["wave-start", "plan.md", "1.0"]);
-    return `${out}\nGITIGNORE:${readFileSync(join(dir, ".gitignore"), "utf8")}\nSTATUS:${git(dir, ["status", "--porcelain"])}`;
-  }, (out) => out.includes("armed") && /GITIGNORE:[\s\S]*\.drydock\//.test(out) && !out.includes("?? .drydock")],
+    cli(dir, ["wave-start", "plan.md", "1.0"]);
+    commitAs(dir, ["a.txt"], "fix(parser): tighten the thing");
+    cli(dir, ["task-close", "plan.md", "T1.0.1"]);
+    commitAs(dir, ["b.txt"], "feat(core): add the other thing");
+    cli(dir, ["task-close", "plan.md", "T1.0.2"]);
+    return `${cli(dir, ["audit-wave", "plan.md", "1.0"])}\nSTATUS:[${git(dir, ["status", "--porcelain"])}]`;
+  }, (out) => out.includes("audit-wave 1.0: PASS") && out.includes("STATUS:[]")],
 
   // Same path-form hazard as the audit case: wave-start compares the plan against
   // `git status --porcelain -- <planRel>`, and a planRel computed by subtracting

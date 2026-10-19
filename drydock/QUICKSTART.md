@@ -129,7 +129,7 @@ node "$DD/scripts/drydock-audit.mjs" wave-start docs/plans/00N-your-plan.md 1.0
 ```
 
 That validates the plan, refuses to arm if it fails or is uncommitted, adds
-`.drydock/` to your `.gitignore` if it is missing, derives the ownership
+`.drydock/` to `.git/info/exclude` if nothing ignores it, derives the ownership
 boundary **from the plan**, and arms the hook. From here a write to a file no
 task in the wave owns is **denied at the tool boundary**.
 
