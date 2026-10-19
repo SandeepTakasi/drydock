@@ -687,8 +687,9 @@ function phaseGateBlocks(plan) {
   return blocks;
 }
 
-// The frozen closed form from the format contract:
-// `**Phase gate: CLOSED, approved by <name> — <date>.**`
+// The closed form from the format contract (plan-format.md):
+// `**Phase gate: CLOSED, approved by <name> - <YYYY-MM-DD>.**`
+// Matched leniently on the separator: signed gates in the corpus use both.
 const GATE_CLOSED = /Phase gate:\s*CLOSED,\s*approved by\s+\S+[\s\S]*?\d{4}-\d{2}-\d{2}/;
 const GATE_HUMAN = /\bhuman\b|sign-?off/i;
 
@@ -2132,13 +2133,16 @@ function readIntent(intentPath) {
 
 // `.drydock/` holds state files that must not show up as changes in the host
 // repo. Shared by `wave-start` and `arm`; the message keeps its caller's name.
+// It writes `.git/info/exclude`, never `.gitignore`: an edit to a tracked file
+// dirtied the tree, and the first wave's `audit-wave` FAILed on it (A15).
 function ensureDrydockIgnored(root, who) {
-  const ignorePath = join(root, ".gitignore");
-  const ignored = existsSync(ignorePath) ? readFileSync(ignorePath, "utf8") : "";
-  if (!/^\.drydock\/?\s*$/m.test(ignored)) {
-    writeFileSync(ignorePath, (ignored && !ignored.endsWith("\n") ? ignored + "\n" : ignored) + "# Drydock wave state, receipts and attribution\n.drydock/\n");
-    console.log(`${who}: added \`.drydock/\` to ${ignorePath}, its state files are not part of your history`);
-  }
+  const gitIn = (args) => spawnSync("git", args, { cwd: root, encoding: "utf8" });
+  if (gitIn(["check-ignore", "-q", ".drydock/"]).status === 0) return;
+  const excludePath = resolve(root, gitIn(["rev-parse", "--git-path", "info/exclude"]).stdout.trim());
+  const ignored = existsSync(excludePath) ? readFileSync(excludePath, "utf8") : "";
+  mkdirSync(dirname(excludePath), { recursive: true });
+  writeFileSync(excludePath, (ignored && !ignored.endsWith("\n") ? ignored + "\n" : ignored) + "# Drydock wave state, receipts and attribution\n.drydock/\n");
+  console.log(`${who}: added \`.drydock/\` to ${excludePath}, its state files are not part of your history`);
 }
 
 // Resolves `base` to a commit exactly as `check` always has (exit 3 on failure).

@@ -1724,3 +1724,11 @@ OBSERVED for both refusals and the Reconcile report. Observed defect, not a
 first wave of any repo that does not already ignore `.drydock/`. Text drift:
 wavecheck/SKILL.md asks for `CLOSED, approved by <name>, <date>`;
 plan-format.md specifies `CLOSED, approved by <name> - <YYYY-MM-DD>`.
+
+**Both fixed in 0.20.1, by unit test only.** `wave-start` and `arm` now write
+`.drydock/` to `.git/info/exclude`, and only when `git check-ignore` says
+nothing ignores it already. The audit suite's case "wave-start ignores .drydock/
+without dirtying the tree, so the first wave PASSes" FAILed on 0.20.0 with
+`audit-wave 1.0: FAIL (1)` and passes on 0.20.1. wavecheck/SKILL.md now asks
+for the plan-format.md form; the parser still accepts either separator. Neither
+fix has been re-run in a live session.
