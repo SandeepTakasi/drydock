@@ -1799,3 +1799,64 @@ no VERSION DRIFT against the installed 0.21.0.
 resolved to the 0.21.0 cache path in a session started on 0.20.1, so the hook
 binary follows `claude plugin update` without a restart while skill text does
 not. That is one measurement and is not a claim this repo makes elsewhere.
+
+### Second run, skill-driven and blind to the probe, 2026-10-24
+
+**Why a second run.** The first run performed the 0.21.0 skill's Step 3 by
+hand, because the session that ran it had loaded 0.20.1's skill text at start.
+Whether `/drydock:check` on 0.21.0 performs the probe **unprompted** was the
+open question. Same host (2.1.310), same Node (v22.23.1), installed 0.21.0,
+repo at `12cb529`.
+
+**Method.** A fresh session was started from the first (desktop app,
+`start_session`, same checkout, no worktree) with a brief that named the task
+(create `tmp-a17/ok.txt`, Files owned `tmp-a17/ok.txt`), asked for prevention,
+and told it to follow the skill's steps exactly and report every denial and
+script output verbatim. **The brief did not mention the probe, `.drydock/probe`,
+liveness, or receipts**, and told the session not to read the skill's source
+before invoking it. The session invoked `/drydock:check`; the Skill tool loaded
+it from `~/.claude/plugins/cache/drydock/drydock/0.21.0/skills/check`.
+
+**Raw output, as reported by that session.**
+
+Step 3 `arm` (exit 0):
+
+    arm: armed 1 glob(s) from .drydock/check.md
+    disarm with:  rm .drydock/wave-owns.json
+
+Step 3 probe, Write tool to `.drydock/probe`, performed by the session on the
+skill's instruction alone, denied:
+
+    PreToolUse:Write hook error: [node "/Users/…/.claude/plugins/cache/drydock/drydock/0.21.0/hooks/enforce-owns.mjs"]:
+    {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny"},
+     "systemMessage":"Drydock ownership violation: wave check does not own .drydock/probe.\nOwned by this wave: tmp-a17/ok.txt\nIf correct implementation needs this file, that is a deviation, report it rather than widening your own boundary. Not yours? Another session or a plan wave may have armed it: ask before deleting .drydock/wave-owns.json"}
+
+The only denied or errored tool call in the run. Step 4, Write to
+`tmp-a17/ok.txt`, allowed. Step 5 `check` (exit 0):
+
+    check: hook armed for this scope
+    check: hook live, probe denied
+    check: PASS (1 file(s), 0 criteria)
+
+`.drydock/enforcement.log` at that moment, this run's lines (the first two
+lines in the file are the first run's, owns `tmp-a16/ok.txt`):
+
+    {"ts":"2026-10-24T18:15:24.887Z","plan":null,"wave":"check","decision":"observed","path":null,"owns":["tmp-a17/ok.txt"],"task":null,"mechanism":"bash-tree","command":"node …/0.21.0/scripts/drydock-audit.mjs arm .drydock/check.md; echo \"exit=$?\"","detail":"snapshot from an earlier arming discarded, snapshot seeded, nothing to diff against"}
+    {"ts":"2026-10-24T18:15:28.639Z","plan":null,"wave":"check","decision":"deny","path":".drydock/probe","owns":["tmp-a17/ok.txt"],"task":null,"mechanism":"file-tool"}
+    {"ts":"2026-10-24T18:15:32.916Z","plan":null,"wave":"check","decision":"allow","path":"tmp-a17/ok.txt","owns":["tmp-a17/ok.txt"],"task":null,"mechanism":"file-tool"}
+    {"ts":"2026-10-24T18:15:38.983Z","plan":null,"wave":"check","decision":"observed","path":null,"owns":["tmp-a17/ok.txt"],"task":null,"mechanism":"bash-tree","command":"node …/0.21.0/scripts/drydock-audit.mjs check .drydock/check.md; echo \"exit=$?\"","detail":"1 path(s) changed, all inside the wave's owns"}
+
+Step 6 as written (`rm .drydock/wave-owns.json`, `rm -f .drydock/probe`, the
+probe having never landed), then `rm -r tmp-a17`; final `git status --short`
+empty.
+
+**What this adds.** The skill text drives the probe without being told to;
+the first run's "by hand" limit is closed. The row moves to PASSED on the same
+standard A12 used: one host, one repo, author's sessions. **Still not shown:**
+the landed-probe FLAG (impossible from a session whose hook is registered;
+suite-proven), another repo, a user who did not write the plugin. The second
+session was blind to the probe but knew it was measuring Drydock.
+
+**Observed in passing.** Step 6 does not remove `.drydock/check.md`, so it
+outlives the run. Harmless (gitignored, overwritten by the next Step 2), noted
+here rather than fixed.
