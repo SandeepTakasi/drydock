@@ -2,6 +2,12 @@
 
 Older entries: [CHANGELOG-archive.md](CHANGELOG-archive.md).
 
+## 0.20.3: 2026-10-24
+
+**Docs only: where a host-spawned session fits.** The desktop app can start sibling sessions from a session. `plan-format.md` now states that such a session is a fleet member, not a third `execution:` mode: in the same checkout it sits under the orchestrator's wave boundary and still owes one commit per task, which the host's own same-folder brief ("commit nothing") forbids, so that shape cannot execute a Drydock task; in its own worktree it is `isolation: worktree` by another name. The README's guard limits now say the hook is inert in any git worktree, executor or session, because `.drydock/` exists only in the main checkout. wavecheck logs an undeclared sibling session as a deviation.
+
+**Unexercised, stated plainly.** No session-spawned execution has been measured (S7 opened beside S6 in the verification log). No code change.
+
 ## 0.20.2: 2026-10-24
 
 **`claude plugin validate --strict` passes again.** Host 2.1.310 reports `engines` as an unknown `plugin.json` field, and `--strict` treats that warning as a failure (A4). The host never read `engines`, so it is removed; the Node 20.17 floor is stated in the README and still tested in CI on 20, 22 and 24. No runtime change.

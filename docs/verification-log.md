@@ -1034,6 +1034,8 @@ history and stays as written.
 - **`agent_id` stability and uniqueness across concurrent subagents** (S3).
 - **A non-Drydock subagent's payload** (S5).
 - **The `cwd` a hook sees inside an `isolation: worktree` executor** (S6).
+- **The payload and `cwd` a hook sees inside a session the desktop app
+  spawned**, same-folder and worktree (S7). S6 and S7 are one probe.
 
 
 ## A7 — Seatrial Testing Gate, end to end (plan 004, TG1–TG6)

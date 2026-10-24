@@ -37,7 +37,10 @@ Run in this order; stop early only on check 1 failure.
    because ownership per commit and executed acceptance criteria are evidence
    rather than opinion, while your judgement calls carry less weight because the
    session that wrote the diff is the session auditing it. Under `fleet`, or
-   when the key is absent, nothing changes.
+   when the key is absent, nothing changes. A task executed by a sibling
+   session the plan did not declare is a deviation, logged once per task, and
+   audited as `solo` if it ran in this checkout or as `isolation: worktree` if
+   it ran in its own.
 
 2. **Ownership audit: run the script, paste its evidence.**
 

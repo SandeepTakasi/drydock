@@ -156,6 +156,17 @@ Two things follow from `solo`, and both are load-bearing:
 `solo` does **not** relax ownership, per-task commits, acceptance criteria or
 any gate. It removes a claim the plan was making falsely, nothing else.
 
+**A session the host spawns is a fleet member, not a third mode.** The desktop
+app can start sibling sessions from a session. In the **same checkout**, such a
+session sits under the orchestrator's wave boundary (same
+`.drydock/wave-owns.json`, same hooks, same Bash snapshot, so concurrent Bash
+writes can be misattributed) and still owes one commit per task plus
+`task-close`; the host's own brief for same-folder sessions says *commit
+nothing*, so that shape cannot execute a Drydock task. In its **own worktree**,
+it is `isolation: worktree` by another name: the hook is inert there,
+per-worktree diff is the attribution, and the merge procedure below applies. A
+session the plan did not declare is a deviation.
+
 Status transitions are one-way except BLOCKED (may return to EXECUTING after
 replan or human decision). Only a human sets APPROVED. Executors MUST NOT run
 against a plan that is not APPROVED or EXECUTING. RECONCILED is set only by

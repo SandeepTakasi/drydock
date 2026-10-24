@@ -131,7 +131,7 @@ export const meta: Record<
   },
 };
 
-const VERSION = "0.20.2";
+const VERSION = "0.20.3";
 
 /**
  * Docs live in the repo, not in the export — only `site/out` is deployed. So

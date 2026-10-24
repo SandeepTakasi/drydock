@@ -42,6 +42,12 @@ outside the scope declared in its linked issue. See
 - **It is wave-level, not per-task.** The hook reads one owned set at a time.
 - **It is inert unless `.drydock/wave-owns.json` exists.** That is the default
   state and the escape hatch.
+- **It is inert in any git worktree.** `.drydock/` is untracked and exists only
+  in the main checkout, so a worktree, whether an `isolation: worktree` executor
+  or a session the desktop app gave its own worktree, has no `wave-owns.json`
+  and the hook allows everything. The ownership audit on the merged commits is
+  the defence there. Unmeasured: the `cwd` and `CLAUDE_PROJECT_DIR` a hook sees
+  in such a session (S6).
 - **Catch-all globs are refused.** Anything starting with `**`: name the
   directories.
 
