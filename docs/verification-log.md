@@ -1734,3 +1734,68 @@ without dirtying the tree, so the first wave PASSes" FAILed on 0.20.0 with
 `audit-wave 1.0: FAIL (1)` and passes on 0.20.1. wavecheck/SKILL.md now asks
 for the plan-format.md form; the parser still accepts either separator. Neither
 fix has been re-run in a live session.
+
+
+## A16 — check liveness probe
+
+**Date:** 2026-10-24
+**Host version:** `claude --version` → `2.1.310 (Claude Code)`
+**Node:** v22.23.1
+**Installed plugin:** drydock 0.21.0 at `4821b87`
+**Repo SHA at run time:** `4821b87` (0.21.0 release commit), working tree clean
+
+**What this entry claims.** With no plan wave armed, `arm` from a check intent
+produced a live boundary, and the new probe step read the hook's own evidence
+end to end: a Write to `.drydock/probe` was denied by the host's PreToolUse
+hook, the file never landed, the hook wrote one deny receipt for that path, and
+`drydock-audit.mjs check` reported `hook live, probe denied` from that receipt
+and passed.
+
+**What this entry does not claim.** The skill did not drive the probe. This
+session loaded the 0.20.1 skill text at start (skills are session-cached, see
+CLAUDE.md), so the author performed the 0.21.0 `check/SKILL.md` Step 3 by hand:
+`arm`, then a Write tool call to the probe path, then `check`. Whether
+`/drydock:check` on 0.21.0 performs the probe unprompted is not shown. The
+landed-probe branch (`FLAG hook not registered: .drydock/probe was written while
+armed`) cannot be measured from a session whose hook is registered and is
+proven by the audit suite only (case "check flags a probe that landed"). One
+session, one repo, the plugin author.
+
+### Method and raw output
+
+Intent `.drydock/check.md`: `base: 4821b87ca2ad8ea1ae89518bcf7690bfe0090571`,
+**Files owned:** `tmp-a16/ok.txt`. Script calls ran the repo checkout's
+`node drydock/scripts/drydock-audit.mjs`, which stamped `v0.21.0` and reported
+no VERSION DRIFT against the installed 0.21.0.
+
+1. `arm .drydock/check.md` (exit 0):
+
+       arm: armed 1 glob(s) from .drydock/check.md
+       disarm with:  rm .drydock/wave-owns.json
+
+2. Write tool, `file_path: .drydock/probe`, refused. The hook ran from the
+   installed cache, not the checkout, and carried the 0.20.4 message:
+
+       PreToolUse:Write hook error: [node "/Users/…/.claude/plugins/cache/drydock/drydock/0.21.0/hooks/enforce-owns.mjs"]:
+       {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny"},
+        "systemMessage":"Drydock ownership violation: wave check does not own .drydock/probe.\nOwned by this wave: tmp-a16/ok.txt\nIf correct implementation needs this file, that is a deviation, report it rather than widening your own boundary. Not yours? Another session or a plan wave may have armed it: ask before deleting .drydock/wave-owns.json"}
+
+   `ls .drydock/probe` → `No such file or directory`.
+
+3. `check .drydock/check.md` (exit 0):
+
+       check: hook armed for this scope
+       check: hook live, probe denied
+       check: PASS (0 file(s), 0 criteria)
+
+   The receipt it read, the only line in `.drydock/enforcement.log` naming the
+   probe path:
+
+       {"ts":"2026-10-24T17:49:03.503Z","plan":null,"wave":"check","decision":"deny","path":".drydock/probe","owns":["tmp-a16/ok.txt"],"task":null,"mechanism":"file-tool"}
+
+4. `rm .drydock/wave-owns.json .drydock/check.md`; `git status --short` empty.
+
+**Incidental observation.** `${CLAUDE_PLUGIN_ROOT}` in the hook command
+resolved to the 0.21.0 cache path in a session started on 0.20.1, so the hook
+binary follows `claude plugin update` without a restart while skill text does
+not. That is one measurement and is not a claim this repo makes elsewhere.
