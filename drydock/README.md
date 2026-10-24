@@ -10,8 +10,9 @@ or with Drydock's own plans when the work is big enough to split into waves.
 
 ## 1. The guard (start here)
 
-No plan needed. `/drydock:check` writes the intent file, arms the guard, and
-audits the result for you. By hand:
+No plan needed. `/drydock:check` writes the intent file, audits the result for
+you, and arms the guard when you ask for prevention; by default it detects and
+prevents nothing. By hand:
 
 ```bash
 # The install dir is not on PATH. In a checkout of this repo, DD=drydock.

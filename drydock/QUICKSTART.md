@@ -172,7 +172,7 @@ the doc said X, reality was Y.
 
 | Symptom | What it means |
 |---|---|
-| Every edit denied | A stale `.drydock/wave-owns.json`. `rm` it; that is how a wave closes. |
+| Every edit denied | `.drydock/wave-owns.json` is armed. If you armed it and the wave is over, `rm` it; that is how a wave closes. If you did not, another session in this checkout or a plan wave did: deleting it disarms *their* guard with no receipt, so ask first. |
 | `wave-start` refuses: does not pass validate-plan | Fix the plan first. The boundary it would arm comes from that file. |
 | `wave-start` refuses: uncommitted changes | Commit the plan document, then arm. |
 | `audit-wave` reports a commit claimed by no task | Something was committed during the wave that no task owns. That is the check working. |

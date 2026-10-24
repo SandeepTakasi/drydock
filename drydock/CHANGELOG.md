@@ -2,6 +2,14 @@
 
 Older entries: [CHANGELOG-archive.md](CHANGELOG-archive.md).
 
+## 0.20.4: 2026-10-24
+
+**The denial message no longer invites disarming someone else's wave.** Every deny ended "Stale? delete `.drydock/wave-owns.json`", advice written for one session per checkout. With several sessions in one folder, a session hitting another's armed wave would follow it and silently disarm that guard. It now reads "Not yours? Another session or a plan wave may have armed it: ask before deleting". QUICKSTART's "Every edit denied" row says the same.
+
+**README matches `check`.** It said `/drydock:check` "arms the guard"; the skill arms only when the user asks for prevention and detects by default. The README now says so.
+
+Tests: unchanged. The site's quoted denial payload is updated with the hook.
+
 ## 0.20.3: 2026-10-24
 
 **Docs only: where a host-spawned session fits.** The desktop app can start sibling sessions from a session. `plan-format.md` now states that such a session is a fleet member, not a third `execution:` mode: in the same checkout it sits under the orchestrator's wave boundary and still owes one commit per task, which the host's own same-folder brief ("commit nothing") forbids, so that shape cannot execute a Drydock task; in its own worktree it is `isolation: worktree` by another name. The README's guard limits now say the hook is inert in any git worktree, executor or session, because `.drydock/` exists only in the main checkout. wavecheck logs an undeclared sibling session as a deviation.

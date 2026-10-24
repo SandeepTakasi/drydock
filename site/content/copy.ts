@@ -131,7 +131,7 @@ export const meta: Record<
   },
 };
 
-const VERSION = "0.20.3";
+const VERSION = "0.20.4";
 
 /**
  * Docs live in the repo, not in the export — only `site/out` is deployed. So
@@ -589,7 +589,7 @@ export const refusals: { lead: string; items: Refusal[] } = {
       command: "Write b.txt (wave 1.0 owns a.txt)",
       source: "drydock/hooks/enforce-owns.mjs", pin: "does not own",
       output:
-        "Drydock ownership violation: 900-fixture wave 1.0 does not own b.txt.\nOwned by this wave: a.txt\nIf correct implementation needs this file, that is a deviation, report it rather than widening your own boundary. Stale? delete .drydock/wave-owns.json",
+        "Drydock ownership violation: 900-fixture wave 1.0 does not own b.txt.\nOwned by this wave: a.txt\nIf correct implementation needs this file, that is a deviation, report it rather than widening your own boundary. Not yours? Another session or a plan wave may have armed it: ask before deleting .drydock/wave-owns.json",
     },
     // `node drydock/scripts/drydock-audit.mjs wave-start plan.md 1.1` in a scratch
     // git repo with plan.md committed: tasks T1.0.1, T1.0.2 (wave 1.0) and

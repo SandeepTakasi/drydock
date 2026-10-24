@@ -401,7 +401,7 @@ try {
       `Drydock ownership violation: ${lexRel} is inside the repository but resolves ` +
         `outside it (through a symlink or junction).\n` +
         `If correct implementation needs this file, that is a deviation, report it ` +
-        `rather than widening your own boundary. Stale? delete .drydock/wave-owns.json`
+        `rather than widening your own boundary. Not yours? Another session or a plan wave may have armed it: ask before deleting .drydock/wave-owns.json`
     );
   }
 
@@ -416,7 +416,7 @@ try {
     `Drydock ownership violation: ${where} does not own ${rel}.\n` +
       `Owned by this wave: ${config.owns.join(", ")}\n` +
       `If correct implementation needs this file, that is a deviation, report it ` +
-      `rather than widening your own boundary. Stale? delete .drydock/wave-owns.json`
+      `rather than widening your own boundary. Not yours? Another session or a plan wave may have armed it: ask before deleting .drydock/wave-owns.json`
   );
 } catch (err) {
   // `allow()` and `deny()` exit the process, so they never land here. Anything
