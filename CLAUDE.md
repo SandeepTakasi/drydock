@@ -131,6 +131,13 @@ cd /tmp/dd && python3 -m http.server 5173   # then open /drydock/
   version and path on every verdict and shouts `VERSION DRIFT` when the running
   script and the installed plugin disagree — but note it compares versions, so
   editing the plugin without bumping is drift it cannot see. Bump.
+  **Hooks are the exception, measured once (2026-10-24, A16).** In a session
+  started on 0.20.1, after `plugin update` to 0.21.0 and no restart, the
+  PreToolUse hook ran from the **0.21.0** cache path and printed 0.20.4's
+  message: `${CLAUDE_PLUGIN_ROOT}` in the hook command resolved at invocation,
+  not at session start. So hook *code* follows an update without a restart,
+  while skill text does not. One session, one host version; treat it as a
+  reason to check the path in the hook's error line, not as a rule.
 - **`gh` 401 here means the stale user-level `GITHUB_TOKEN`, not a bad login.**
   `gh` prefers that variable over its keyring, and the variable's token is
   invalid. Run `env -u GITHUB_TOKEN gh …` (Git Bash), or delete the variable.
