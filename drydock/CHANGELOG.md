@@ -2,6 +2,16 @@
 
 Older entries: [CHANGELOG-archive.md](CHANGELOG-archive.md).
 
+## 0.21.0: 2026-10-24
+
+**`check` can now say whether the guard is live, not just armed.** An armed `.drydock/wave-owns.json` proves a file exists; the hook has been found unregistered with that file in place (A6, 2026-09-19), and nothing told the user. The `check` skill now probes after arming: it attempts a Write to `.drydock/probe` and expects the denial. `drydock-audit.mjs check` reads the result from evidence rather than from the model's report: a deny receipt for that path written since this arming prints `check: hook live, probe denied`; no receipt prints `check: hook liveness unproven, no probe receipt`; the probe file on disk is `FLAG hook not registered: .drydock/probe was written while armed`, counted, exit 1, because every later denial the user is relying on is not happening either. README and QUICKSTART now separate "the logic passes its tests" from "this session registered the hook".
+
+**`wave-start` no longer arms a boundary that only `--strict` would have refused.** The two `**Files owned:**` narrowness checks (fewer paths parsed than written; prose that yields no paths) ran under `--strict` only, while `wave-start` validates with the lenient pass, so a plan whose boundary parsed too narrow was armed anyway and executors were denied on files they owned. Both checks now run in every `validate-plan`. The read-only marker accepts `—` and `–` beside `-`, which is what plan 005's T0 writes; the corpus is otherwise unchanged.
+
+**Unexercised, stated plainly.** The probe has been run by the test suite, not by a live session; the skill text that performs it is new and session-cached.
+
+Tests: audit 156 to 161 (two lenient narrowness cases, three probe cases).
+
 ## 0.20.4: 2026-10-24
 
 **The denial message no longer invites disarming someone else's wave.** Every deny ended "Stale? delete `.drydock/wave-owns.json`", advice written for one session per checkout. With several sessions in one folder, a session hitting another's armed wave would follow it and silently disarm that guard. It now reads "Not yours? Another session or a plan wave may have armed it: ask before deleting". QUICKSTART's "Every edit denied" row says the same.

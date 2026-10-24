@@ -80,6 +80,14 @@ when a boundary is already armed (for example a plan wave) or when an owned glob
 starts with `**`; name the directories instead, or close the other boundary
 first. Do not remove someone else's boundary to make this succeed.
 
+**Then probe it.** An armed file proves nothing about whether this session
+runs the hook. Use the Write tool to create `.drydock/probe` with any content.
+Expected: the Write is **denied** with `Drydock ownership violation`, and
+that denial is the hook's own receipt. If the Write **succeeds**, the hook is
+not registered in this session: tell the user now, in one line, that
+prevention is off and only the Step 5 audit stands. Leave the file where it
+landed; Step 5 flags it.
+
 ## Step 4: do the work
 
 Proceed directly. No plan document, no waves, no subagents. Stay inside the
@@ -100,7 +108,12 @@ add) and untracked files against the intent, then runs each criterion. Output:
 - `FLAG criterion exited <code>: <cmd>` for a failing criterion.
 - `check: hook armed for this scope` before the verdict, when
   `.drydock/wave-owns.json` was armed from this intent (its owned globs equal
-  the intent's as sets).
+  the intent's as sets). Followed by `check: hook live, probe denied` when the
+  Step 3 probe left a deny receipt, or `check: hook liveness unproven, no probe
+  receipt` when nothing probed.
+- `FLAG hook not registered: .drydock/probe was written while armed` (counted)
+  when the probe landed on disk: the hook did not run, and nothing else was
+  prevented either.
 - `FLAG armed boundary differs from intent` (counted) when that file was armed
   for a different scope.
 - Last line `check: PASS (...)` with exit 0, or `check: FLAG (<n>)` with exit 1.
@@ -110,10 +123,11 @@ add) and untracked files against the intent, then runs each criterion. Output:
 ## Step 6: report
 
 If you armed in Step 3, close the boundary now, or it will block the next
-unrelated edit:
+unrelated edit, and remove the probe if it landed:
 
 ```
 rm .drydock/wave-owns.json
+rm -f .drydock/probe
 ```
 
 Paste the audit output **verbatim**, then stop. If it says FLAG, name each

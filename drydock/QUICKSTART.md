@@ -52,6 +52,13 @@ You want `PASS` from both. They run in temp directories and touch nothing in
 your repo. The two are different layers: the first denies a write at the tool
 boundary, the second records a write a Bash command already made.
 
+Those prove the hook's **logic**, not that this session **registered** it, and
+registration is the part that has failed in practice (an install pinned to an
+old version; a session with no Drydock hook at all). The live check is the
+probe in `/drydock:check`: ask for prevention, and after arming the skill
+attempts a write outside scope. `check` then prints `hook live, probe denied`,
+or **flags** `hook not registered` if the probe landed.
+
 ## 0. Just the guard
 
 No plan needed. `/drydock:check` writes the intent file and can run these steps

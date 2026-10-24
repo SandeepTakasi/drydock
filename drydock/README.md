@@ -112,11 +112,15 @@ plan you did not write before you gate on it.
 
 **Node >= 20.17** on PATH (CI tests 20, 22 and 24), and a host that runs
 `PreToolUse` hooks, or the guard silently does nothing. Check the hook before
-relying on it; this runs in a temp directory:
+relying on it; this runs in a temp directory and proves the logic:
 
 ```bash
 node "$DD/hooks/enforce-owns.test.mjs"
 ```
+
+Whether *this session* registered it is a different question, answered live:
+`/drydock:check` with prevention probes a write outside scope after arming, and
+`check` prints `hook live, probe denied` or flags `hook not registered`.
 
 ## Install
 

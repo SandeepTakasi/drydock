@@ -437,9 +437,11 @@ function validatePlan(path, strict) {
     // The loose read of the same block found paths the strict read did not, so a
     // wrapped or nested shape is being dropped and the enforced boundary is
     // narrower than the plan says. Issue #8 shipped exactly this, silently.
-    if (strict && t.fields.has("files owned")) {
+    // Not `--strict` only (0.21.0): `wave-start` arms from the lenient pass,
+    // so a narrowness defect that only strict reported was armed anyway.
+    if (t.fields.has("files owned")) {
       const seen = backticked(t.ownsSpan.join(" ")).length;
-      if (seen !== t.owns.length) errors.push(`task ${t.id}: **Files owned:** block holds ${seen} backticked path(s) but ${t.owns.length} parsed, the ownership boundary would be ${seen - t.owns.length} file(s) too narrow (strict)`);
+      if (seen !== t.owns.length) errors.push(`task ${t.id}: **Files owned:** block holds ${seen} backticked path(s) but ${t.owns.length} parsed, the ownership boundary would be ${seen - t.owns.length} file(s) too narrow`);
 
       // BOTH counts can be zero and still be wrong. The check above compares a
       // loose read against a strict one, so `Files owned: src/a.ts, src/b.ts`
@@ -449,11 +451,12 @@ function validatePlan(path, strict) {
       // boundary owning nothing. A planner writing prose instead of code spans
       // produces exactly this, so the text has to be looked at, not just counted.
       const declared = t.ownsSpan.join(" ").trim();
-      const saysNothing = /^(none|n\/a|read-only|none \(read-only\)|-)?\s*(\(.*\))?\s*$/i.test(declared);
+      // `—` and `–` beside `-`: plan 005's T0 reads `— (read-only; …)`.
+      const saysNothing = /^(none|n\/a|read-only|none \(read-only\)|[-—–])?\s*(\(.*\))?\s*$/i.test(declared);
       if (t.owns.length === 0 && declared !== "" && !saysNothing) {
         errors.push(
           `task ${t.id}: **Files owned:** reads ${JSON.stringify(declared.slice(0, 60))} but yields no paths, ` +
-            `every path must be in backticks or the boundary is empty and the task owns nothing (strict)`
+            `every path must be in backticks or the boundary is empty and the task owns nothing`
         );
       }
     }
@@ -2195,13 +2198,38 @@ function check(intentPath) {
     else if (!matchesOwns(f, owned)) flags.push(`FLAG outside scope: ${f}`);
   }
   // D10: only a boundary `arm` wrote (wave "check") is compared; absent,
-  // unparseable or any other wave changes nothing. Receipts are not counted.
-  const armed = readJSON(join(root, ".drydock", "wave-owns.json"));
-  let armedNote = false;
+  // unparseable or any other wave changes nothing. Receipts are not counted
+  // toward the verdict, with one exception below.
+  const ownsFile = join(root, ".drydock", "wave-owns.json");
+  const armed = readJSON(ownsFile);
+  let armedNote = false, live = false;
   if (armed?.wave === "check") {
     const a = new Set(armed.owns), o = new Set(owned);
     if (a.size === o.size && [...o].every((g) => a.has(g))) armedNote = true;
     else flags.push("FLAG armed boundary differs from intent");
+  }
+  // LIVENESS. An armed config proves a file exists, not that the host runs the
+  // hook: the hook has been found unregistered with the config in place (A6,
+  // 2026-09-19). The check skill probes by attempting a Write to
+  // `.drydock/probe` after arming. A deny receipt for that path, written since
+  // this arming, is the hook's own evidence that it ran; the file on disk is
+  // evidence that it did not, and that is a FLAG because every later denial
+  // the user is relying on is not happening either.
+  if (armedNote) {
+    if (existsSync(join(root, ".drydock", "probe"))) {
+      flags.push("FLAG hook not registered: .drydock/probe was written while armed");
+    } else {
+      let since = 0;
+      try { since = statSync(ownsFile).mtimeMs - 1000; } catch {}
+      const log = join(root, ".drydock", "enforcement.log");
+      const lines = existsSync(log) ? readFileSync(log, "utf8").split("\n").filter(Boolean) : [];
+      live = lines.some((l) => {
+        try {
+          const r = JSON.parse(l);
+          return r.decision === "deny" && r.path === ".drydock/probe" && r.wave === "check" && Date.parse(r.ts) >= since;
+        } catch { return false; }
+      });
+    }
   }
   for (const cmd of criteria) {
     const r = spawnSync(cmd, { shell: true, cwd: root, stdio: ["ignore", "pipe", "pipe"] });
@@ -2209,6 +2237,9 @@ function check(intentPath) {
   }
   flags.forEach((l) => console.log(l));
   if (armedNote) console.log("check: hook armed for this scope");
+  if (armedNote && !flags.some((l) => l.startsWith("FLAG hook not registered"))) {
+    console.log(live ? "check: hook live, probe denied" : "check: hook liveness unproven, no probe receipt");
+  }
   if (flags.length) { console.log(`check: FLAG (${flags.length})`); process.exit(1); }
   console.log(`check: PASS (${changed.length} file(s), ${criteria.length} criteria)`);
 }

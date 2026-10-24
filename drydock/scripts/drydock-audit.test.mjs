@@ -1488,6 +1488,14 @@ cases.push(
   ["a task that owns nothing on purpose still passes",
     () => validateRaw("owns-none", ownsPlan("none (read-only)"), true),
     (out) => !out.includes("yields no paths")],
+  // 0.21.0: the narrowness checks run without --strict too, because that is the
+  // pass `wave-start` arms from. Plan 005's T0 is the em-dash shape.
+  ["bare paths fail the lenient pass as well, since wave-start arms from it",
+    () => validateRaw("owns-bare-lenient", ownsPlan("src/a.ts, src/b.ts"), false),
+    (out) => out.includes("yields no paths") && !out.includes("(strict)")],
+  ["an em-dash read-only task owns nothing legally",
+    () => validateRaw("owns-emdash", ownsPlan("— (read-only; writes §4 of this plan only)"), false),
+    (out) => !out.includes("yields no paths") && out.includes("PASS")],
 );
 
 // --------------------------------------------------------------------------
@@ -1982,6 +1990,32 @@ cases.push(
     spawnSync(NODE, [CLI, "arm", intent(dir, base, ["a.txt"])], { cwd: dir, encoding: "utf8" });
     return `b:${hookRun(dir, "b.txt")} a:${hookRun(dir, "a.txt")}`;
   }, (out) => out === "b:2 a:0"],
+
+  // LIVENESS (0.21.0). The probe is a Write to `.drydock/probe` after arming:
+  // denied, it leaves the hook's own receipt; landed, it leaves a file.
+  ["check reports the hook live after a denied probe", () => {
+    const [dir, base] = checkRepo("probe-live");
+    const f = intent(dir, base, ["a.txt"]);
+    spawnSync(NODE, [CLI, "arm", f], { cwd: dir, encoding: "utf8" });
+    const rc = hookRun(dir, ".drydock/probe");
+    return `probe:${rc}\n${cli(dir, ["check", f])}`;
+  }, (out) => out.includes("probe:2") && out.includes("check: hook live, probe denied") && out.includes("check: PASS")],
+
+  ["check flags a probe that landed, the hook was not registered", () => {
+    const [dir, base] = checkRepo("probe-landed");
+    const f = intent(dir, base, ["a.txt"]);
+    spawnSync(NODE, [CLI, "arm", f], { cwd: dir, encoding: "utf8" });
+    writeFileSync(join(dir, ".drydock", "probe"), "x");
+    return cli(dir, ["check", f]);
+  }, (out) => out.includes("FLAG hook not registered: .drydock/probe was written while armed")
+    && out.includes("check: FLAG (1)") && !out.includes("liveness unproven")],
+
+  ["check says liveness is unproven when nothing probed", () => {
+    const [dir, base] = checkRepo("probe-none");
+    const f = intent(dir, base, ["a.txt"]);
+    spawnSync(NODE, [CLI, "arm", f], { cwd: dir, encoding: "utf8" });
+    return cli(dir, ["check", f]);
+  }, (out) => out.includes("check: hook liveness unproven, no probe receipt") && out.includes("check: PASS")],
 );
 
 // --------------------------------------------------------------------------
