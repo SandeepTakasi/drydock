@@ -61,7 +61,7 @@ const REQUIRED_HOME = [
   // it pinned "Node 22 or newer" and so required the page to keep saying it
   // after the code stopped meaning it. The hook no longer calls
   // `path.matchesGlob` (it did not match dotfiles), so the 22 floor and the
-  // fail-open-on-old-Node path both went with it; `engines` declares 20.17.0 and
+  // fail-open-on-old-Node path both went with it; the README declares 20.17 and
   // CI tests 20, 22 and 24. A required literal is a claim this file is asserting
   // too, and a stale one turns the honesty gate into the thing keeping the page
   // wrong.

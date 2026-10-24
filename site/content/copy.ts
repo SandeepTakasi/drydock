@@ -131,7 +131,7 @@ export const meta: Record<
   },
 };
 
-const VERSION = "0.20.1";
+const VERSION = "0.20.2";
 
 /**
  * Docs live in the repo, not in the export — only `site/out` is deployed. So
@@ -741,7 +741,7 @@ export const install: {
   configNote:
     "Settings on enable: where plans live (default docs/plans), which docs the closing check may propose changes to, and where Testing Gate specs go (default e2e).",
   requirement:
-    "Requires Node 20.17 or newer on PATH, as declared in the plugin manifest and tested on 20, 22 and 24: the ownership hook and the plan audit are Node programs. The hook is inert, by design, whenever no wave is armed.",
+    "Requires Node 20.17 or newer on PATH, tested on 20, 22 and 24: the ownership hook and the plan audit are Node programs. The hook is inert, by design, whenever no wave is armed.",
   copyLabel: "Copy",
   copyAriaLabel: "Copy install command to clipboard",
   copiedLabel: "Copied",

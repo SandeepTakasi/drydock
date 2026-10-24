@@ -2,6 +2,10 @@
 
 Older entries: [CHANGELOG-archive.md](CHANGELOG-archive.md).
 
+## 0.20.2: 2026-10-24
+
+**`claude plugin validate --strict` passes again.** Host 2.1.310 reports `engines` as an unknown `plugin.json` field, and `--strict` treats that warning as a failure (A4). The host never read `engines`, so it is removed; the Node 20.17 floor is stated in the README and still tested in CI on 20, 22 and 24. No runtime change.
+
 ## 0.20.1: 2026-10-19
 
 **The first wave no longer BLOCKs on Drydock's own `.gitignore` edit.** `wave-start` and `arm` appended `.drydock/` to `.gitignore` and left it uncommitted, so in any repo that did not already ignore `.drydock/`, the first `audit-wave` FAILed with `M .gitignore`, a file no task owns (A15; present since plan 010). They now write the line to `.git/info/exclude`, which is never tracked, and only when `git check-ignore` reports that nothing ignores `.drydock/` already.

@@ -19,7 +19,7 @@ costs more than the second: you are learning what a plan document is for.
 | | |
 |---|---|
 | **Claude Code** | the host. Drydock is a plugin, not a standalone CLI |
-| **Node >= 20.17** on PATH | matches `engines` in `plugin.json`, and is tested in CI on 20, 22 and 24 |
+| **Node >= 20.17** on PATH | the floor the README states, tested in CI on 20, 22 and 24 |
 | **A git repo** | attribution is per-commit; there is nothing to audit without one |
 
 ```

@@ -36,8 +36,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Every end of the supported range. 20 is the floor `plugin.json`
-        # declares in `engines`, and it is tested because a declared floor no
+        # Every end of the supported range. 20 is the floor the README
+        # declares (20.17), and it is tested because a declared floor no
         # program checks is exactly the kind of claim this repo exists to stop
         # making: the docs said 22 for `path.matchesGlob` while both scripts ran
         # fine on 20.20, and the plugin no longer calls it at all. 24 is what the
