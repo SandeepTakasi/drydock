@@ -10,7 +10,7 @@ diff against the same list. Use it on its own (`/drydock:check`), beside any
 planner, as a PR check (`scope-gate`), or with Drydock's own plans when the work
 is big enough to split into parallel waves.
 
-**Status: open pilot (v0.21.0).** Every claim is measured in
+**Status: open pilot (v0.21.1).** Every claim is measured in
 [compatibility](docs/compatibility.md), including what is not yet shown: so far
 it has been run only on this repo, by its author. The guard is observed denying
 real edits in live sessions (A6, A12); shell writes are detected, not prevented

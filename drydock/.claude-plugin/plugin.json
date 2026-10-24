@@ -1,7 +1,7 @@
 {
   "name": "drydock",
   "displayName": "Drydock",
-  "version": "0.21.0",
+  "version": "0.21.1",
   "description": "Keeps an AI agent inside the files you said it may touch: a hook denies writes outside a declared scope, Bash writes are detected, and an audit checks the diff. Use it alone, beside any planner, as a PR check, or with plan-first parallel waves. Nothing sails until it leaves the dock.",
   "author": {
     "name": "Sandeep Takasi"

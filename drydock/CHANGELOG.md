@@ -2,6 +2,14 @@
 
 Older entries: [CHANGELOG-archive.md](CHANGELOG-archive.md).
 
+## 0.21.1: 2026-10-25
+
+**`check` cleans up its intent file.** Step 6 removed the boundary and the probe but left `.drydock/check.md` behind (A16, second run). It now removes that too.
+
+**0.21.0's probe is exercised.** The "unexercised" note on 0.21.0 is closed by A16: two live runs on host 2.1.310, the second with `/drydock:check` performing the probe on the skill's instruction alone, in a session briefed on the task but not on the probe. The landed-probe FLAG remains suite-proven only.
+
+Tests: unchanged.
+
 ## 0.21.0: 2026-10-24
 
 **`check` can now say whether the guard is live, not just armed.** An armed `.drydock/wave-owns.json` proves a file exists; the hook has been found unregistered with that file in place (A6, 2026-09-19), and nothing told the user. The `check` skill now probes after arming: it attempts a Write to `.drydock/probe` and expects the denial. `drydock-audit.mjs check` reads the result from evidence rather than from the model's report: a deny receipt for that path written since this arming prints `check: hook live, probe denied`; no receipt prints `check: hook liveness unproven, no probe receipt`; the probe file on disk is `FLAG hook not registered: .drydock/probe was written while armed`, counted, exit 1, because every later denial the user is relying on is not happening either. README and QUICKSTART now separate "the logic passes its tests" from "this session registered the hook".

@@ -123,11 +123,12 @@ add) and untracked files against the intent, then runs each criterion. Output:
 ## Step 6: report
 
 If you armed in Step 3, close the boundary now, or it will block the next
-unrelated edit, and remove the probe if it landed:
+unrelated edit, and remove the probe if it landed. Remove the intent file in
+either case; it has served its purpose and would otherwise outlive the run:
 
 ```
 rm .drydock/wave-owns.json
-rm -f .drydock/probe
+rm -f .drydock/probe .drydock/check.md
 ```
 
 Paste the audit output **verbatim**, then stop. If it says FLAG, name each
